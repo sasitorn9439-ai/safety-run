@@ -35,7 +35,7 @@ async function load(){$('msg').textContent='กำลังโหลด…';try{
  $('msg').textContent=`ผู้เล่น ${rows.length} คน · มีคะแนนแล้ว ${rows.filter(r=>r.best!=null).length} คน · เล่นรวม ${rows.reduce((a,r)=>a+r.plays,0)} ครั้ง`}catch(e){$('msg').textContent=e.message}}
 $('load').onclick=load;
 $('csv').onclick=async()=>{if(!rows.length)await load();const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;
- const csv='﻿rank,employee_id,name,score,seconds,started_at,note\n'+rows.map((r,i)=>[i+1,r.id,r.name,r.score??'',r.secs??'',r.startedAt,r.flagged?'capped':''].map(q).join(',')).join('\n');
+ const csv='﻿rank,employee_id,name,best_score,plays,scores,first_started,note\n'+rows.map((r,i)=>[i+1,r.id,r.name,r.best??'',r.plays,r.scores,r.startedAt,r.flagged?'capped':''].map(q).join(',')).join('\n');
  try{await navigator.clipboard.writeText(csv);$('msg').textContent='คัดลอก CSV แล้ว วางใน Excel ได้เลย'}catch(e){$('msg').textContent='คัดลอกไม่ได้ในเบราว์เซอร์นี้'}};
 $('reset').onclick=async()=>{const id=$('rid').value.trim().toUpperCase();if(!id)return;
  try{await call({action:'reset',id});$('msg').textContent=`รีเซ็ต ${id} แล้ว เล่นใหม่ได้ครบ 3 ครั้ง`;$('rid').value='';load()}catch(e){$('msg').textContent=e.message}};
