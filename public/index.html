@@ -91,6 +91,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <li><b>← →</b><span>ปัดซ้าย/ขวา เปลี่ยนเลน หลบโฟล์คลิฟท์และกองวัสดุ<br><span class="en">Swipe to change lanes</span></span></li>
 <li><b>↑</b><span>ปัดขึ้น กระโดดข้ามพื้นเปียก สายไฟพาดทาง<br><span class="en">Swipe up to jump</span></span></li>
 <li><b>↓</b><span>ปัดลง สไลด์ลอดท่อที่อยู่ต่ำ<br><span class="en">Swipe down to slide</span></span></li>
+<li><b>?</b><span>ทุก 1,000 คะแนนมีด่านคำถาม ยิ่งไกลยิ่งยาก ตอบถูกได้โบนัส +100 ถึง +500<br><span class="en">Quiz checkpoint every 1,000 pts, harder each level</span></span></li>
 <li><b>PPE</b><span>เก็บครบ 5 ชนิด ได้โล่ Full PPE กันชน 1 ครั้ง<br><span class="en">Collect all 5 PPE for a shield</span></span></li>
 </ul>
 <p class="small">กดเริ่มแล้วนับเป็น 1 ครั้งทันที ห้ามปิดหน้าจอระหว่างเล่น · คอมพิวเตอร์ใช้ปุ่มลูกศร</p>
@@ -109,7 +110,8 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 
 <div class="ov" id="quiz"><div class="card">
 <div class="tape"></div>
-<p class="hit">โอกาสครั้งที่สอง · Second chance</p>
+<p class="hit" id="qHead">โอกาสครั้งที่สอง · Second chance</p>
+<span class="badge" id="qLv"></span>
 <p class="q" id="qText"></p>
 <div class="en" id="qEn"></div>
 <div id="qOpts"></div>
@@ -152,7 +154,9 @@ const HZ={
  pallet:{t:'block',th:'วางวัสดุกีดขวางทางเดิน',en:'Blocked walkway, unstable stacking',tip:'จัดเก็บวัสดุในพื้นที่ที่ตีเส้นไว้ ซ้อนให้มั่นคงไม่สูงเกินกำหนด และไม่วางบนเส้นทางเดิน',tipEn:'Store materials in marked areas, stack them stable and low, never on the walkway.'}
 };
 const KINDS=Object.keys(HZ),PPE=['helmet','gloves','glasses','ear','boots'];
-const QUIZ=[
+// question bank by tier: 0 = basic (score < 1000), then one tier harder per 1000 points
+const QB=[
+[ // Level 1 · พื้นฐาน
  ['ก่อนซ่อมหรือทำความสะอาดเครื่องจักร ต้องทำอะไร?','Before servicing a machine you must…',['ตัดพลังงาน ล็อกและติดป้าย (LOTO)','แค่กดปุ่ม Stop','ให้เพื่อนยืนเฝ้าสวิตช์'],0],
  ['พบสารเคมีหกรั่วไหล ควรทำอะไรเป็นอย่างแรก?','First action at a chemical spill?',['เอาน้ำฉีดล้างทันที','กั้นพื้นที่ แจ้งหัวหน้า และดู SDS','เดินอ้อมไปทำงานต่อ'],1],
  ['ป้ายวงกลมพื้นสีน้ำเงิน หมายถึงอะไร?','A blue circular sign means…',['ป้ายห้าม','ป้ายเตือน','ป้ายบังคับให้ปฏิบัติ'],2],
@@ -161,11 +165,51 @@ const QUIZ=[
  ['เห็นรถโฟล์คลิฟท์กำลังถอยหลัง ควรทำอย่างไร?','A forklift is reversing. You should…',['รีบเดินตัดผ่านไปก่อน','หยุด อยู่ห่าง รอให้คนขับเห็น','โบกมือแล้วเดินผ่านเลย'],1],
  ['เกิดเหตุเกือบอุบัติเหตุ (Near miss) ควรทำอย่างไร?','After a near miss you should…',['ไม่ต้องทำอะไร เพราะไม่มีใครเจ็บ','รายงานทันที เพื่อแก้ไขก่อนเกิดจริง','เล่าให้เพื่อนฟังพอ'],1],
  ['ท่ายกของหนักที่ถูกต้องคือ?','Correct manual lifting posture?',['ก้มหลัง ขาตรง','ย่อเข่า หลังตรง ถือของชิดตัว','บิดตัวขณะยก'],1],
- ['ทำงานบนที่สูงตั้งแต่กี่เมตร ต้องมีระบบป้องกันการตก?','Fall protection is required from what height?',['1 เมตร','2 เมตร','5 เมตร'],1],
  ['ป้ายทางออกฉุกเฉินใช้สีอะไร?','Emergency exit signs are…',['สีเขียว','สีแดง','สีน้ำเงิน'],0]
-];
+],[ // Level 2 · PPE และสารเคมี
+ ['SDS ตามระบบ GHS มีทั้งหมดกี่หัวข้อ?','How many sections does a GHS SDS have?',['8 หัวข้อ','12 หัวข้อ','16 หัวข้อ'],2],
+ ['จะเลือกถุงมือกันสารเคมีให้ถูกชนิด ต้องดูข้อมูลจาก SDS หัวข้อใด?','Which SDS section tells you which gloves to use?',['หัวข้อ 2 การระบุความเป็นอันตราย','หัวข้อ 8 การควบคุมการสัมผัส/PPE','หัวข้อ 14 การขนส่ง'],1],
+ ['สัญลักษณ์ GHS รูปหัวกะโหลกไขว้ หมายถึงอะไร?','GHS skull & crossbones means…',['สารไวไฟ','สารกัดกร่อน','สารพิษเฉียบพลันรุนแรง'],2],
+ ['สัญลักษณ์ GHS รูปของเหลวหยดกัดมือและแผ่นโลหะ หมายถึงอะไร?','GHS pictogram of liquid eating a hand and metal means…',['สารกัดกร่อน','สารออกซิไดซ์','ก๊าซภายใต้ความดัน'],0],
+ ['ไฟประเภท A ตามการแบ่งประเภทเพลิง คือไฟจากอะไร?','Class A fire involves…',['น้ำมันและของเหลวไวไฟ','ของแข็งทั่วไป เช่น ไม้ กระดาษ ผ้า','โลหะติดไฟ'],1],
+ ['ถังดับเพลิงชนิด CO₂ เหมาะกับไฟประเภทใดมากที่สุด?','A CO₂ extinguisher is best for…',['ไฟจากอุปกรณ์ไฟฟ้าและของเหลวไวไฟ','ไฟจากโลหะ','ไฟจากกองไม้ขนาดใหญ่'],0],
+ ['ทำงานกับเครื่องจักรที่มีส่วนหมุน เช่น สว่านแท่น ไม่ควรสวมอะไร?','Near rotating parts (e.g. drill press) avoid wearing…',['แว่นตานิรภัย','ถุงมือ เสื้อผ้าหลวม และเครื่องประดับ','รองเท้านิรภัย'],1],
+ ['ตามกฎหมายไทย ค่าระดับเสียงเฉลี่ยตลอด 8 ชั่วโมงการทำงานต้องไม่เกินเท่าใด?','Thai 8-hour noise exposure limit is…',['70 dB(A)','85 dB(A)','100 dB(A)'],1],
+ ['ควรตรวจสภาพเข็มขัดนิรภัยแบบเต็มตัว (Full body harness) เมื่อใด?','When should a full-body harness be inspected?',['ปีละครั้ง','เฉพาะเมื่อดูเก่า','ทุกครั้งก่อนใช้งาน'],2]
+],[ // Level 3 · งานอันตรายและใบอนุญาต
+ ['ทำงานบนที่สูงตั้งแต่กี่เมตร ต้องมีระบบป้องกันการตกตามกฎหมายไทย?','Thai law: fall protection is required from…',['1 เมตร','2 เมตร','5 เมตร'],1],
+ ['ตามกฎหมายไทย ออกซิเจนในที่อับอากาศต้องอยู่ในช่วงใดจึงจะเข้าทำงานได้?','Thai law: safe oxygen range for confined space entry is…',['16–19%','19.5–23.5%','23.5–25%'],1],
+ ['ก๊าซหรือไอระเหยไวไฟในที่อับอากาศต้องไม่เกินกี่ % ของค่าขีดจำกัดล่างของการติดไฟ (LFL)?','Max flammable gas in a confined space, as % of LFL?',['10%','25%','50%'],0],
+ ['ลำดับการตรวจวัดบรรยากาศก่อนเข้าที่อับอากาศที่ถูกต้องคือ?','Correct order of atmospheric testing before entry?',['ก๊าซพิษ → ไวไฟ → ออกซิเจน','ออกซิเจน → ไวไฟ → ก๊าซพิษ','ไวไฟ → ก๊าซพิษ → ออกซิเจน'],1],
+ ['ผู้ช่วยเหลือ (Attendant) ของงานที่อับอากาศ มีหน้าที่อะไร?','The confined space attendant must…',['เข้าไปช่วยทำงานข้างใน','เฝ้าอยู่ด้านนอก ติดต่อผู้ที่อยู่ข้างในตลอด และไม่เข้าไปช่วยเอง','ไปตามคนมาช่วยเมื่อเลิกงาน'],1],
+ ['งานเชื่อม ตัด เจียร นอกพื้นที่ที่กำหนดไว้ ต้องใช้ใบอนุญาตประเภทใด?','Welding or grinding outside a designated area needs…',['Hot Work Permit','Cold Work Permit','ไม่ต้องขออนุญาต'],0],
+ ['ใครเป็นผู้ปลดกุญแจ LOTO ได้?','Who may remove a LOTO lock?',['หัวหน้างานคนใดก็ได้','ผู้ที่เป็นเจ้าของกุญแจนั้นเท่านั้น','ช่างที่จะเปิดเครื่อง'],1],
+ ['ขณะถ่ายเทของเหลวไวไฟระหว่างถัง ต้องต่อสายดินและสายฝาก (Grounding & Bonding) เพื่ออะไร?','Grounding & bonding when transferring flammables prevents…',['ไฟฟ้าสถิตที่อาจทำให้เกิดประกายไฟ','ถังรั่ว','ของเหลวระเหย'],0]
+],[ // Level 4 · ระบบการจัดการ
+ ['ตามลำดับชั้นการควบคุมความเสี่ยง (Hierarchy of Controls) วิธีใดได้ผลดีที่สุด?','Most effective level in the Hierarchy of Controls?',['ใช้ PPE','ควบคุมเชิงบริหาร','กำจัดอันตรายออกไป (Elimination)'],2],
+ ['ในลำดับชั้นการควบคุม PPE อยู่ลำดับใด?','Where does PPE sit in the Hierarchy of Controls?',['ลำดับแรก','ลำดับกลาง','ลำดับสุดท้าย'],2],
+ ['สถานประกอบกิจการที่มีลูกจ้างตั้งแต่กี่คนขึ้นไป ต้องจัดให้มีคณะกรรมการความปลอดภัย (คปอ.)?','From how many employees must a Thai workplace set up a safety committee?',['20 คน','50 คน','100 คน'],1],
+ ['คณะกรรมการความปลอดภัย (คปอ.) ต้องประชุมอย่างน้อยเท่าใด?','A Thai safety committee must meet at least…',['เดือนละ 1 ครั้ง','3 เดือนครั้ง','ปีละครั้ง'],0],
+ ['ลูกจ้างเสียชีวิตจากการทำงาน นายจ้างต้องแจ้งพนักงานตรวจความปลอดภัยเป็นหนังสือภายในกี่วัน?','After a work fatality, written notice to the inspector is due within…',['3 วัน','7 วัน','30 วัน'],1],
+ ['สามเหลี่ยมอุบัติเหตุของ Heinrich มีสัดส่วนเท่าใด?',"Heinrich's accident triangle ratio is…",['1 : 10 : 30','1 : 29 : 300','1 : 50 : 500'],1],
+ ['ค่า WBGT ใช้ประเมินอะไร?','WBGT is used to assess…',['ความร้อน','แสงสว่าง','ความสั่นสะเทือน'],0],
+ ['ก่อนเปลี่ยนแปลงกระบวนการ อุปกรณ์ หรือสารเคมี ต้องผ่านกระบวนการใด?','Before changing a process, equipment or chemical you need…',['MOC (Management of Change)','5ส','KYT อย่างเดียว'],0]
+],[ // Level 5 · ผู้เชี่ยวชาญ
+ ['การถาม "ทำไม" ซ้ำ ๆ เพื่อหาสาเหตุรากของอุบัติเหตุ เรียกว่าเทคนิคอะไร?','Repeatedly asking "why" to find root cause is…',['5 Whys','5ส','PDCA'],0],
+ ['มาตรฐานระบบการจัดการอาชีวอนามัยและความปลอดภัยคือ ISO ใด?','The ISO standard for OH&S management systems is…',['ISO 9001','ISO 14001','ISO 45001'],2],
+ ['แบบจำลอง Swiss Cheese ที่อธิบายว่าอุบัติเหตุเกิดเมื่อช่องโหว่หลายชั้นเรียงตรงกัน เป็นของใคร?','The Swiss Cheese accident model is by…',['H.W. Heinrich','James Reason','W. Edwards Deming'],1],
+ ['LTIFR ที่นิยมใช้ทั่วไป คิดต่อชั่วโมงการทำงานกี่ชั่วโมง?','LTIFR is commonly calculated per…',['1,000 ชั่วโมง','100,000 ชั่วโมง','1,000,000 ชั่วโมง'],2],
+ ['ขั้นตอนที่ถูกต้องของการวิเคราะห์งานเพื่อความปลอดภัย (JSA) คือ?','Correct JSA sequence?',['แบ่งงานเป็นขั้นตอน → ชี้บ่งอันตราย → กำหนดมาตรการควบคุม','กำหนดมาตรการ → แบ่งขั้นตอน → ชี้บ่งอันตราย','ชี้บ่งอันตราย → ลงมือทำ → ประเมินผล'],0],
+ ['ในวงจร PDCA ขั้นตอน C หมายถึงอะไร?','In PDCA, C stands for…',['Control ควบคุม','Check ตรวจสอบ','Correct แก้ไข'],1],
+ ['Leading indicator ด้านความปลอดภัยคือข้อใด?','Which is a leading safety indicator?',['จำนวนอุบัติเหตุหยุดงาน','อัตราการเสียชีวิต','จำนวนครั้งการเดินตรวจความปลอดภัยและรายงาน Near miss'],2],
+ ['ระดับความเสี่ยงในการประเมินความเสี่ยงโดยทั่วไป คำนวณจากอะไร?','Risk level is generally calculated from…',['โอกาสเกิด × ความรุนแรง','จำนวนคน × ชั่วโมงทำงาน','ต้นทุน × เวลา'],0]
+]];
+const LV_NAME=['พื้นฐาน','PPE และสารเคมี','งานอันตรายและใบอนุญาต','ระบบการจัดการ','ผู้เชี่ยวชาญ'];
+const tierOf=sc=>Math.min(QB.length-1,Math.floor(sc/1000));
+let asked=new Set();
+function pickQ(t){const pool=QB[t].map((q,i)=>[q,t+':'+i]).filter(x=>!asked.has(x[1]));const src=pool.length?pool:QB[t].map((q,i)=>[q,t+':'+i]);const [q,k]=src[Math.random()*src.length|0];asked.add(k);return q}
 
-let state='menu',dist,speed,lane,px,py,vy,slide,objs,next,got,shield,inv,used,ppeScore,toast,toastT,lastHit,flash,sess=null;
+let state='menu',dist,speed,lane,px,py,vy,slide,objs,next,got,shield,inv,used,ppeScore,toast,toastT,lastHit,flash,sess=null,nextQuiz=1000;
 const LS={get:k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set:(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function api(path,data){const r=await fetch(path,data?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}:{cache:'no-store'});let j={};try{j=await r.json()}catch(e){}return{ok:r.ok,status:r.status,...j}}
@@ -173,7 +217,7 @@ async function api(path,data){const r=await fetch(path,data?{method:'POST',heade
 let ac;
 function beep(f,d=.08,type='square',v=.05){if(!ac)return;try{const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
 
-function reset(){dist=0;speed=14;lane=0;px=0;py=0;vy=0;slide=0;objs=[];next=18;got=new Set();shield=0;inv=1;used=false;ppeScore=0;toast='';toastT=0;flash=0}
+function reset(){dist=0;speed=14;lane=0;px=0;py=0;vy=0;slide=0;objs=[];next=18;got=new Set();shield=0;inv=1;used=false;ppeScore=0;toast='';toastT=0;flash=0;nextQuiz=1000;asked=new Set()}
 const score=()=>Math.floor(dist)+ppeScore;
 function show(id){for(const o of ['menu','over','quiz','done','boardOv'])$(o).classList.toggle('on',o===id)}
 
@@ -213,6 +257,7 @@ function update(dt){
   crash(o);return;
  }
  objs=objs.filter(o=>o.z>-3&&!(o.gone&&o.k==='ppe'));
+ if(score()>=nextQuiz){const t=tierOf(nextQuiz);nextQuiz+=1000;askQuiz('check',t)}
 }
 
 /* ---------- drawing ---------- */
@@ -286,7 +331,7 @@ function drawPlayer(){
 function hud(){
  ctx.textAlign='left';ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.roundRect(10,10,W-20,54,12);ctx.fill();
  ctx.fillStyle='#ffd400';ctx.font='800 24px Kanit';ctx.fillText(score(),22,45);
- ctx.fillStyle='#9aa1ab';ctx.font='400 11px Kanit';ctx.fillText('คะแนน · SCORE',22,24);
+ ctx.fillStyle='#9aa1ab';ctx.font='400 11px Kanit';ctx.fillText(`คะแนน · LV ${tierOf(score())+1}`,22,24);
  const r=13,sx=W-22-r-4*(r*2+6);
  PPE.forEach((t,i)=>{const cx=sx+i*(r*2+6),has=got.has(t);ctx.fillStyle=has?'#fff':'rgba(255,255,255,.12)';ctx.beginPath();ctx.arc(cx,37,r,0,7);ctx.fill();ctx.globalAlpha=has?1:.35;ppeIcon(t,cx,37,r*.7);ctx.globalAlpha=1});
  if(shield>0){ctx.fillStyle='rgba(120,225,255,.9)';ctx.fillRect(10,66,(W-20)*shield/8,4)}
@@ -351,16 +396,22 @@ async function submit(){
   else throw 0}
  catch(e){$('doneHead').textContent='ยังส่งคะแนนไม่ได้';$('doneMsg').textContent='เชื่อมต่อไม่ได้ คะแนนยังเก็บไว้ในเครื่อง กดส่งอีกครั้ง · Saved on this device, tap retry';$('retryBtn').style.display='block'}}
 $('retryBtn').onclick=submit;$('endBtn').onclick=submit;
-addEventListener('beforeunload',e=>{if(state==='play'){e.preventDefault();e.returnValue=''}});
-$('chanceBtn').onclick=()=>{
- used=true;const q=QUIZ[Math.random()*QUIZ.length|0];$('qText').textContent=q[0];$('qEn').textContent=q[1];$('qNext').style.display='none';
- $('qOpts').innerHTML=q[2].map((o,i)=>`<button class="opt" data-i="${i}">${o}</button>`).join('');
+addEventListener('beforeunload',e=>{if(state==='play'||state==='pause'){e.preventDefault();e.returnValue=''}});
+function askQuiz(mode,t){
+ const q=pickQ(t),chance=mode==='chance',bonus=100*(t+1);if(chance)used=true;else state='pause';
+ $('qHead').textContent=chance?'โอกาสครั้งที่สอง · Second chance':`ด่านคำถาม ${nextQuiz-1000} คะแนน · Checkpoint`;
+ $('qLv').textContent=`Level ${t+1} · ${LV_NAME[t]}${chance?'':` · ตอบถูก +${bonus}`}`;
+ $('qText').textContent=q[0];$('qEn').textContent=q[1];$('qNext').style.display='none';
+ $('qOpts').innerHTML=q[2].map((o,i)=>`<button class="opt" data-i="${i}">${esc(o)}</button>`).join('');
+ const resume=()=>{objs=objs.filter(o=>o.z>14);inv=2;slide=0;py=0;vy=0;state='play';last=performance.now();show(null)};
  $('qOpts').onclick=e=>{const b=e.target.closest('.opt');if(!b||$('qNext').style.display==='block')return;const i=+b.dataset.i,ok=i===q[3];
   [...$('qOpts').children].forEach((c,j)=>{if(j===q[3])c.classList.add('ok');else if(j===i)c.classList.add('no')});
   beep(ok?990:140,.2,ok?'triangle':'sawtooth');const n=$('qNext');n.style.display='block';
-  n.textContent=ok?'ถูกต้อง! วิ่งต่อ · Continue':'ยังไม่ถูก · ดูคำตอบแล้วเล่นใหม่';
-  n.onclick=()=>{if(ok){objs=objs.filter(o=>o.z>14);inv=2;slide=0;py=0;vy=0;state='play';show(null)}else submit()}};
- show('quiz')};
+  if(chance){n.textContent=ok?'ถูกต้อง! วิ่งต่อ · Continue':'ยังไม่ถูก · จบรอบนี้';n.onclick=()=>{if(ok)resume();else submit()}}
+  else{if(ok)ppeScore+=bonus;n.textContent=ok?`ถูกต้อง! +${bonus} วิ่งต่อ · Continue`:'ยังไม่ถูก · ดูคำตอบแล้ววิ่งต่อ';
+   n.onclick=()=>{resume();toast=ok?`+${bonus} · Level ${t+1}`:`Level ${t+1} · ระวังให้มากขึ้น`;toastT=1.8}}};
+ setTimeout(()=>show('quiz'),chance?0:150)}
+$('chanceBtn').onclick=()=>askQuiz('chance',tierOf(score()));
 
 const ro=new ResizeObserver(size);ro.observe(cv);
 reset();state='menu';requestAnimationFrame(loop);
