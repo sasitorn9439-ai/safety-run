@@ -1,0 +1,89 @@
+{
+  "name": "safety-run-mascot-vector",
+  "version": 1,
+  "style": "smooth vector, outlined; same poses as the pixel set",
+  "view": "From behind, like the game camera.",
+  "howToUse": "svg/<anim>_<NN>.svg is one frame (viewBox 0 0 32 32; the feet are at (16, 32)); svg/sheet_<anim>.svg has the frames side by side. 24 cell units = 1 game unit u. Layers are named; strokes are round-joined. Squash, stretch, arm and cape motion are drawn into the frames: play them as they are.",
+  "cell": {
+    "w": 32,
+    "h": 32
+  },
+  "anchor": {
+    "x": 16,
+    "y": 32
+  },
+  "unit": 24,
+  "animations": {
+    "idle": {
+      "frames": 8,
+      "fps": 6,
+      "loop": true,
+      "tags": {},
+      "note": "Breathing; head timing from the template back-view idle (cols 16-19), halved. Plays twice with the cape hem shifting."
+    },
+    "run": {
+      "frames": 6,
+      "fps": 12,
+      "loop": true,
+      "tags": {
+        "stepA": [
+          0,
+          2
+        ],
+        "stepB": [
+          3,
+          5
+        ]
+      },
+      "note": "6-frame loop = two steps, driven by the template back-view walk (head bob and foot lift scaled to this short body). Frames 0-2 = left step, 3-5 = right step."
+    },
+    "jump": {
+      "frames": 12,
+      "fps": 14,
+      "loop": false,
+      "tags": {
+        "takeoff": [
+          0,
+          1
+        ],
+        "rise": [
+          2,
+          3
+        ],
+        "apex": [
+          4,
+          5
+        ],
+        "fall": [
+          6,
+          7
+        ],
+        "land": [
+          8,
+          11
+        ]
+      },
+      "note": "takeoff/rise while vy > 0, apex near 0, fall while vy < 0 (hold the last fall frame), land plays on touchdown. Squash and stretch are drawn in."
+    },
+    "slide": {
+      "frames": 9,
+      "fps": 14,
+      "loop": false,
+      "tags": {
+        "drop": [
+          0,
+          1
+        ],
+        "hold": [
+          2,
+          5
+        ],
+        "recover": [
+          6,
+          8
+        ]
+      },
+      "note": "Slides under low pipes (0.7 s): drop, hold (loop frames 2-5 if the slide lasts longer), recover."
+    }
+  }
+}
