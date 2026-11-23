@@ -61,6 +61,11 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 .board .pz{display:block;font-size:12px;color:#ffd400}
 .win{background:#2a2410;border:1px solid #ffd400;border-radius:10px;padding:8px 12px;margin-top:10px;font-size:15px}
 #skipTut{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:2;display:none;min-height:44px;padding:8px 14px;border:0;border-radius:10px;background:rgba(0,0,0,.6);color:#fff;font:600 14px Kanit,sans-serif;cursor:pointer}
+.av{border-radius:50%;flex:none;display:block}
+.board li{grid-template-columns:34px 40px 1fr auto}
+.board .who{font-weight:600;line-height:1.2}
+.youav{display:flex;flex-direction:column;align-items:center;gap:8px;margin:6px 0 4px}
+.youav b{font-family:Kanit,sans-serif;font-size:24px;color:#ffd400}
 .card.scroll{max-height:92dvh;overflow:auto}
 .btn:disabled{opacity:.6}
 .q{font-size:19px;font-weight:600;line-height:1.3;margin:6px 0 2px}
@@ -77,7 +82,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <div class="tape"></div>
 <span class="badge">EHS Day 2026 · MCAM</span>
 <h1>SAFETY RUN</h1>
-<p class="sub">วิ่งปลอดภัย · หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><b style="color:#ffd400">1 รหัสพนักงาน เล่นได้ 3 ครั้ง นับคะแนนครั้งที่ดีที่สุด</b><br>3 plays per employee · best score counts</p>
+<p class="sub">วิ่งปลอดภัย · หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><b style="color:#ffd400">เล่นได้ไม่จำกัด นับคะแนนครั้งที่ดีที่สุด</b><br>ใส่รหัสพนักงานแล้วรับไอคอนประจำตัว ใช้แทนชื่อบนตารางอันดับ</p>
 <div class="prizes" aria-label="รางวัล">
 <div class="prize p1"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="16" y="2" width="12" height="40" rx="5" fill="#1b1d21"/><rect x="11" y="11" width="22" height="22" rx="6" fill="#2b2f36" stroke="#ffd400" stroke-width="1.5"/><rect x="14" y="14" width="16" height="16" rx="4" fill="#0e1a24"/><path d="M17 23h3l2-4 2 7 2-3h2" fill="none" stroke="#5ad1ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>อันดับ 1 · 1st prize</b><span>HUAWEI Band 11 Series (Polym Black)</span></div></div>
 <div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M5 22a17 15 0 0 1 34 0z" fill="#ff7a1a"/><path d="M5 22c3-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 5.5-2 8.5 0" fill="none" stroke="#c45c10" stroke-width="1.5"/><path d="M22 7v26a4 4 0 0 1-8 0" fill="none" stroke="#cfd6de" stroke-width="2.2" stroke-linecap="round"/></svg><div><b>อันดับ 2 และ 3 · 2nd &amp; 3rd prize</b><span>BEZ ร่มพับอัตโนมัติ</span></div></div>
@@ -119,6 +124,13 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <div class="en" id="qEn"></div>
 <div id="qOpts"></div>
 <button class="btn" id="qNext" style="display:none"></button>
+</div></div>
+<div class="ov" id="avOv"><div class="card">
+<div class="tape"></div>
+<p class="hit" id="avHead">ไอคอนประจำตัวของคุณ</p>
+<div class="youav"><div id="avBig"></div><b id="avName"></b></div>
+<p class="sub" style="text-align:center;margin-bottom:0">ตารางอันดับจะแสดงไอคอนนี้แทนรหัสพนักงาน<br>ไม่มีใครได้ไอคอนซ้ำกับคุณ</p>
+<button class="btn" id="avGo">เริ่มวิ่ง!</button>
 </div></div>
 <div class="ov" id="done"><div class="card scroll">
 <div class="tape"></div>
@@ -235,6 +247,40 @@ function pickQ(t){
  for(const lv of order){const pool=QB[lv].filter(q=>!asked.has(q[0]));if(pool.length){const q=pool[Math.random()*pool.length|0];asked.add(q[0]);LS.set(askedKey(),[...asked]);return{q,lv}}}
  asked=new Set();LS.set(askedKey(),[]);return pickQ(t)}
 
+/* ---------- unique avatar per employee (number from the server → glyph × colour × frame) ---------- */
+const AV_G=['หมวก','ถุงมือ','แว่น','ที่ครอบหู','รองเท้า','กรวย','ถังดับเพลิง','กล่องยา','สายฟ้า','ดาว','โล่','ประแจ'];
+const AV_C=[['#e53935','แดง'],['#ef6c00','ส้ม'],['#b58900','ทอง'],['#2e9e47','เขียว'],['#00897b','เขียวมรกต'],['#0288d1','ฟ้า'],['#3949ab','คราม'],['#8e24aa','ม่วง'],['#d81b60','ชมพู'],['#6d4c41','น้ำตาล'],['#546e7a','เทา'],['#0b1f3f','กรมท่า']];
+const AV_F=['','ขอบเงิน','ขอบทอง'],AV_N=AV_G.length*AV_C.length*AV_F.length;
+function avParts(n){if(!(n>=0))return null;const k=n%AV_N,m=(k*175)%AV_N;return{g:m%12,c:Math.floor(m/12)%12,f:Math.floor(m/144),lap:Math.floor(n/AV_N)}}
+function avName(n){const p=avParts(n);if(!p)return'ผู้เล่น';return AV_G[p.g]+AV_C[p.c][1]+(p.f?' '+AV_F[p.f]:'')+(p.lap?' #'+(p.lap+1):'')}
+function avGlyph(c,g,r){
+ c.fillStyle='#fff';c.strokeStyle='#fff';c.lineCap='round';c.lineJoin='round';c.lineWidth=r*.16;const P=()=>c.beginPath();
+ if(g===0){P();c.arc(0,r*.15,r*.62,Math.PI,0);c.fill();c.fillRect(-r*.82,r*.12,r*1.64,r*.22)}
+ if(g===1){P();c.roundRect(-r*.32,-r*.6,r*.66,r*1.1,r*.28);c.fill();P();c.roundRect(-r*.66,-r*.12,r*.36,r*.5,r*.16);c.fill()}
+ if(g===2){for(const s of[-1,1]){P();c.arc(s*r*.4,r*.05,r*.3,0,7);c.stroke()}P();c.moveTo(-r*.1,0);c.lineTo(r*.1,0);c.stroke()}
+ if(g===3){P();c.arc(0,r*.1,r*.52,Math.PI*1.08,Math.PI*1.92);c.stroke();for(const s of[-1,1]){P();c.roundRect(s*r*.52-r*.2,-r*.05,r*.4,r*.58,r*.16);c.fill()}}
+ if(g===4){P();c.moveTo(-r*.5,-r*.6);c.lineTo(r*.05,-r*.6);c.lineTo(r*.05,0);c.lineTo(r*.62,r*.12);c.lineTo(r*.62,r*.52);c.lineTo(-r*.5,r*.52);c.closePath();c.fill()}
+ if(g===5){P();c.moveTo(0,-r*.7);c.lineTo(r*.42,r*.45);c.lineTo(-r*.42,r*.45);c.closePath();c.fill();c.fillRect(-r*.62,r*.42,r*1.24,r*.18)}
+ if(g===6){P();c.roundRect(-r*.3,-r*.42,r*.6,r*1.05,r*.2);c.fill();c.fillRect(-r*.1,-r*.68,r*.2,r*.3);P();c.moveTo(r*.08,-r*.58);c.lineTo(r*.5,-r*.7);c.stroke()}
+ if(g===7){c.fillRect(-r*.2,-r*.62,r*.4,r*1.24);c.fillRect(-r*.62,-r*.2,r*1.24,r*.4)}
+ if(g===8){P();c.moveTo(r*.15,-r*.75);c.lineTo(-r*.45,r*.1);c.lineTo(-r*.02,r*.1);c.lineTo(-r*.18,r*.75);c.lineTo(r*.45,-r*.12);c.lineTo(r*.02,-r*.12);c.closePath();c.fill()}
+ if(g===9){P();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,q=i%2?r*.3:r*.72;c.lineTo(Math.cos(a)*q,Math.sin(a)*q)}c.closePath();c.fill()}
+ if(g===10){P();c.moveTo(0,-r*.7);c.lineTo(r*.55,-r*.45);c.lineTo(r*.5,r*.1);c.quadraticCurveTo(r*.35,r*.55,0,r*.75);c.quadraticCurveTo(-r*.35,r*.55,-r*.5,r*.1);c.lineTo(-r*.55,-r*.45);c.closePath();c.fill()}
+ if(g===11){c.save();c.rotate(-Math.PI/4);c.fillRect(-r*.12,-r*.15,r*.24,r*.9);P();c.arc(0,-r*.35,r*.32,0,7);c.fill();c.globalCompositeOperation='destination-out';c.fillRect(-r*.1,-r*.72,r*.2,r*.34);c.restore()}
+}
+const avCache={};
+function avatarURL(n,size=96){
+ const key=n+':'+size;if(avCache[key])return avCache[key];
+ const cv=document.createElement('canvas');cv.width=cv.height=size;const c=cv.getContext('2d'),R=size/2,p=avParts(n);
+ c.translate(R,R);
+ if(!p){c.fillStyle='#3a3f48';c.beginPath();c.arc(0,0,R,0,7);c.fill();return avCache[key]=cv.toDataURL()}
+ c.fillStyle=p.f===2?'#ffd400':p.f===1?'#dfe6ee':'rgba(0,0,0,0)';c.beginPath();c.arc(0,0,R,0,7);c.fill();
+ c.fillStyle=AV_C[p.c][0];c.beginPath();c.arc(0,0,p.f?R*.86:R,0,7);c.fill();
+ const g=document.createElement('canvas');g.width=g.height=size;const gc=g.getContext('2d');gc.translate(R,R);avGlyph(gc,p.g,R*.62);
+ c.drawImage(g,-R,-R);
+ return avCache[key]=cv.toDataURL()}
+const avImg=(n,s)=>`<img class="av" src="${avatarURL(n,s*2)}" width="${s}" height="${s}" alt="">`;
+
 let state='menu',dist,speed,lane,px,py,vy,slide,objs,next,got,shield,inv,revives=0,ppeScore,toast,toastT,lastHit,flash,sess=null,nextQuiz=1000,nextSur=1500,sur=null,lastSur='',dbl=0,dblAcc=0,tut=0,tutEnd=0,tutOk=0,runLabel='';
 const LS={get:k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set:(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -245,7 +291,7 @@ function beep(f,d=.08,type='square',v=.05){if(!ac)return;try{const o=ac.createOs
 
 function reset(){dist=0;speed=14;lane=0;px=0;py=0;vy=0;slide=0;objs=[];next=18;got=new Set();shield=0;inv=1;revives=0;ppeScore=0;toast='';toastT=0;flash=0;loadAsked();nextSur=1500;sur=null;dbl=0;dblAcc=0}
 const score=()=>Math.floor(dist)+ppeScore;
-function show(id){for(const o of ['menu','over','quiz','done','boardOv'])$(o).classList.toggle('on',o===id)}
+function show(id){for(const o of ['menu','over','quiz','done','boardOv','avOv'])$(o).classList.toggle('on',o===id)}
 
 function spawn(){
  const lanes=[-1,0,1].sort(()=>Math.random()-.5),n=dist>150&&Math.random()<.4?2:1;
@@ -424,11 +470,13 @@ function drawPlayer(){
   hiv(g-u*.8,u*.42);head(g-u*.9)}
  ctx.globalAlpha=1;
 }
+const hudImgs={};function hudAv(n){if(!hudImgs[n]){const im=new Image();im.src=avatarURL(n,96);hudImgs[n]=im}return hudImgs[n]}
 function hud(){
  ctx.textAlign='left';ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.roundRect(10,10,W-20,54,12);ctx.fill();
- ctx.fillStyle='#ffd400';ctx.font='800 24px Kanit';ctx.fillText(score(),22,45);
- ctx.fillStyle='#9aa1ab';ctx.font='400 11px Kanit';ctx.fillText('คะแนน',22,24);
- if(dbl>0){ctx.fillStyle='#ff7a1a';ctx.font='800 16px Kanit';ctx.fillText(`x2 ${Math.ceil(dbl)}s`,118,45)}
+ const sx0=sess&&sess.avatar>=0?66:22;ctx.fillStyle='#ffd400';ctx.font='800 24px Kanit';ctx.fillText(score(),sx0,45);
+ ctx.fillStyle='#9aa1ab';ctx.font='400 11px Kanit';ctx.fillText('คะแนน',sx0,24);
+ if(sess&&sess.avatar>=0){const im=hudAv(sess.avatar);if(im.complete)ctx.drawImage(im,18,15,40,40)}
+ if(dbl>0){ctx.fillStyle='#ff7a1a';ctx.font='800 16px Kanit';ctx.fillText(`x2 ${Math.ceil(dbl)}s`,sx0+96,45)}
  const r=13,sx=W-22-r-4*(r*2+6);
  PPE.forEach((t,i)=>{const cx=sx+i*(r*2+6),has=got.has(t);ctx.fillStyle=has?'#fff':'rgba(255,255,255,.12)';ctx.beginPath();ctx.arc(cx,37,r,0,7);ctx.fill();ctx.globalAlpha=has?1:.35;ppeIcon(t,cx,37,r*.7);ctx.globalAlpha=1});
  if(shield>0){ctx.fillStyle='rgba(120,225,255,.9)';ctx.fillRect(10,66,(W-20)*shield/8,4)}
@@ -461,13 +509,16 @@ $('skipTut').onclick=e=>{e.stopPropagation();if(state==='tutor')startReal()};
 $('skipTut').addEventListener('pointerdown',e=>e.stopPropagation());
 const ERR={bad_id:'รหัสพนักงานไม่ถูกต้อง (ตัวอักษร/ตัวเลข 3–15 ตัว) · Invalid employee ID',no_name:'กรุณากรอกชื่อ · Please enter your name',busy:'มีการเริ่มเล่นรหัสนี้พร้อมกันจากอีกเครื่อง ลองใหม่ · Try again',server:'ระบบขัดข้อง ลองใหม่อีกครั้ง · Server error, try again'};
 {const lp=LS.get('srPlayer');if(lp)$('empId').value=lp.id||''}
+function boardRow(e,i){return `<li${e.me?' style="outline:2px solid #ffd400"':''}><span class="n">${i<3?`<span class="medal m${i+1}">${i+1}</span>`:i+1}</span>${avImg(e.avatar,36)}<span class="who">${esc(avName(e.avatar))}${e.me?' (คุณ)':''}${i<3?`<span class="pz">${PRIZE[i]}</span>`:''}</span><span class="sc">${e.score}</span></li>`}
 async function startRun(id,m,btn,label){
  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume&&ac.resume()}catch(e){}
  btn.disabled=true;btn.textContent='กำลังตรวจสอบสิทธิ์…';m.textContent='';
  try{const r=await api('/api/start',{id});
-  if(r.ok&&r.token){LS.set('srPlayer',{id});sess={id,token:r.token,run:r.run,runNo:r.runNo,max:r.max};LS.set('srPending',{...sess,score:0});
-   runLabel=`ครั้งที่ ${r.runNo}/${r.max} · GO!`;begin(r.runNo===1)}
-  else if(r.error==='used')m.textContent=`รหัสนี้เล่นครบ ${r.max} ครั้งแล้ว${r.best!=null?` · คะแนนดีที่สุด ${r.best}`:''} · All plays used`;
+  if(r.ok&&r.token){LS.set('srPlayer',{id,avatar:r.avatar});sess={id,token:r.token,run:r.run,runNo:r.runNo,avatar:r.avatar};LS.set('srPending',{...sess,score:0});
+   runLabel=`รอบที่ ${r.runNo} · GO!`;
+   if(r.runNo===1){$('avBig').innerHTML=avImg(r.avatar,120);$('avName').textContent=avName(r.avatar);show('avOv');$('avGo').onclick=()=>begin(true)}
+   else begin(false)}
+  else if(r.error==='used')m.textContent=`รหัสนี้เล่นครบ ${r.max} ครั้งแล้ว${r.best!=null?` · คะแนนดีที่สุด ${r.best}`:''}`;
   else m.textContent=ERR[r.error]||ERR.server}
  catch(err){m.textContent='เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ต · No connection'}
  btn.disabled=false;btn.textContent=label}
@@ -476,21 +527,20 @@ $('login').onsubmit=e=>{e.preventDefault();
  if(!/^[A-Z0-9-]{3,15}$/.test(id)){m.textContent=ERR.bad_id;return}
  startRun(id,m,$('startBtn'),'เริ่มวิ่ง · Start')};
 const PRIZE=['HUAWEI Band 11 Series (Polym Black)','BEZ ร่มพับอัตโนมัติ','BEZ ร่มพับอัตโนมัติ'];
-function boardHtml(list,meId){return list.map((e,i)=>`<li${e.me?' style="outline:2px solid #ffd400"':''}><span class="n">${i<3?`<span class="medal m${i+1}">${i+1}</span>`:i+1}</span><span>รหัส ${esc(e.id)}${i<3?`<span class="pz">${PRIZE[i]}</span>`:''}</span><span class="sc">${e.score}</span></li>`).join('')||'<li><span></span><span>ยังไม่มีคะแนน · No scores yet</span><span></span></li>'}
+function boardHtml(list){return list.map(boardRow).join('')||'<li><span></span><span></span><span>ยังไม่มีคะแนน · No scores yet</span><span></span></li>'}
 async function loadBoard(target,meId){try{const r=await api('/api/leaderboard'+(meId?'?id='+encodeURIComponent(meId):''));$(target).innerHTML=boardHtml(r.top||[]);return r}catch(e){$(target).innerHTML='<li><span></span><span>โหลดอันดับไม่ได้</span><span></span></li>';return{}}}
 $('boardBtn').onclick=async()=>{show('boardOv');$('boardTotal').textContent='กำลังโหลด…';const r=await loadBoard('boardList');$('boardTotal').textContent=r.total!=null?`ผู้เล่นทั้งหมด ${r.total} คน · Top 20`:''};
 $('boardBack').onclick=()=>show('menu');
 async function submit(){
  const p=LS.get('srPending');if(!p)return;show('done');
  const ag=$('againBtn');ag.style.display='none';
- $('doneHead').textContent='กำลังส่งคะแนน… · Submitting';$('doneScore').textContent=p.score+' คะแนน';$('doneRank').textContent='รหัส '+p.id;$('doneMsg').textContent='';$('retryBtn').style.display='none';$('doneBoard').innerHTML='';
+ $('doneHead').textContent='กำลังส่งคะแนน… · Submitting';$('doneScore').textContent=p.score+' คะแนน';$('doneRank').textContent=avName(p.avatar);$('doneMsg').textContent='';$('retryBtn').style.display='none';$('doneBoard').innerHTML='';
  try{const r=await api('/api/finish',{id:p.id,run:p.run,token:p.token,score:p.score});
   if(r.ok){LS.set('srPending',null);sess=null;
-   $('doneHead').textContent=`ส่งคะแนนแล้ว · ครั้งที่ ${r.used}/${r.max}`;$('doneScore').textContent=`รอบนี้ ${r.score} คะแนน`;
-   $('doneRank').textContent=`รหัส ${p.id} · คะแนนดีที่สุด ${r.best}`;
-   const left=r.max-r.used;if(left>0){ag.textContent=`เล่นอีกครั้ง · เหลือ ${left} ครั้ง`;ag.style.display='block';ag.onclick=()=>startRun(p.id,$('doneMsg'),ag,ag.textContent)}
-   else $('doneMsg').textContent='ใช้สิทธิ์ครบแล้ว ระบบนับคะแนนครั้งที่ดีที่สุด';
-   const b=await loadBoard('doneBoard',p.id);if(b.rank){$('doneRank').textContent=`รหัส ${p.id} · คะแนนดีที่สุด ${r.best} · อันดับที่ ${b.rank} จาก ${b.total} คน`;if(b.rank<=3)$('doneMsg').innerHTML=`<div class="win">ตอนนี้อยู่อันดับ ${b.rank} ลุ้นรับ <b>${PRIZE[b.rank-1]}</b> · รักษาอันดับไว้จนจบงาน!</div>`}}
+   $('doneHead').textContent=`ส่งคะแนนแล้ว · รอบที่ ${r.used}`;$('doneScore').textContent=`รอบนี้ ${r.score} คะแนน`;
+   $('doneRank').textContent=`${avName(p.avatar)} · คะแนนดีที่สุด ${r.best}`;
+   ag.textContent='เล่นอีกครั้ง · Play again';ag.style.display='block';ag.onclick=()=>startRun(p.id,$('doneMsg'),ag,ag.textContent);
+   const b=await loadBoard('doneBoard',p.id);if(b.rank){$('doneRank').textContent=`${avName(p.avatar)} · คะแนนดีที่สุด ${r.best} · อันดับที่ ${b.rank} จาก ${b.total} คน`;if(b.rank<=3)$('doneMsg').innerHTML=`<div class="win">ตอนนี้อยู่อันดับ ${b.rank} ลุ้นรับ <b>${PRIZE[b.rank-1]}</b> · รักษาอันดับไว้จนจบงาน!</div>`}}
   else if(r.status>=400&&r.status<500){LS.set('srPending',null);sess=null;$('doneHead').textContent='รอบนี้ส่งคะแนนไม่ได้';$('doneMsg').textContent='ข้อมูลรอบเก่าไม่ตรงกับระบบใหม่ กดเริ่มใหม่ได้เลย · Old run data cleared';
    ag.textContent='กลับหน้าเริ่ม · Back to start';ag.style.display='block';ag.onclick=()=>show('menu')}
   else throw 0}

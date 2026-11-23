@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     await init();
     const id = normId(req.query?.id);
     // sequential on purpose: one pooled connection, no pipelining
-    const top = await sql`select emp_id, name, score from (${BEST(sql)}) b order by score desc, finished_at asc limit 20`;
+    const top = await sql`select b.emp_id, b.score, p.avatar from (${BEST(sql)}) b left join safety_run_players p using (emp_id) order by b.score desc, b.finished_at asc limit 20`;
     const cnt = await sql`select count(distinct emp_id)::int as total from safety_run_runs where score is not null`;
     let rank = 0;
     if (id) {
@@ -22,7 +22,8 @@ export default async function handler(req, res) {
     }
     return json(res, 200, {
       total: cnt[0]?.total || 0, rank,
-      top: top.map(r => ({ id: r.emp_id, score: r.score, me: !!id && r.emp_id === id }))
+      // employee IDs never leave the server: the board shows avatars only
+      top: top.map(r => ({ avatar: r.avatar ?? -1, score: r.score, me: !!id && r.emp_id === id }))
     }, id ? 'no-store' : 'public, s-maxage=5, stale-while-revalidate=10');
   } catch (e) {
     console.error(e);

@@ -19,7 +19,7 @@ export default async function handler(req, res) {
         capped = ${score > cap}, finished_at = now() where id = ${run} and score is null`;
     }
     const [s] = await sql`select count(*)::int as used, max(score) as best from safety_run_runs where emp_id = ${id}`;
-    return json(res, 200, { score: final, best: s.best, used: s.used, max: MAX_PLAYS });
+    return json(res, 200, { score: final, best: s.best, used: s.used, max: MAX_PLAYS || null });
   } catch (e) {
     console.error(e);
     return json(res, 500, { error: 'server' });

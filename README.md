@@ -1,7 +1,7 @@
 # Safety Run · EHS Day 2026 (MCAM)
 
 Subway-style safety game: dodge factory hazards, collect PPE, answer a safety quiz for a second chance.
-**3 plays per employee ID (best score counts)**, enforced on the server (`MAX_PLAYS` env to change).
+**Unlimited plays (best score counts)**; each employee ID gets a unique avatar, and the leaderboard shows avatars only (`MAX_PLAYS` env to cap plays).
 
 - `public/index.html` — the game (mobile swipe / keyboard); login is employee ID only; prizes: 1st HUAWEI Band 11 Series (Polym Black), 2nd–3rd BEZ ร่มพับอัตโนมัติ
 - `public/admin.html` — results, CSV copy, reset an ID (needs `ADMIN_KEY`)
