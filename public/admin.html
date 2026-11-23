@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Safety Run Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}
+body{margin:0;background:#121418;color:#f4f5f7;font:15px/1.5 Kanit,system-ui,sans-serif;padding:20px max(4vw,14px)}
+h1{margin:0 0 4px;font-size:28px;color:#ffd400}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+input{min-height:44px;padding:8px 12px;border-radius:10px;border:2px solid #3a3f48;background:#1d2026;color:#fff;font:16px Kanit}
+button{min-height:44px;padding:8px 16px;border:0;border-radius:10px;background:#ffd400;color:#111;font:600 15px Kanit;cursor:pointer}
+button.alt{background:#2e333b;color:#fff}
+#msg{color:#ffb4a8;min-height:22px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px;background:#1d2026;border-radius:10px}
+th,td{padding:8px 10px;border-bottom:1px solid #2e333b;text-align:left;white-space:nowrap}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+.flag{color:#ff8a7a}
+</style></head><body>
+<h1>Safety Run · Admin</h1>
+<div>EHS Day 2026 — ดูผลผู้เล่น ส่งออก CSV และรีเซ็ตสิทธิ์</div>
+<div class="row"><input id="key" type="password" placeholder="Admin key"><button id="load">โหลดข้อมูล</button><button class="alt" id="csv">คัดลอก CSV</button></div>
+<div class="row"><input id="rid" placeholder="รหัสพนักงานที่จะรีเซ็ต"><button class="alt" id="reset">รีเซ็ตสิทธิ์ให้เล่นใหม่</button></div>
+<p id="msg"></p>
+<div class="scroll"><table><thead><tr><th>#</th><th>รหัส</th><th>ชื่อ</th><th>คะแนน</th><th>เวลาเล่น (วินาที)</th><th>เริ่มเล่น</th><th>หมายเหตุ</th></tr></thead><tbody id="tb"></tbody></table></div>
+<script>
+{
+const $=id=>document.getElementById(id);let rows=[];
+try{$('key').value=sessionStorage.getItem('srKey')||''}catch(e){}
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function call(data){const key=$('key').value.trim();try{sessionStorage.setItem('srKey',key)}catch(e){}
+ const r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,...data})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error==='key'?'Admin key ไม่ถูกต้อง':'ผิดพลาด: '+(j.error||r.status));return j}
+async function load(){$('msg').textContent='กำลังโหลด…';try{rows=(await call({action:'export'})).rows;
+ $('tb').innerHTML=rows.map((r,i)=>`<tr><td class="n">${i+1}</td><td>${esc(r.id)}</td><td>${esc(r.name)}</td><td class="n">${r.score??'—'}</td><td class="n">${r.secs??'—'}</td><td>${new Date(r.startedAt).toLocaleString('th-TH')}</td><td class="flag">${r.score==null?'เริ่มแล้ว ยังไม่ส่งคะแนน':r.flagged?'คะแนนเกินเวลาเล่น ถูกปรับลด':''}</td></tr>`).join('');
+ $('msg').textContent=`ผู้เริ่มเล่น ${rows.length} คน · ส่งคะแนนแล้ว ${rows.filter(r=>r.score!=null).length} คน`}catch(e){$('msg').textContent=e.message}}
+$('load').onclick=load;
+$('csv').onclick=async()=>{if(!rows.length)await load();const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+ const csv='﻿rank,employee_id,name,score,seconds,started_at,note\n'+rows.map((r,i)=>[i+1,r.id,r.name,r.score??'',r.secs??'',r.startedAt,r.flagged?'capped':''].map(q).join(',')).join('\n');
+ try{await navigator.clipboard.writeText(csv);$('msg').textContent='คัดลอก CSV แล้ว วางใน Excel ได้เลย'}catch(e){$('msg').textContent='คัดลอกไม่ได้ในเบราว์เซอร์นี้'}};
+$('reset').onclick=async()=>{const id=$('rid').value.trim().toUpperCase();if(!id)return;
+ try{await call({action:'reset',id});$('msg').textContent=`รีเซ็ต ${id} แล้ว เล่นใหม่ได้ 1 ครั้ง`;$('rid').value='';load()}catch(e){$('msg').textContent=e.message}};
+}
+</script></body></html>

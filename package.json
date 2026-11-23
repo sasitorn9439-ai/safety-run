@@ -1,0 +1,8 @@
+{
+  "name": "safety-run",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Safety Run - EHS Day 2026 game (MCAM)",
+  "dependencies": { "@vercel/blob": "^2.9.0" }
+}
