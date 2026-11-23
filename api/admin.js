@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { listAll, read, del, normId, parseLb, json, body } from '../lib/store.js';
+import { sql, init, normId, json, body } from '../lib/db.js';
 
 const okKey = k => {
   const a = Buffer.from(String(k || '')), b = Buffer.from(process.env.ADMIN_KEY || '');
@@ -11,24 +11,17 @@ export default async function handler(req, res) {
   try {
     const b = body(req);
     if (!okKey(b.key)) return json(res, 401, { error: 'key' });
+    await init();
     if (b.action === 'export') {
-      const [plays, done] = await Promise.all([listAll('plays/'), listAll('done/')]);
-      const doneMap = {};
-      await Promise.all(done.map(async d => { const r = await read(d.pathname); if (r) doneMap[r.id] = r; }));
-      const rows = await Promise.all(plays.map(async p => {
-        const r = await read(p.pathname); if (!r) return null;
-        const d = doneMap[r.id];
-        return { id: r.id, name: r.name, startedAt: new Date(r.startedAt).toISOString(), score: d ? d.score : null, secs: d ? d.secs : null, flagged: d ? !!d.capped : false };
-      }));
-      return json(res, 200, { rows: rows.filter(Boolean).sort((a, b) => (b.score ?? -1) - (a.score ?? -1)) });
+      const rows = await sql`select emp_id as id, name, started_at as "startedAt", score, secs, capped as flagged
+        from safety_run_plays order by score desc nulls last, finished_at asc`;
+      return json(res, 200, { rows });
     }
     if (b.action === 'reset') {
       const id = normId(b.id);
       if (!id) return json(res, 400, { error: 'id' });
-      const lb = (await listAll('lb/')).filter(x => parseLb(x.pathname)?.id === id).map(x => x.pathname);
-      const paths = [`plays/${id}.json`, `done/${id}.json`, ...lb];
-      await del(paths).catch(() => {});
-      return json(res, 200, { reset: id });
+      const r = await sql`delete from safety_run_plays where emp_id = ${id} returning emp_id`;
+      return json(res, 200, { reset: id, found: r.length > 0 });
     }
     return json(res, 400, { error: 'action' });
   } catch (e) {

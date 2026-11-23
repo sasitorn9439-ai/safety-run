@@ -4,5 +4,6 @@
   "private": true,
   "type": "module",
   "description": "Safety Run - EHS Day 2026 game (MCAM)",
-  "dependencies": { "@vercel/blob": "^2.9.0" }
+  "engines": { "node": "22.x" },
+  "dependencies": { "postgres": "^3.4.5" }
 }
