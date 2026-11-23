@@ -1,4 +1,4 @@
-import { sql, init, normId, mask, json } from '../lib/db.js';
+import { sql, init, normId, json } from '../lib/db.js';
 
 // best run per employee; ties go to whoever reached that score first
 const BEST = sql => sql`
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     }
     return json(res, 200, {
       total: cnt[0]?.total || 0, rank,
-      top: top.map(r => ({ id: mask(r.emp_id), name: r.name, score: r.score }))
+      top: top.map(r => ({ id: r.emp_id, score: r.score, me: !!id && r.emp_id === id }))
     }, id ? 'no-store' : 'public, s-maxage=5, stale-while-revalidate=10');
   } catch (e) {
     console.error(e);

@@ -6,7 +6,6 @@ export default async function handler(req, res) {
   try {
     const b = body(req), id = normId(b.id), name = cleanName(b.name);
     if (!idOk(id)) return json(res, 400, { error: 'bad_id' });
-    if (!name) return json(res, 400, { error: 'no_name' });
     await init();
     const ua = String(req.headers['user-agent'] || '').slice(0, 160);
     for (let attempt = 0; attempt < 3; attempt++) {
