@@ -4,6 +4,8 @@ export interface BoardEntry { empId: string; avatar: number | null; score: numbe
 export interface AdminRow {
   id: string; avatar: number | null; plays: number; best: number | null; scores: string;
   startedAt: string | Date; flagged: boolean; unfinished: number;
+  /** admin hid this player's scores from the leaderboard */
+  hidden: boolean;
 }
 
 /** Everything the API needs from storage. Postgres in production, memory for `npm run dev`. */
@@ -20,4 +22,6 @@ export interface Store {
   leaderboard(id: string): Promise<{ top: BoardEntry[]; total: number; rank: number }>;
   adminExport(): Promise<AdminRow[]>;
   adminReset(id: string): Promise<number>;
+  /** hides or shows the player's scores on the leaderboard; returns how many players matched (0 or 1) */
+  adminHide(id: string, hidden: boolean): Promise<number>;
 }
