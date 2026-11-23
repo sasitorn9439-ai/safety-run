@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Safety Run Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23ffd400%27/%3E%3Cpath d=%27M7 20a9 9 0 0 1 18 0z%27 fill=%27%23111%27/%3E%3Crect x=%275%27 y=%2720%27 width=%2722%27 height=%274%27 rx=%272%27 fill=%27%23111%27/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}
+body{margin:0;background:#121418;color:#f4f5f7;font:15px/1.5 Kanit,system-ui,sans-serif;padding:20px max(4vw,14px)}
+h1{margin:0 0 4px;font-size:28px;color:#ffd400}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+input{min-height:44px;padding:8px 12px;border-radius:10px;border:2px solid #3a3f48;background:#1d2026;color:#fff;font:16px Kanit}
+button{min-height:44px;padding:8px 16px;border:0;border-radius:10px;background:#ffd400;color:#111;font:600 15px Kanit;cursor:pointer}
+button.alt{background:#2e333b;color:#fff}
+#msg{color:#ffb4a8;min-height:22px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px;background:#1d2026;border-radius:10px}
+th,td{padding:8px 10px;border-bottom:1px solid #2e333b;text-align:left;white-space:nowrap}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+.flag{color:#ff8a7a}
+</style></head><body>
+<h1>Safety Run · Admin</h1>
+<div>EHS Day 2026 — ดูผลผู้เล่น (รหัสพนักงาน ↔ ไอคอน) ส่งออก CSV และลบผลเล่น</div>
+<div class="row"><input id="key" type="password" placeholder="Admin key"><button id="load">โหลดข้อมูล</button><button class="alt" id="csv">คัดลอก CSV</button></div>
+<div class="row"><input id="rid" placeholder="รหัสพนักงานที่จะลบผลเล่น"><button class="alt" id="reset">ลบผลเล่นของรหัสนี้</button></div>
+<p id="msg"></p>
+<div class="scroll"><table><thead><tr><th>#</th><th>รหัส</th><th>ไอคอน (ชื่อบนตารางอันดับ)</th><th>คะแนนดีที่สุด</th><th>เล่นแล้ว</th><th>คะแนนแต่ละครั้ง</th><th>เริ่มครั้งแรก</th><th>หมายเหตุ</th></tr></thead><tbody id="tb"></tbody></table></div>
+<script type="module" src="/src/admin.ts"></script>
+</body></html>

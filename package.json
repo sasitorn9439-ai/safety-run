@@ -1,9 +1,34 @@
 {
   "name": "safety-run",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "description": "Safety Run - EHS Day 2026 game (MCAM)",
-  "engines": { "node": "22.x" },
-  "dependencies": { "postgres": "^3.4.5" }
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "mascot": "vite --config tools/mascot-bake/vite.config.ts --open",
+    "mascot:2d": "vite --config tools/mascot-2d/vite.config.ts --open",
+    "mascot:pixel": "python3 tools/mascot-pixel/build.py",
+    "mascot:vector": "python3 tools/mascot-pixel/build.py && python3 tools/mascot-vector/build.py",
+    "ppe:svg": "vite --config tools/ppe-svg/vite.config.ts --open"
+  },
+  "dependencies": {
+    "pixi.js": "^8.23.0",
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/three": "^0.187.0",
+    "three": "^0.187.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  }
 }

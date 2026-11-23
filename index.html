@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#121418">
+<title>Safety Run · EHS Day 2026</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23ffd400%27/%3E%3Cpath d=%27M7 20a9 9 0 0 1 18 0z%27 fill=%27%23111%27/%3E%3Crect x=%275%27 y=%2720%27 width=%2722%27 height=%274%27 rx=%272%27 fill=%27%23111%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="shell" id="shell">
+<canvas id="c"></canvas>
+<div class="hud" id="hud">
+<div class="hud-bar">
+<img id="hudAv" class="av hud-av" alt="" width="40" height="40">
+<div class="hud-score"><small>คะแนน</small><strong id="hudScore">0</strong></div>
+<span class="hud-x2" id="hudX2"></span>
+<div class="hud-ppe" id="hudPpe"></div>
+</div>
+<div class="hud-coins" id="hudCoinsBox"><img id="hudCoinImg" alt="" width="22" height="22"><b id="hudCoins">0</b></div>
+<div class="hud-shield" id="hudShield"><i id="hudShieldBar"></i></div>
+<div class="toast" id="toast"></div>
+<div class="banner" id="banner"><b id="bnMsg"></b><span id="bnSub"></span></div>
+<div class="officer" id="officer">
+<div class="bubble"><small>Safety Officer ทักทาย</small><p id="ofMsg"></p><em>+60 คำชม</em></div>
+<div class="of"><img id="ofA" class="of-a" alt=""><img id="ofB" class="of-b" alt=""></div>
+</div>
+</div>
+<div class="count" id="count" aria-hidden="true"></div>
+<div class="tut" id="tut"><small id="tutHead"></small><strong id="tutTh"></strong><span id="tutEn"></span></div>
+<div class="tut-ok" id="tutOk">ผ่าน! เยี่ยม</div>
+<div class="tut-arrow" id="tutArrow"><svg viewBox="-30 -20 60 40" aria-hidden="true"><path d="M-18 -5 L5 -5 L5 -14 L18 0 L5 14 L5 5 L-18 5 Z" fill="#ffd400" stroke="#111" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+<button id="skipTut" type="button">ข้ามการสอน · Skip</button>
+<button id="pauseBtn" type="button" aria-label="หยุดชั่วคราว · Pause"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="3" width="4.5" height="14" rx="1.2"/><rect x="11.5" y="3" width="4.5" height="14" rx="1.2"/></svg></button>
+
+<div class="ov on" id="menu"><div class="card scroll">
+<div class="tape"></div>
+<span class="badge">EHS Day 2026 · MCAM</span>
+<h1>SAFETY RUN</h1>
+<p class="sub">วิ่งปลอดภัย · หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><b style="color:#ffd400">เล่นได้ไม่จำกัด นับคะแนนครั้งที่ดีที่สุด</b><br>ใส่รหัสพนักงานแล้วรับไอคอนประจำตัว ใช้แทนชื่อบนตารางอันดับ</p>
+<div class="prizes" aria-label="รางวัล">
+<div class="prize p1"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="16" y="2" width="12" height="40" rx="5" fill="#1b1d21"/><rect x="11" y="11" width="22" height="22" rx="6" fill="#2b2f36" stroke="#ffd400" stroke-width="1.5"/><rect x="14" y="14" width="16" height="16" rx="4" fill="#0e1a24"/><path d="M17 23h3l2-4 2 7 2-3h2" fill="none" stroke="#5ad1ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>อันดับ 1 · 1st prize</b><span>HUAWEI Band 11 Series (Polym Black)</span></div></div>
+<div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="3" y="9" width="38" height="26" rx="4" fill="#2e9e47"/><g fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="13" y="14" width="11" height="16" rx="1.5"/><path d="M13 20h11"/><path d="M24 19h3a2 2 0 0 1 2 2v5a2 2 0 0 0 4 0v-8l-3-3"/></g></svg><div><b>อันดับ 2 และ 3 · 2nd &amp; 3rd prize</b><span>บัตรเติมน้ำมัน มูลค่า 500 บาท</span></div></div>
+<div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M5 22a17 15 0 0 1 34 0z" fill="#ff7a1a"/><path d="M5 22c3-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 5.5-2 8.5 0" fill="none" stroke="#c45c10" stroke-width="1.5"/><path d="M22 7v26a4 4 0 0 1-8 0" fill="none" stroke="#cfd6de" stroke-width="2.2" stroke-linecap="round"/></svg><div><b>อันดับ 4 และ 5 · 4th &amp; 5th prize</b><span>BEZ ร่มพับอัตโนมัติ</span></div></div>
+</div>
+<form id="login" autocomplete="off">
+<label class="field">รหัสพนักงาน · Employee ID<input id="empId" maxlength="15" required autocapitalize="characters"></label>
+<p class="msg" id="loginMsg"></p>
+<button class="btn" id="startBtn" type="submit">เริ่มวิ่ง · Start</button>
+</form>
+<div class="row2"><button class="btn alt" id="boardBtn" type="button">ดูอันดับ<br><span class="en">Leaderboard</span></button>
+<button class="btn alt" id="howBtn" type="button" aria-haspopup="dialog">วิธีเล่น<br><span class="en">How to play</span></button></div>
+<p class="small">กดเริ่มแล้วนับเป็น 1 ครั้งทันที ห้ามปิดหน้าจอระหว่างเล่น</p>
+</div></div>
+
+<div class="ov how" id="howOv" role="dialog" aria-modal="true" aria-labelledby="howTitle"><div class="card scroll">
+<div class="tape"></div>
+<h2 id="howTitle">วิธีเล่น · How to play</h2>
+<ul>
+<li><b>← →</b><span>ปัดซ้าย/ขวา เปลี่ยนเลน หลบโฟล์คลิฟท์และกองวัสดุ<br><span class="en">Swipe to change lanes</span></span></li>
+<li><b>↑</b><span>ปัดขึ้น กระโดดข้ามพื้นเปียก สายไฟพาดทาง<br><span class="en">Swipe up to jump</span></span></li>
+<li><b>↓</b><span>ปัดลง สไลด์ลอดนั่งร้านที่อยู่ต่ำ<br><span class="en">Swipe down to slide</span></span></li>
+<li><b>?</b><span>ชนแล้วตอบคำถามความปลอดภัยให้ถูก ได้วิ่งต่อ 1 ครั้งต่อรอบ (คำถามไม่ซ้ำ)<br><span class="en">Crash? Answer correctly to continue, once per run</span></span></li>
+<li><b>!</b><span>ทุก 1,500 เมตร มีเซอร์ไพรส์ เช่น Safety Officer โผล่มาทัก ฝนเหรียญ หรือคะแนน x2<br><span class="en">Surprise every 1,500 m</span></span></li>
+<li><b>●</b><span>เก็บเหรียญเพิ่มคะแนน แถวเหรียญจะมี PPE แทรกอยู่ทีละชิ้น<br><span class="en">Grab coins; PPE items turn up one at a time among them</span></span></li>
+<li><b>PPE</b><span>เก็บครบ 5 ชนิด ได้โล่ Full PPE กันชน 1 ครั้ง<br><span class="en">Collect all 5 PPE for a shield</span></span></li>
+</ul>
+<p class="small">กดเริ่มแล้วนับเป็น 1 ครั้งทันที ห้ามปิดหน้าจอระหว่างเล่น · กดปุ่ม ‖ เพื่อหยุดชั่วคราว · คอมพิวเตอร์ใช้ปุ่มลูกศร หยุดด้วย P หรือ Esc</p>
+<button class="btn" id="howClose" type="button">เข้าใจแล้ว · Got it</button>
+</div></div>
+
+<div class="ov" id="over"><div class="card">
+<div class="tape"></div>
+<p class="hit">เกิดอุบัติเหตุ! · Accident</p>
+<h2 id="hTitle"></h2>
+<div class="en" id="hTitleEn"></div>
+<div class="lesson"><p id="hTip"></p><p class="en" id="hTipEn"></p></div>
+<div class="stats"><div><strong id="sScore">0</strong><span>คะแนน · Score</span></div><div><strong id="sDist">0</strong><span>ระยะทาง (ม.) · Distance</span></div></div>
+<button class="btn" id="chanceBtn">ตอบคำถามความปลอดภัย เพื่อวิ่งต่อ</button>
+<button class="btn alt" id="endBtn">จบเกม ส่งคะแนน · Submit score</button>
+</div></div>
+
+<div class="ov" id="pauseOv"><div class="card">
+<div class="tape"></div>
+<p class="hit">หยุดชั่วคราว · Paused</p>
+<div class="stats"><div><strong id="pScore">0</strong><span>คะแนน · Score</span></div><div><strong id="pDist">0</strong><span>ระยะทาง (ม.) · Distance</span></div></div>
+<button class="btn" id="pResume" type="button">เล่นต่อ · Resume</button>
+<button class="btn alt" id="pMenu" type="button">เมนูหลัก · Main menu</button>
+<p class="msg" id="pMsg"></p>
+</div></div>
+
+<div class="ov" id="quiz"><div class="card">
+<div class="tape"></div>
+<p class="hit" id="qHead">โอกาสรอด</p>
+<span class="badge" id="qLv"></span>
+<p class="q" id="qText"></p>
+<div class="en" id="qEn"></div>
+<div id="qOpts"></div>
+<button class="btn" id="qNext" style="display:none"></button>
+</div></div>
+<div class="ov" id="avOv"><div class="card">
+<div class="tape"></div>
+<p class="hit" id="avHead">ไอคอนประจำตัวของคุณ</p>
+<div class="youav"><div id="avBig"></div><b id="avName"></b></div>
+<p class="sub" style="text-align:center;margin-bottom:0">ตารางอันดับจะแสดงไอคอนนี้แทนรหัสพนักงาน<br>ไม่มีใครได้ไอคอนซ้ำกับคุณ</p>
+<button class="btn" id="avGo">เริ่มวิ่ง!</button>
+</div></div>
+<div class="ov" id="done"><div class="card scroll">
+<div class="tape"></div>
+<p class="hit" id="doneHead">ส่งคะแนนแล้ว · Score submitted</p>
+<h2 id="doneScore"></h2>
+<p class="sub" id="doneRank"></p>
+<p class="msg" id="doneMsg"></p>
+<button class="btn" id="retryBtn" style="display:none">ส่งคะแนนอีกครั้ง · Retry</button>
+<button class="btn" id="againBtn" style="display:none"></button>
+<button class="btn alt" id="homeBtn" type="button" style="display:none">เมนูหลัก · Main menu</button>
+<ol class="board" id="doneBoard"></ol>
+<p class="small">ขอบคุณที่ร่วมกิจกรรม EHS Day 2026 · Thank you for playing safe</p>
+</div></div>
+
+<div class="ov" id="boardOv"><div class="card scroll">
+<div class="tape"></div>
+<h2>อันดับ · Leaderboard</h2>
+<p class="sub" id="boardTotal"></p>
+<ol class="board" id="boardList"></ol>
+<button class="btn alt" id="boardBack">กลับ · Back</button>
+</div></div>
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

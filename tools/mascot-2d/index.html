@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mascot 2D baker</title>
+<style>
+  body{margin:0;padding:20px;background:#1b1e23;color:#eee;font:14px/1.5 system-ui,sans-serif}
+  h1{margin:0 0 4px;font-size:20px}
+  button{padding:8px 16px;border:0;border-radius:8px;background:#ffd400;color:#111;font:600 14px system-ui;cursor:pointer;margin-right:8px}
+  .row{display:flex;gap:24px;flex-wrap:wrap;margin:16px 0}
+  .anim{background:#2a2e35;border-radius:10px;padding:12px}
+  .anim h3{margin:0 0 6px;font-size:14px}
+  .anim small{display:block;color:#9aa1ab;max-width:300px}
+  canvas.pv{background:#8a8e95;border-radius:6px;display:block;margin-top:8px}
+  #log{white-space:pre-wrap;color:#9aa1ab}
+</style>
+</head>
+<body>
+<h1>Safety Run · 2D mascot baker</h1>
+<p>Draws the flat 2D mascot (<code>puppet.ts</code>, poses in <code>anims.ts</code>) into sprite sheets and writes them to <code>assets/mascot-2d/</code>.</p>
+<button id="bake">Bake &amp; save</button><span id="log"></span>
+<div class="row" id="previews"></div>
+<script type="module" src="./bake.ts"></script>
+</body>
+</html>
