@@ -60,6 +60,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 .m1{background:#ffd400}.m2{background:#cfd6de}.m3{background:#d99a5b}
 .board .pz{display:block;font-size:12px;color:#ffd400}
 .win{background:#2a2410;border:1px solid #ffd400;border-radius:10px;padding:8px 12px;margin-top:10px;font-size:15px}
+#skipTut{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:2;display:none;min-height:44px;padding:8px 14px;border:0;border-radius:10px;background:rgba(0,0,0,.6);color:#fff;font:600 14px Kanit,sans-serif;cursor:pointer}
 .card.scroll{max-height:92dvh;overflow:auto}
 .btn:disabled{opacity:.6}
 .q{font-size:19px;font-weight:600;line-height:1.3;margin:6px 0 2px}
@@ -70,6 +71,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <body>
 <div class="shell" id="shell">
 <canvas id="c"></canvas>
+<button id="skipTut" type="button">ข้ามการสอน · Skip</button>
 
 <div class="ov on" id="menu"><div class="card scroll">
 <div class="tape"></div>
@@ -92,6 +94,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <li><b>↑</b><span>ปัดขึ้น กระโดดข้ามพื้นเปียก สายไฟพาดทาง<br><span class="en">Swipe up to jump</span></span></li>
 <li><b>↓</b><span>ปัดลง สไลด์ลอดท่อที่อยู่ต่ำ<br><span class="en">Swipe down to slide</span></span></li>
 <li><b>?</b><span>ทุก 1,000 คะแนนมีด่านคำถาม ยิ่งไกลยิ่งยาก ตอบถูกได้โบนัส +100 ถึง +500<br><span class="en">Quiz checkpoint every 1,000 pts, harder each level</span></span></li>
+<li><b>!</b><span>ทุก 1,500 เมตร มีเซอร์ไพรส์ เช่น Safety Officer โผล่มาทัก ฝน PPE หรือคะแนน x2<br><span class="en">Surprise every 1,500 m</span></span></li>
 <li><b>PPE</b><span>เก็บครบ 5 ชนิด ได้โล่ Full PPE กันชน 1 ครั้ง<br><span class="en">Collect all 5 PPE for a shield</span></span></li>
 </ul>
 <p class="small">กดเริ่มแล้วนับเป็น 1 ครั้งทันที ห้ามปิดหน้าจอระหว่างเล่น · คอมพิวเตอร์ใช้ปุ่มลูกศร</p>
@@ -209,7 +212,7 @@ const tierOf=sc=>Math.min(QB.length-1,Math.floor(sc/1000));
 let asked=new Set();
 function pickQ(t){const pool=QB[t].map((q,i)=>[q,t+':'+i]).filter(x=>!asked.has(x[1]));const src=pool.length?pool:QB[t].map((q,i)=>[q,t+':'+i]);const [q,k]=src[Math.random()*src.length|0];asked.add(k);return q}
 
-let state='menu',dist,speed,lane,px,py,vy,slide,objs,next,got,shield,inv,used,ppeScore,toast,toastT,lastHit,flash,sess=null,nextQuiz=1000;
+let state='menu',dist,speed,lane,px,py,vy,slide,objs,next,got,shield,inv,used,ppeScore,toast,toastT,lastHit,flash,sess=null,nextQuiz=1000,nextSur=1500,sur=null,lastSur='',dbl=0,dblAcc=0,tut=0,tutEnd=0,tutOk=0,runLabel='';
 const LS={get:k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set:(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function api(path,data){const r=await fetch(path,data?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}:{cache:'no-store'});let j={};try{j=await r.json()}catch(e){}return{ok:r.ok,status:r.status,...j}}
@@ -217,7 +220,7 @@ async function api(path,data){const r=await fetch(path,data?{method:'POST',heade
 let ac;
 function beep(f,d=.08,type='square',v=.05){if(!ac)return;try{const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
 
-function reset(){dist=0;speed=14;lane=0;px=0;py=0;vy=0;slide=0;objs=[];next=18;got=new Set();shield=0;inv=1;used=false;ppeScore=0;toast='';toastT=0;flash=0;nextQuiz=1000;asked=new Set()}
+function reset(){dist=0;speed=14;lane=0;px=0;py=0;vy=0;slide=0;objs=[];next=18;got=new Set();shield=0;inv=1;used=false;ppeScore=0;toast='';toastT=0;flash=0;nextQuiz=1000;asked=new Set();nextSur=1500;sur=null;dbl=0;dblAcc=0}
 const score=()=>Math.floor(dist)+ppeScore;
 function show(id){for(const o of ['menu','over','quiz','done','boardOv'])$(o).classList.toggle('on',o===id)}
 
@@ -227,9 +230,9 @@ function spawn(){
  if(Math.random()<.75){const fl=lanes[n],t=PPE[Math.random()*5|0],c=3+(Math.random()*3|0);
   for(let i=0;i<c;i++)objs.push({k:'ppe',p:t,l:fl,z:ZMAX-3+i*2.4});}
 }
-function jump(){if(state!=='play')return;if(py===0){vy=9.2;slide=0;beep(520,.06)}}
-function duck(){if(state!=='play')return;if(py>0)vy=-16;slide=.7;beep(220,.06)}
-function move(d){if(state!=='play')return;const n=Math.max(-1,Math.min(1,lane+d));if(n!==lane){lane=n;beep(380,.04)}}
+function jump(){if(state!=='play'&&state!=='tutor')return;if(py===0){vy=9.2;slide=0;beep(520,.06)}tutorHit('up')}
+function duck(){if(state!=='play'&&state!=='tutor')return;if(py>0)vy=-16;slide=.7;beep(220,.06);tutorHit('down')}
+function move(d){if(state!=='play'&&state!=='tutor')return;const n=Math.max(-1,Math.min(1,lane+d));if(n!==lane){lane=n;beep(380,.04)}tutorHit(d<0?'left':'right')}
 
 function crash(o){
  state='over';lastHit=o.k;beep(110,.35,'sawtooth',.08);navigator.vibrate&&navigator.vibrate(120);
@@ -240,8 +243,65 @@ function crash(o){
  setTimeout(()=>show('over'),350);
 }
 
+/* ---------- surprises every 1,500 m ---------- */
+const OFFICER=['ใส่ PPE ครบ เยี่ยมมาก! Safety First','เดินในทางเดินเท้านะ ไม่ใช่เลนรถโฟล์คลิฟท์','เจอ Near miss แจ้งได้เลยนะ ไม่ต้องเกรงใจ','วิ่งมาไกลแล้ว อย่าลืมดื่มน้ำนะ','หมวกนิรภัยต้องคาดสายรัดคางด้วยนะ','ทำ KYT ก่อนเริ่มงานทุกครั้งนะ','เก่งมาก! ไม่มีอุบัติเหตุคือเป้าหมายของเรา'];
+function surprise(){
+ const ks=['officer','rain','star','double'].filter(k=>k!==lastSur),k=ks[Math.random()*ks.length|0];lastSur=k;beep(660,.1,'triangle');setTimeout(()=>beep(990,.15,'triangle'),110);
+ if(k==='officer'){ppeScore+=150;sur={k,t:0,dur:3.4,msg:OFFICER[Math.random()*OFFICER.length|0]}}
+ if(k==='rain'){objs=objs.filter(o=>o.k==='ppe'||o.z<12);next=Math.max(next,58);let n=0;
+  for(let z=16;z<62;z+=2.4)for(const l of[-1,0,1])objs.push({k:'ppe',p:PPE[n++%5],l,z});
+  sur={k,t:0,dur:2.6,msg:'PPE Rain! เก็บให้หมด',sub:'ฝน PPE ตกทั้ง 3 เลน'}}
+ if(k==='star'){shield=8;sur={k,t:0,dur:2.6,msg:'Golden Helmet!',sub:'ได้โล่ PPE ฟรี กันชน 1 ครั้ง'}}
+ if(k==='double'){dbl=8;sur={k,t:0,dur:2.6,msg:'Safety Week x2!',sub:'คะแนนระยะทาง x2 นาน 8 วินาที'}}
+}
+function wrapText(t,maxW){const out=[];let line='';for(const ch of t){if(ctx.measureText(line+ch).width>maxW&&line){out.push(line);line=ch}else line+=ch}if(line)out.push(line);return out}
+function drawSurprise(){
+ if(!sur)return;const t=sur.t,a=Math.min(1,t/.35,(sur.dur-t)/.35);
+ if(sur.k==='officer'){
+  const S=Math.min(W*.34,150),ox=W-S*.62*a,oy=H*.66,wave=Math.sin(t*12)*.5;
+  ctx.save();ctx.translate(ox,oy);
+  rr(-S*.2,-S*.05,S*.42,S*.6,S*.08,'#2f6fb3');rr(-S*.2,-S*.05,S*.42,S*.42,S*.08,'#c6f04a');ctx.fillStyle='#2f6fb3';ctx.fillRect(-S*.04,-S*.05,S*.08,S*.42);
+  ctx.fillStyle='#1b1b1b';ctx.font=`800 ${S*.07}px Kanit`;ctx.textAlign='center';ctx.fillText('SAFETY',S*.01,S*.2);
+  ctx.save();ctx.translate(-S*.18,0);ctx.rotate(-2.2+wave);rr(-S*.045,0,S*.09,S*.34,S*.04,'#c6f04a');ctx.fillStyle='#c98d63';ctx.beginPath();ctx.arc(0,S*.36,S*.055,0,7);ctx.fill();ctx.restore();
+  ctx.fillStyle='#c98d63';ctx.beginPath();ctx.arc(0,-S*.17,S*.13,0,7);ctx.fill();
+  ctx.fillStyle='#222';ctx.beginPath();ctx.arc(-S*.045,-S*.18,S*.016,0,7);ctx.arc(S*.045,-S*.18,S*.016,0,7);ctx.fill();
+  ctx.strokeStyle='#222';ctx.lineWidth=S*.014;ctx.beginPath();ctx.arc(0,-S*.14,S*.05,.2,Math.PI-.2);ctx.stroke();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,-S*.22,S*.15,Math.PI,0);ctx.fill();rr(-S*.19,-S*.24,S*.38,S*.05,S*.02,'#e6e6e6');
+  ctx.restore();
+  const bw=Math.min(W*.62,260),bx=ox-S*.3-bw,by=oy-S*.62;ctx.globalAlpha=a;ctx.font='600 15px Kanit';const lines=wrapText(sur.msg,bw-24),bh=46+lines.length*20+22;
+  rr(bx,by,bw,bh,14,'#fff');ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(bx+bw-4,by+bh*.55);ctx.lineTo(bx+bw+16,by+bh*.7);ctx.lineTo(bx+bw-4,by+bh*.8);ctx.fill();
+  ctx.textAlign='left';ctx.fillStyle='#ff7a1a';ctx.font='800 13px Kanit';ctx.fillText('Safety Officer ทักทาย',bx+12,by+22);
+  ctx.fillStyle='#111';ctx.font='600 15px Kanit';lines.forEach((l,i)=>ctx.fillText(l,bx+12,by+44+i*20));
+  ctx.fillStyle='#1a9a4a';ctx.font='800 14px Kanit';ctx.fillText('+150 คำชม',bx+12,by+44+lines.length*20+6);ctx.globalAlpha=1;return}
+ const c={rain:'#5ad1ff',star:'#ffd400',double:'#ff7a1a'}[sur.k],y=H*.2,sc=.85+.15*Math.min(1,t/.25);
+ ctx.save();ctx.globalAlpha=a;ctx.translate(W/2,y);ctx.scale(sc,sc);rr(-Math.min(W*.44,190),-38,Math.min(W*.88,380),78,16,'rgba(0,0,0,.72)');
+ ctx.strokeStyle=c;ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(-Math.min(W*.44,190),-38,Math.min(W*.88,380),78,16);ctx.stroke();
+ ctx.textAlign='center';ctx.fillStyle=c;ctx.font='800 26px Kanit';ctx.fillText(sur.msg,0,-4);ctx.fillStyle='#fff';ctx.font='400 15px Kanit';ctx.fillText(sur.sub,0,24);ctx.restore();
+}
+
+/* ---------- first-play tutorial ---------- */
+const TUT=[{g:'left',th:'ปัดนิ้วไปทางซ้าย',en:'Swipe LEFT to change lane',dx:-1,dy:0},{g:'right',th:'ปัดนิ้วไปทางขวา',en:'Swipe RIGHT',dx:1,dy:0},{g:'up',th:'ปัดขึ้น เพื่อกระโดด',en:'Swipe UP to jump',dx:0,dy:-1},{g:'down',th:'ปัดลง เพื่อสไลด์',en:'Swipe DOWN to slide',dx:0,dy:1}];
+function tutorHit(g){if(state!=='tutor'||tut>=TUT.length||TUT[tut].g!==g)return;tut++;tutOk=.6;beep(990,.08,'triangle');if(tut>=TUT.length)tutEnd=1.6}
+function startReal(){dist=0;ppeScore=0;objs=[];next=14;nextQuiz=1000;nextSur=1500;got=new Set();lane=0;px=0;inv=1.2;sur=null;state='play';$('skipTut').style.display='none';toast=runLabel||'GO!';toastT=2}
+function tutorUpdate(dt){const dz=10*dt;dist+=dz;px+=(lane-px)*Math.min(1,dt*14);if(py>0||vy>0){vy-=24*dt;py+=vy*dt;if(py<=0){py=0;vy=0}}slide=Math.max(0,slide-dt);tutOk=Math.max(0,tutOk-dt);if(tut>=TUT.length&&(tutEnd-=dt)<=0)startReal()}
+function drawTutor(){
+ const done=tut>=TUT.length,st=TUT[Math.min(tut,TUT.length-1)];
+ rr(16,16,W-32,96,16,'rgba(0,0,0,.72)');ctx.textAlign='center';
+ ctx.fillStyle='#ffd400';ctx.font='600 13px Kanit';ctx.fillText(done?'สอนเล่นเสร็จแล้ว · Tutorial done':`สอนเล่น ${tut+1}/${TUT.length} · Quick tutorial`,W/2,40);
+ ctx.fillStyle='#fff';ctx.font='800 24px Kanit';ctx.fillText(done?'พร้อมแล้ว! เริ่มนับคะแนน':st.th,W/2,72);
+ ctx.fillStyle='#b9bec7';ctx.font='400 14px Kanit';ctx.fillText(done?'เก็บ PPE ครบ 5 ชนิด = โล่กันชน':st.en,W/2,96);
+ if(tutOk>0){ctx.globalAlpha=Math.min(1,tutOk*2);ctx.fillStyle='#3ccf7a';ctx.font='800 30px Kanit';ctx.fillText('เยี่ยม!',W/2,H*.42);ctx.globalAlpha=1}
+ if(done)return;
+ const k=(performance.now()/700)%1,cx=W/2,cy=H*.56,L=Math.min(W,H)*.12,o=(k-.5)*L*1.2;
+ ctx.save();ctx.translate(cx+st.dx*o,cy+st.dy*o);ctx.rotate(Math.atan2(st.dy,st.dx));ctx.globalAlpha=1-Math.abs(k-.5);
+ ctx.fillStyle='#ffd400';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.beginPath();
+ ctx.moveTo(-L*.6,-L*.16);ctx.lineTo(L*.15,-L*.16);ctx.lineTo(L*.15,-L*.38);ctx.lineTo(L*.6,0);ctx.lineTo(L*.15,L*.38);ctx.lineTo(L*.15,L*.16);ctx.lineTo(-L*.6,L*.16);ctx.closePath();ctx.stroke();ctx.fill();ctx.restore();ctx.globalAlpha=1;
+}
+
 function update(dt){
  speed=Math.min(34,14+dist/55);const dz=speed*dt;dist+=dz;
+ if(dbl>0){dbl-=dt;dblAcc+=dz;while(dblAcc>=1){ppeScore++;dblAcc--}}
+ if(sur&&(sur.t+=dt)>sur.dur)sur=null;
  for(const o of objs)o.z-=dz;
  if((next-=dz)<=0){spawn();next=13+Math.random()*9-Math.min(4,dist/500)}
  px+=(lane-px)*Math.min(1,dt*14);
@@ -257,6 +317,7 @@ function update(dt){
   crash(o);return;
  }
  objs=objs.filter(o=>o.z>-3&&!(o.gone&&o.k==='ppe'));
+ if(dist>=nextSur){nextSur+=1500;surprise()}
  if(score()>=nextQuiz){const t=tierOf(nextQuiz);nextQuiz+=1000;askQuiz('check',t)}
 }
 
@@ -332,6 +393,7 @@ function hud(){
  ctx.textAlign='left';ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.roundRect(10,10,W-20,54,12);ctx.fill();
  ctx.fillStyle='#ffd400';ctx.font='800 24px Kanit';ctx.fillText(score(),22,45);
  ctx.fillStyle='#9aa1ab';ctx.font='400 11px Kanit';ctx.fillText(`คะแนน · LV ${tierOf(score())+1}`,22,24);
+ if(dbl>0){ctx.fillStyle='#ff7a1a';ctx.font='800 16px Kanit';ctx.fillText(`x2 ${Math.ceil(dbl)}s`,118,45)}
  const r=13,sx=W-22-r-4*(r*2+6);
  PPE.forEach((t,i)=>{const cx=sx+i*(r*2+6),has=got.has(t);ctx.fillStyle=has?'#fff':'rgba(255,255,255,.12)';ctx.beginPath();ctx.arc(cx,37,r,0,7);ctx.fill();ctx.globalAlpha=has?1:.35;ppeIcon(t,cx,37,r*.7);ctx.globalAlpha=1});
  if(shield>0){ctx.fillStyle='rgba(120,225,255,.9)';ctx.fillRect(10,66,(W-20)*shield/8,4)}
@@ -343,22 +405,25 @@ function draw(){
  const list=(objs||[]).filter(o=>!o.gone).sort((a,b)=>b.z-a.z);let drawn=false;
  for(const o of list){if(!drawn&&o.z<0){drawPlayer();drawn=true}drawObj(o)}
  if(!drawn)drawPlayer();
- if(state==='play')hud();
+ if(state==='play'){drawSurprise();hud()}
+ if(state==='tutor')drawTutor();
 }
 let last=0;
-function loop(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;if(state==='play')update(dt);draw();requestAnimationFrame(loop)}
+function loop(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;if(state==='play')update(dt);else if(state==='tutor')tutorUpdate(dt);draw();requestAnimationFrame(loop)}
 
 /* ---------- input ---------- */
 const shell=$('shell');let sx=0,sy=0,swiping=false;
-shell.addEventListener('pointerdown',e=>{if(state!=='play')return;sx=e.clientX;sy=e.clientY;swiping=true});
+shell.addEventListener('pointerdown',e=>{if(state!=='play'&&state!=='tutor')return;sx=e.clientX;sy=e.clientY;swiping=true});
 shell.addEventListener('pointermove',e=>{if(!swiping)return;const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.max(Math.abs(dx),Math.abs(dy))<26)return;swiping=false;
  if(Math.abs(dx)>Math.abs(dy))move(dx>0?1:-1);else dy<0?jump():duck()});
 addEventListener('pointerup',()=>swiping=false);
-addEventListener('keydown',e=>{if(state!=='play'||e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();
+addEventListener('keydown',e=>{if((state!=='play'&&state!=='tutor')||e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();
  if(k==='arrowleft'||k==='a')move(-1);else if(k==='arrowright'||k==='d')move(1);
  else if(k==='arrowup'||k==='w'||k===' ')jump();else if(k==='arrowdown'||k==='s')duck();else return;e.preventDefault()});
 
-function begin(){reset();state='play';show(null)}
+function begin(first){reset();show(null);if(first){state='tutor';tut=0;tutOk=0;$('skipTut').style.display='block'}else{state='play';toast=runLabel;toastT=2.2}}
+$('skipTut').onclick=e=>{e.stopPropagation();if(state==='tutor')startReal()};
+$('skipTut').addEventListener('pointerdown',e=>e.stopPropagation());
 const ERR={bad_id:'รหัสพนักงานไม่ถูกต้อง (ตัวอักษร/ตัวเลข 3–15 ตัว) · Invalid employee ID',no_name:'กรุณากรอกชื่อ · Please enter your name',busy:'มีการเริ่มเล่นรหัสนี้พร้อมกันจากอีกเครื่อง ลองใหม่ · Try again',server:'ระบบขัดข้อง ลองใหม่อีกครั้ง · Server error, try again'};
 {const lp=LS.get('srPlayer');if(lp)$('empId').value=lp.id||''}
 async function startRun(id,m,btn,label){
@@ -366,7 +431,7 @@ async function startRun(id,m,btn,label){
  btn.disabled=true;btn.textContent='กำลังตรวจสอบสิทธิ์…';m.textContent='';
  try{const r=await api('/api/start',{id});
   if(r.ok&&r.token){LS.set('srPlayer',{id});sess={id,token:r.token,run:r.run,runNo:r.runNo,max:r.max};LS.set('srPending',{...sess,score:0});
-   begin();toast=`ครั้งที่ ${r.runNo}/${r.max} · Run ${r.runNo} of ${r.max}`;toastT=2.2}
+   runLabel=`ครั้งที่ ${r.runNo}/${r.max} · GO!`;begin(r.runNo===1)}
   else if(r.error==='used')m.textContent=`รหัสนี้เล่นครบ ${r.max} ครั้งแล้ว${r.best!=null?` · คะแนนดีที่สุด ${r.best}`:''} · All plays used`;
   else m.textContent=ERR[r.error]||ERR.server}
  catch(err){m.textContent='เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ต · No connection'}
@@ -396,7 +461,7 @@ async function submit(){
   else throw 0}
  catch(e){$('doneHead').textContent='ยังส่งคะแนนไม่ได้';$('doneMsg').textContent='เชื่อมต่อไม่ได้ คะแนนยังเก็บไว้ในเครื่อง กดส่งอีกครั้ง · Saved on this device, tap retry';$('retryBtn').style.display='block'}}
 $('retryBtn').onclick=submit;$('endBtn').onclick=submit;
-addEventListener('beforeunload',e=>{if(state==='play'||state==='pause'){e.preventDefault();e.returnValue=''}});
+addEventListener('beforeunload',e=>{if(state==='play'||state==='pause'||state==='tutor'){e.preventDefault();e.returnValue=''}});
 function askQuiz(mode,t){
  const q=pickQ(t),chance=mode==='chance',bonus=100*(t+1);if(chance)used=true;else state='pause';
  $('qHead').textContent=chance?'โอกาสครั้งที่สอง · Second chance':`ด่านคำถาม ${nextQuiz-1000} คะแนน · Checkpoint`;

@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     let final = p.score;
     if (p.score == null) {
       // plausibility cap: distance + PPE cannot outrun elapsed play time
-      const cap = Math.floor(p.secs * 45 + 200);
+      const cap = Math.floor(p.secs * 80 + 500);
       final = Math.min(score, cap);
       await sql`update safety_run_runs set score = ${final}, secs = ${Math.round(p.secs)},
         capped = ${score > cap}, finished_at = now() where id = ${run} and score is null`;
