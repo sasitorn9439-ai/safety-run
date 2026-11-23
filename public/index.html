@@ -93,7 +93,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <li><b>← →</b><span>ปัดซ้าย/ขวา เปลี่ยนเลน หลบโฟล์คลิฟท์และกองวัสดุ<br><span class="en">Swipe to change lanes</span></span></li>
 <li><b>↑</b><span>ปัดขึ้น กระโดดข้ามพื้นเปียก สายไฟพาดทาง<br><span class="en">Swipe up to jump</span></span></li>
 <li><b>↓</b><span>ปัดลง สไลด์ลอดท่อที่อยู่ต่ำ<br><span class="en">Swipe down to slide</span></span></li>
-<li><b>?</b><span>ชนแล้วตอบคำถามถูก ได้วิ่งต่อ ชนครั้งต่อไปคำถามยากขึ้นเรื่อยๆ (5 ระดับ 60 ข้อ ไม่ซ้ำ)<br><span class="en">Crash? Answer to continue, each revive gets harder</span></span></li>
+<li><b>?</b><span>ชนแล้วตอบคำถามความปลอดภัยให้ถูก ได้วิ่งต่อ 1 ครั้งต่อรอบ (คำถามไม่ซ้ำ)<br><span class="en">Crash? Answer correctly to continue, once per run</span></span></li>
 <li><b>!</b><span>ทุก 1,500 เมตร มีเซอร์ไพรส์ เช่น Safety Officer โผล่มาทัก ฝน PPE หรือคะแนน x2<br><span class="en">Surprise every 1,500 m</span></span></li>
 <li><b>PPE</b><span>เก็บครบ 5 ชนิด ได้โล่ Full PPE กันชน 1 ครั้ง<br><span class="en">Collect all 5 PPE for a shield</span></span></li>
 </ul>
@@ -261,7 +261,7 @@ function crash(o){
  state='over';lastHit=o.k;beep(110,.35,'sawtooth',.08);navigator.vibrate&&navigator.vibrate(120);
  const h=HZ[o.k],s=score();
  $('hTitle').textContent=h.th;$('hTitleEn').textContent=h.en;$('hTip').textContent=h.tip;$('hTipEn').textContent=h.tipEn;
- $('sScore').textContent=s;$('sDist').textContent=Math.floor(dist);{const t=Math.min(QB.length-1,revives);$('chanceBtn').textContent=`ตอบคำถามระดับ ${t+1} เพื่อวิ่งต่อ · ${LV_NAME[t]}`}
+ $('sScore').textContent=s;$('sDist').textContent=Math.floor(dist);$('chanceBtn').textContent='ตอบคำถามให้ถูก เพื่อวิ่งต่อ (ได้ 1 ครั้ง)';$('chanceBtn').style.display=revives?'none':'block';
  if(sess)LS.set('srPending',{...sess,score:s});
  setTimeout(()=>show('over'),350);
 }
@@ -427,7 +427,7 @@ function drawPlayer(){
 function hud(){
  ctx.textAlign='left';ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.roundRect(10,10,W-20,54,12);ctx.fill();
  ctx.fillStyle='#ffd400';ctx.font='800 24px Kanit';ctx.fillText(score(),22,45);
- ctx.fillStyle='#9aa1ab';ctx.font='400 11px Kanit';ctx.fillText(revives?`คะแนน · รอดมาแล้ว ${revives} ครั้ง`:'คะแนน',22,24);
+ ctx.fillStyle='#9aa1ab';ctx.font='400 11px Kanit';ctx.fillText('คะแนน',22,24);
  if(dbl>0){ctx.fillStyle='#ff7a1a';ctx.font='800 16px Kanit';ctx.fillText(`x2 ${Math.ceil(dbl)}s`,118,45)}
  const r=13,sx=W-22-r-4*(r*2+6);
  PPE.forEach((t,i)=>{const cx=sx+i*(r*2+6),has=got.has(t);ctx.fillStyle=has?'#fff':'rgba(255,255,255,.12)';ctx.beginPath();ctx.arc(cx,37,r,0,7);ctx.fill();ctx.globalAlpha=has?1:.35;ppeIcon(t,cx,37,r*.7);ctx.globalAlpha=1});
@@ -499,17 +499,17 @@ $('retryBtn').onclick=submit;$('endBtn').onclick=submit;
 addEventListener('beforeunload',e=>{if(state==='play'||state==='pause'||state==='tutor'){e.preventDefault();e.returnValue=''}});
 function askQuiz(t){
  const {q,lv}=pickQ(t),opts=q[1].map((o,i)=>({o,ok:i===0})).sort(()=>Math.random()-.5),ans=opts.findIndex(x=>x.ok);
- $('qHead').textContent=revives?`โอกาสรอดครั้งที่ ${revives+1} · ยากขึ้น!`:'โอกาสรอด ตอบให้ถูกเพื่อวิ่งต่อ';
- $('qLv').textContent=`ระดับ ${lv+1} · ${LV_NAME[lv]}`;
+ $('qHead').textContent='โอกาสรอด ตอบให้ถูกเพื่อวิ่งต่อ (ได้ 1 ครั้ง)';
+ $('qLv').style.display='none';
  $('qText').textContent=q[0];$('qEn').textContent='';$('qNext').style.display='none';
  $('qOpts').innerHTML=opts.map((x,i)=>`<button class="opt" data-i="${i}">${esc(x.o)}</button>`).join('');
- const resume=()=>{revives++;objs=objs.filter(o=>o.z>14);inv=2;slide=0;py=0;vy=0;state='play';last=performance.now();show(null);toast=`รอดแล้ว! ครั้งหน้าระดับ ${Math.min(QB.length,revives+1)}`;toastT=1.8};
+ const resume=()=>{revives++;objs=objs.filter(o=>o.z>14);inv=2;slide=0;py=0;vy=0;state='play';last=performance.now();show(null);toast='รอดแล้ว! ชนอีกครั้งจบรอบ';toastT=1.8};
  $('qOpts').onclick=e=>{const b=e.target.closest('.opt');if(!b||$('qNext').style.display==='block')return;const i=+b.dataset.i,ok=i===ans;
   [...$('qOpts').children].forEach((c,j)=>{if(j===ans)c.classList.add('ok');else if(j===i)c.classList.add('no')});
   beep(ok?990:140,.2,ok?'triangle':'sawtooth');const n=$('qNext');n.style.display='block';
   n.textContent=ok?'ถูกต้อง! วิ่งต่อ':'ยังไม่ถูก · จบรอบนี้ ส่งคะแนน';n.onclick=()=>{if(ok)resume();else submit()}};
  show('quiz')}
-$('chanceBtn').onclick=()=>askQuiz(Math.min(QB.length-1,revives));
+$('chanceBtn').onclick=()=>{if(!revives)askQuiz(Math.random()*QB.length|0)};
 
 const ro=new ResizeObserver(size);ro.observe(cv);
 reset();state='menu';requestAnimationFrame(loop);
