@@ -14,11 +14,11 @@ export default async function handler(req, res) {
     await init();
     if (b.action === 'export') {
       const rows = await sql`select r.emp_id as id, max(p.avatar) as avatar, count(*)::int as plays,
-          max(score) as best, string_agg(coalesce(score::text, '—'), ' / ' order by run_no) as scores,
+          max(score) filter (where game_seed is not null) as best, string_agg(case when score is null then '—' when game_seed is null then score::text || ' (legacy)' else score::text end, ' / ' order by run_no) as scores,
           min(started_at) as "startedAt", bool_or(capped) as flagged,
           count(*) filter (where score is null)::int as unfinished
         from safety_run_runs r left join safety_run_players p using (emp_id) group by r.emp_id
-        order by max(score) desc nulls last, min(started_at) asc`;
+        order by max(score) filter (where game_seed is not null) desc nulls last, min(started_at) asc`;
       return json(res, 200, { rows });
     }
     if (b.action === 'reset') {
