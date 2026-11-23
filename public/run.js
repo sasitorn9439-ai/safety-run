@@ -1,4 +1,5 @@
 export const STEP = 1 / 60;
+export const SLIDE_SECONDS = .7;
 export const MAX_TICKS = 30 * 60 * 60;
 export const MAX_INPUTS = 12000;
 export const ZMAX = 72;
@@ -164,7 +165,7 @@ export function createRun(seed, beep = () => {}) {
       beep(520, .06);
     } else if (action === 'down') {
       if (py > 0) vy = -16;
-      slide = .7;
+      slide = SLIDE_SECONDS;
       beep(220, .06);
     } else {
       return false;
