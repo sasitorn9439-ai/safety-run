@@ -65,7 +65,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <div class="tape"></div>
 <span class="badge">EHS Day 2026 · MCAM</span>
 <h1>SAFETY RUN</h1>
-<p class="sub">วิ่งปลอดภัย · หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><b style="color:#ffd400">1 รหัสพนักงาน เล่นได้ 1 ครั้ง</b> · One play per employee</p>
+<p class="sub">วิ่งปลอดภัย · หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><b style="color:#ffd400">1 รหัสพนักงาน เล่นได้ 3 ครั้ง นับคะแนนครั้งที่ดีที่สุด</b><br>3 plays per employee · best score counts</p>
 <ul>
 <li><b>← →</b><span>ปัดซ้าย/ขวา เปลี่ยนเลน หลบโฟล์คลิฟท์และกองวัสดุ<br><span class="en">Swipe to change lanes</span></span></li>
 <li><b>↑</b><span>ปัดขึ้น กระโดดข้ามพื้นเปียก สายไฟพาดทาง<br><span class="en">Swipe up to jump</span></span></li>
@@ -79,7 +79,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <button class="btn" id="startBtn" type="submit">เริ่มวิ่ง · Start</button>
 </form>
 <button class="btn alt" id="boardBtn" type="button">ดูอันดับ · Leaderboard</button>
-<p class="small">กดเริ่มแล้วนับเป็นสิทธิ์ทันที ห้ามปิดหน้าจอระหว่างเล่น · คอมพิวเตอร์ใช้ปุ่มลูกศร</p>
+<p class="small">กดเริ่มแล้วนับเป็น 1 ครั้งทันที ห้ามปิดหน้าจอระหว่างเล่น · คอมพิวเตอร์ใช้ปุ่มลูกศร</p>
 </div></div>
 
 <div class="ov" id="over"><div class="card">
@@ -108,6 +108,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <p class="sub" id="doneRank"></p>
 <p class="msg" id="doneMsg"></p>
 <button class="btn" id="retryBtn" style="display:none">ส่งคะแนนอีกครั้ง · Retry</button>
+<button class="btn" id="againBtn" style="display:none"></button>
 <ol class="board" id="doneBoard"></ol>
 <p class="small">ขอบคุณที่ร่วมกิจกรรม EHS Day 2026 · Thank you for playing safe</p>
 </div></div>
@@ -298,28 +299,37 @@ addEventListener('keydown',e=>{if(state!=='play'||e.target.tagName==='INPUT')ret
  else if(k==='arrowup'||k==='w'||k===' ')jump();else if(k==='arrowdown'||k==='s')duck();else return;e.preventDefault()});
 
 function begin(){reset();state='play';show(null)}
-const ERR={bad_id:'รหัสพนักงานไม่ถูกต้อง (ตัวอักษร/ตัวเลข 3–15 ตัว) · Invalid employee ID',no_name:'กรุณากรอกชื่อ · Please enter your name',used:'รหัสนี้ใช้สิทธิ์เล่นไปแล้ว · This ID has already played',server:'ระบบขัดข้อง ลองใหม่อีกครั้ง · Server error, try again'};
-$('login').onsubmit=async e=>{e.preventDefault();
+const ERR={bad_id:'รหัสพนักงานไม่ถูกต้อง (ตัวอักษร/ตัวเลข 3–15 ตัว) · Invalid employee ID',no_name:'กรุณากรอกชื่อ · Please enter your name',busy:'มีการเริ่มเล่นรหัสนี้พร้อมกันจากอีกเครื่อง ลองใหม่ · Try again',server:'ระบบขัดข้อง ลองใหม่อีกครั้ง · Server error, try again'};
+{const lp=LS.get('srPlayer');if(lp){$('empId').value=lp.id||'';$('empName').value=lp.name||''}}
+async function startRun(id,name,m,btn,label){
  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume&&ac.resume()}catch(e){}
- const id=$('empId').value.trim().toUpperCase().replace(/\s+/g,''),name=$('empName').value.trim(),btn=$('startBtn'),m=$('loginMsg');
- if(!/^[A-Z0-9-]{3,15}$/.test(id)){m.textContent=ERR.bad_id;return}if(!name){m.textContent=ERR.no_name;return}
  btn.disabled=true;btn.textContent='กำลังตรวจสอบสิทธิ์…';m.textContent='';
  try{const r=await api('/api/start',{id,name});
-  if(r.ok&&r.token){sess={id,name,token:r.token};LS.set('srPending',{...sess,score:0});begin()}
+  if(r.ok&&r.token){LS.set('srPlayer',{id,name});sess={id,name,token:r.token,run:r.run,runNo:r.runNo,max:r.max};LS.set('srPending',{...sess,score:0});
+   begin();toast=`ครั้งที่ ${r.runNo}/${r.max} · Run ${r.runNo} of ${r.max}`;toastT=2.2}
+  else if(r.error==='used')m.textContent=`รหัสนี้เล่นครบ ${r.max} ครั้งแล้ว${r.best!=null?` · คะแนนดีที่สุด ${r.best}`:''} · All plays used`;
   else m.textContent=ERR[r.error]||ERR.server}
  catch(err){m.textContent='เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ต · No connection'}
- btn.disabled=false;btn.textContent='เริ่มวิ่ง · Start'};
+ btn.disabled=false;btn.textContent=label}
+$('login').onsubmit=e=>{e.preventDefault();
+ const id=$('empId').value.trim().toUpperCase().replace(/\s+/g,''),name=$('empName').value.trim(),m=$('loginMsg');
+ if(!/^[A-Z0-9-]{3,15}$/.test(id)){m.textContent=ERR.bad_id;return}if(!name){m.textContent=ERR.no_name;return}
+ startRun(id,name,m,$('startBtn'),'เริ่มวิ่ง · Start')};
 function boardHtml(list){return list.map((e,i)=>`<li><span class="n">${i+1}</span><span>${esc(e.name)}<small>${esc(e.id)}</small></span><span class="sc">${e.score}</span></li>`).join('')||'<li><span></span><span>ยังไม่มีคะแนน · No scores yet</span><span></span></li>'}
 async function loadBoard(target,meId){try{const r=await api('/api/leaderboard'+(meId?'?id='+encodeURIComponent(meId):''));$(target).innerHTML=boardHtml(r.top||[]);return r}catch(e){$(target).innerHTML='<li><span></span><span>โหลดอันดับไม่ได้</span><span></span></li>';return{}}}
 $('boardBtn').onclick=async()=>{show('boardOv');$('boardTotal').textContent='กำลังโหลด…';const r=await loadBoard('boardList');$('boardTotal').textContent=r.total!=null?`ผู้เล่นทั้งหมด ${r.total} คน · Top 20`:''};
 $('boardBack').onclick=()=>show('menu');
 async function submit(){
  const p=LS.get('srPending');if(!p)return;show('done');
+ const ag=$('againBtn');ag.style.display='none';
  $('doneHead').textContent='กำลังส่งคะแนน… · Submitting';$('doneScore').textContent=p.score+' คะแนน';$('doneRank').textContent=p.name+' · '+p.id;$('doneMsg').textContent='';$('retryBtn').style.display='none';$('doneBoard').innerHTML='';
- try{const r=await api('/api/finish',{id:p.id,token:p.token,score:p.score});
-  if(r.ok||r.error==='already_submitted'){LS.set('srPending',null);sess=null;
-   $('doneHead').textContent='ส่งคะแนนแล้ว · Score submitted';if(r.score!=null)$('doneScore').textContent=r.score+' คะแนน';
-   const b=await loadBoard('doneBoard',p.id);if(b.rank)$('doneRank').textContent=`${p.name} · อันดับที่ ${b.rank} จาก ${b.total} คน`}
+ try{const r=await api('/api/finish',{id:p.id,run:p.run,token:p.token,score:p.score});
+  if(r.ok){LS.set('srPending',null);sess=null;
+   $('doneHead').textContent=`ส่งคะแนนแล้ว · ครั้งที่ ${r.used}/${r.max}`;$('doneScore').textContent=`รอบนี้ ${r.score} คะแนน`;
+   $('doneRank').textContent=`${p.name} · คะแนนดีที่สุด ${r.best}`;
+   const left=r.max-r.used;if(left>0){ag.textContent=`เล่นอีกครั้ง · เหลือ ${left} ครั้ง`;ag.style.display='block';ag.onclick=()=>startRun(p.id,p.name,$('doneMsg'),ag,ag.textContent)}
+   else $('doneMsg').textContent='ใช้สิทธิ์ครบแล้ว ระบบนับคะแนนครั้งที่ดีที่สุด';
+   const b=await loadBoard('doneBoard',p.id);if(b.rank)$('doneRank').textContent=`${p.name} · คะแนนดีที่สุด ${r.best} · อันดับที่ ${b.rank} จาก ${b.total} คน`}
   else if(r.error==='token'){LS.set('srPending',null);$('doneHead').textContent='ส่งคะแนนไม่สำเร็จ';$('doneMsg').textContent='สิทธิ์นี้ไม่ถูกต้อง กรุณาติดต่อทีม EHS · Please contact the EHS team'}
   else throw 0}
  catch(e){$('doneHead').textContent='ยังส่งคะแนนไม่ได้';$('doneMsg').textContent='เชื่อมต่อไม่ได้ คะแนนยังเก็บไว้ในเครื่อง กดส่งอีกครั้ง · Saved on this device, tap retry';$('retryBtn').style.display='block'}}
@@ -337,7 +347,7 @@ $('chanceBtn').onclick=()=>{
 
 const ro=new ResizeObserver(size);ro.observe(cv);
 reset();state='menu';requestAnimationFrame(loop);
-{const p=LS.get('srPending');if(p&&p.token){if(p.score>0)submit();else{LS.set('srPending',null);$('loginMsg').textContent='รอบก่อนหน้าถูกปิดระหว่างเล่น หากต้องการเล่นใหม่ติดต่อทีม EHS'}}}
+{const p=LS.get('srPending');if(p&&p.token){if(p.score>0)submit();else{LS.set('srPending',null);$('loginMsg').textContent='รอบก่อนหน้าถูกปิดระหว่างเล่น นับเป็น 1 ครั้งแล้ว · Previous run was closed and counted'}}}
 }
 </script>
 </body>

@@ -22,7 +22,7 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 <div class="row"><input id="key" type="password" placeholder="Admin key"><button id="load">โหลดข้อมูล</button><button class="alt" id="csv">คัดลอก CSV</button></div>
 <div class="row"><input id="rid" placeholder="รหัสพนักงานที่จะรีเซ็ต"><button class="alt" id="reset">รีเซ็ตสิทธิ์ให้เล่นใหม่</button></div>
 <p id="msg"></p>
-<div class="scroll"><table><thead><tr><th>#</th><th>รหัส</th><th>ชื่อ</th><th>คะแนน</th><th>เวลาเล่น (วินาที)</th><th>เริ่มเล่น</th><th>หมายเหตุ</th></tr></thead><tbody id="tb"></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>#</th><th>รหัส</th><th>ชื่อ</th><th>คะแนนดีที่สุด</th><th>เล่นแล้ว</th><th>คะแนนแต่ละครั้ง</th><th>เริ่มครั้งแรก</th><th>หมายเหตุ</th></tr></thead><tbody id="tb"></tbody></table></div>
 <script>
 {
 const $=id=>document.getElementById(id);let rows=[];
@@ -31,13 +31,13 @@ const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 async function call(data){const key=$('key').value.trim();try{sessionStorage.setItem('srKey',key)}catch(e){}
  const r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,...data})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error==='key'?'Admin key ไม่ถูกต้อง':'ผิดพลาด: '+(j.error||r.status));return j}
 async function load(){$('msg').textContent='กำลังโหลด…';try{rows=(await call({action:'export'})).rows;
- $('tb').innerHTML=rows.map((r,i)=>`<tr><td class="n">${i+1}</td><td>${esc(r.id)}</td><td>${esc(r.name)}</td><td class="n">${r.score??'—'}</td><td class="n">${r.secs??'—'}</td><td>${new Date(r.startedAt).toLocaleString('th-TH')}</td><td class="flag">${r.score==null?'เริ่มแล้ว ยังไม่ส่งคะแนน':r.flagged?'คะแนนเกินเวลาเล่น ถูกปรับลด':''}</td></tr>`).join('');
- $('msg').textContent=`ผู้เริ่มเล่น ${rows.length} คน · ส่งคะแนนแล้ว ${rows.filter(r=>r.score!=null).length} คน`}catch(e){$('msg').textContent=e.message}}
+ $('tb').innerHTML=rows.map((r,i)=>`<tr><td class="n">${i+1}</td><td>${esc(r.id)}</td><td>${esc(r.name)}</td><td class="n">${r.best??'—'}</td><td class="n">${r.plays}/3</td><td>${esc(r.scores)}</td><td>${new Date(r.startedAt).toLocaleString('th-TH')}</td><td class="flag">${[r.unfinished?r.unfinished+' ครั้งไม่ได้ส่งคะแนน':'',r.flagged?'มีคะแนนถูกปรับลด':''].filter(Boolean).join(' · ')}</td></tr>`).join('');
+ $('msg').textContent=`ผู้เล่น ${rows.length} คน · มีคะแนนแล้ว ${rows.filter(r=>r.best!=null).length} คน · เล่นรวม ${rows.reduce((a,r)=>a+r.plays,0)} ครั้ง`}catch(e){$('msg').textContent=e.message}}
 $('load').onclick=load;
 $('csv').onclick=async()=>{if(!rows.length)await load();const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;
  const csv='﻿rank,employee_id,name,score,seconds,started_at,note\n'+rows.map((r,i)=>[i+1,r.id,r.name,r.score??'',r.secs??'',r.startedAt,r.flagged?'capped':''].map(q).join(',')).join('\n');
  try{await navigator.clipboard.writeText(csv);$('msg').textContent='คัดลอก CSV แล้ว วางใน Excel ได้เลย'}catch(e){$('msg').textContent='คัดลอกไม่ได้ในเบราว์เซอร์นี้'}};
 $('reset').onclick=async()=>{const id=$('rid').value.trim().toUpperCase();if(!id)return;
- try{await call({action:'reset',id});$('msg').textContent=`รีเซ็ต ${id} แล้ว เล่นใหม่ได้ 1 ครั้ง`;$('rid').value='';load()}catch(e){$('msg').textContent=e.message}};
+ try{await call({action:'reset',id});$('msg').textContent=`รีเซ็ต ${id} แล้ว เล่นใหม่ได้ครบ 3 ครั้ง`;$('rid').value='';load()}catch(e){$('msg').textContent=e.message}};
 }
 </script></body></html>
