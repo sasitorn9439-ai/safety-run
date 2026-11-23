@@ -57,7 +57,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 .prize b{display:block;font-size:13px;color:#ffd400;font-weight:600}
 .prize span{font-size:15px;line-height:1.25}
 .medal{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;font-weight:800;font-size:14px;color:#111}
-.m1{background:#ffd400}.m2{background:#cfd6de}.m3{background:#d99a5b}
+.m1{background:#ffd400}.m2{background:#cfd6de}.m3{background:#d99a5b}.m4,.m5{background:#9fc3ef}
 .board .pz{display:block;font-size:12px;color:#ffd400}
 .win{background:#2a2410;border:1px solid #ffd400;border-radius:10px;padding:8px 12px;margin-top:10px;font-size:15px}
 #skipTut{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:2;display:none;min-height:44px;padding:8px 14px;border:0;border-radius:10px;background:rgba(0,0,0,.6);color:#fff;font:600 14px Kanit,sans-serif;cursor:pointer}
@@ -85,7 +85,8 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <p class="sub">วิ่งปลอดภัย · หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><b style="color:#ffd400">เล่นได้ไม่จำกัด นับคะแนนครั้งที่ดีที่สุด</b><br>ใส่รหัสพนักงานแล้วรับไอคอนประจำตัว ใช้แทนชื่อบนตารางอันดับ</p>
 <div class="prizes" aria-label="รางวัล">
 <div class="prize p1"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="16" y="2" width="12" height="40" rx="5" fill="#1b1d21"/><rect x="11" y="11" width="22" height="22" rx="6" fill="#2b2f36" stroke="#ffd400" stroke-width="1.5"/><rect x="14" y="14" width="16" height="16" rx="4" fill="#0e1a24"/><path d="M17 23h3l2-4 2 7 2-3h2" fill="none" stroke="#5ad1ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>อันดับ 1 · 1st prize</b><span>HUAWEI Band 11 Series (Polym Black)</span></div></div>
-<div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M5 22a17 15 0 0 1 34 0z" fill="#ff7a1a"/><path d="M5 22c3-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 5.5-2 8.5 0" fill="none" stroke="#c45c10" stroke-width="1.5"/><path d="M22 7v26a4 4 0 0 1-8 0" fill="none" stroke="#cfd6de" stroke-width="2.2" stroke-linecap="round"/></svg><div><b>อันดับ 2 และ 3 · 2nd &amp; 3rd prize</b><span>BEZ ร่มพับอัตโนมัติ</span></div></div>
+<div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="3" y="9" width="38" height="26" rx="4" fill="#2e9e47"/><g fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="13" y="14" width="11" height="16" rx="1.5"/><path d="M13 20h11"/><path d="M24 19h3a2 2 0 0 1 2 2v5a2 2 0 0 0 4 0v-8l-3-3"/></g></svg><div><b>อันดับ 2 และ 3 · 2nd &amp; 3rd prize</b><span>บัตรเติมน้ำมัน มูลค่า 500 บาท</span></div></div>
+<div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M5 22a17 15 0 0 1 34 0z" fill="#ff7a1a"/><path d="M5 22c3-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 5.5-2 8.5 0" fill="none" stroke="#c45c10" stroke-width="1.5"/><path d="M22 7v26a4 4 0 0 1-8 0" fill="none" stroke="#cfd6de" stroke-width="2.2" stroke-linecap="round"/></svg><div><b>อันดับ 4 และ 5 · 4th &amp; 5th prize</b><span>BEZ ร่มพับอัตโนมัติ</span></div></div>
 </div>
 <form id="login" autocomplete="off">
 <label class="field">รหัสพนักงาน · Employee ID<input id="empId" maxlength="15" required autocapitalize="characters"></label>
@@ -508,7 +509,7 @@ $('skipTut').onclick=e=>{e.stopPropagation();if(state==='tutor')startReal()};
 $('skipTut').addEventListener('pointerdown',e=>e.stopPropagation());
 const ERR={bad_id:'รหัสพนักงานไม่ถูกต้อง (ตัวอักษร/ตัวเลข 3–15 ตัว) · Invalid employee ID',no_name:'กรุณากรอกชื่อ · Please enter your name',busy:'มีการเริ่มเล่นรหัสนี้พร้อมกันจากอีกเครื่อง ลองใหม่ · Try again',server:'ระบบขัดข้อง ลองใหม่อีกครั้ง · Server error, try again'};
 {const lp=LS.get('srPlayer');if(lp)$('empId').value=lp.id||''}
-function boardRow(e,i){return `<li${e.me?' style="outline:2px solid #ffd400"':''}><span class="n">${i<3?`<span class="medal m${i+1}">${i+1}</span>`:i+1}</span>${avImg(e.avatar,36)}<span class="who">${esc(avName(e.avatar))}${e.me?' (คุณ)':''}</span><span class="sc">${e.score}</span></li>`}
+function boardRow(e,i){return `<li${e.me?' style="outline:2px solid #ffd400"':''}><span class="n">${i<5?`<span class="medal m${i+1}">${i+1}</span>`:i+1}</span>${avImg(e.avatar,36)}<span class="who">${esc(avName(e.avatar))}${e.me?' (คุณ)':''}</span><span class="sc">${e.score}</span></li>`}
 async function startRun(id,m,btn,label){
  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume&&ac.resume()}catch(e){}
  btn.disabled=true;btn.textContent='กำลังตรวจสอบสิทธิ์…';m.textContent='';
@@ -525,7 +526,7 @@ $('login').onsubmit=e=>{e.preventDefault();
  const id=$('empId').value.trim().toUpperCase().replace(/\s+/g,''),m=$('loginMsg');
  if(!/^[A-Z0-9-]{3,15}$/.test(id)){m.textContent=ERR.bad_id;return}
  startRun(id,m,$('startBtn'),'เริ่มวิ่ง · Start')};
-const PRIZE=['HUAWEI Band 11 Series (Polym Black)','BEZ ร่มพับอัตโนมัติ','BEZ ร่มพับอัตโนมัติ'];
+const PRIZE=['HUAWEI Band 11 Series (Polym Black)','บัตรเติมน้ำมัน 500 บาท','บัตรเติมน้ำมัน 500 บาท','BEZ ร่มพับอัตโนมัติ','BEZ ร่มพับอัตโนมัติ'];
 function boardHtml(list){return list.map(boardRow).join('')||'<li><span></span><span></span><span>ยังไม่มีคะแนน · No scores yet</span><span></span></li>'}
 async function loadBoard(target,meId){try{const r=await api('/api/leaderboard'+(meId?'?id='+encodeURIComponent(meId):''));$(target).innerHTML=boardHtml(r.top||[]);return r}catch(e){$(target).innerHTML='<li><span></span><span>โหลดอันดับไม่ได้</span><span></span></li>';return{}}}
 $('boardBtn').onclick=async()=>{show('boardOv');$('boardTotal').textContent='กำลังโหลด…';const r=await loadBoard('boardList');$('boardTotal').textContent=r.total!=null?`ผู้เล่นทั้งหมด ${r.total} คน · Top 20`:''};
@@ -539,7 +540,7 @@ async function submit(){
    $('doneHead').textContent=`ส่งคะแนนแล้ว · รอบที่ ${r.used}`;$('doneScore').textContent=`รอบนี้ ${r.score} คะแนน`;
    $('doneRank').textContent=`${avName(p.avatar)} · คะแนนดีที่สุด ${r.best}`;
    ag.textContent='เล่นอีกครั้ง · Play again';ag.style.display='block';ag.onclick=()=>startRun(p.id,$('doneMsg'),ag,ag.textContent);
-   const b=await loadBoard('doneBoard',p.id);if(b.rank){$('doneRank').textContent=`${avName(p.avatar)} · คะแนนดีที่สุด ${r.best} · อันดับที่ ${b.rank} จาก ${b.total} คน`;if(b.rank<=3)$('doneMsg').innerHTML=`<div class="win">ตอนนี้คุณอยู่อันดับ ${b.rank} รักษาอันดับไว้จนประกาศผล</div>`}}
+   const b=await loadBoard('doneBoard',p.id);if(b.rank){$('doneRank').textContent=`${avName(p.avatar)} · คะแนนดีที่สุด ${r.best} · อันดับที่ ${b.rank} จาก ${b.total} คน`;if(b.rank<=5)$('doneMsg').innerHTML=`<div class="win">ตอนนี้คุณอยู่อันดับ ${b.rank} รักษาอันดับไว้จนประกาศผล</div>`}}
   else if(r.status>=400&&r.status<500){LS.set('srPending',null);sess=null;$('doneHead').textContent='รอบนี้ส่งคะแนนไม่ได้';$('doneMsg').textContent='ข้อมูลรอบเก่าไม่ตรงกับระบบใหม่ กดเริ่มใหม่ได้เลย · Old run data cleared';
    ag.textContent='กลับหน้าเริ่ม · Back to start';ag.style.display='block';ag.onclick=()=>show('menu')}
   else throw 0}
