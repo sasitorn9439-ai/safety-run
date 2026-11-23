@@ -60,8 +60,6 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 .m1{background:#ffd400}.m2{background:#cfd6de}.m3{background:#d99a5b}.m4,.m5{background:#9fc3ef}
 .board .pz{display:block;font-size:12px;color:#ffd400}
 .win{background:#2a2410;border:1px solid #ffd400;border-radius:10px;padding:8px 12px;margin-top:10px;font-size:15px}
-#pauseBtn{position:absolute;top:78px;right:12px;z-index:2;display:none;width:46px;height:46px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;cursor:pointer;place-items:center}
-#pauseBtn svg{width:20px;height:20px;fill:#fff}
 #skipTut{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:2;display:none;min-height:44px;padding:8px 14px;border:0;border-radius:10px;background:rgba(0,0,0,.6);color:#fff;font:600 14px Kanit,sans-serif;cursor:pointer}
 .av{border-radius:50%;flex:none;display:block}
 .board li{grid-template-columns:34px 40px 1fr auto}
@@ -79,7 +77,6 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <div class="shell" id="shell">
 <canvas id="c"></canvas>
 <button id="skipTut" type="button">ข้ามการสอน · Skip</button>
-<button id="pauseBtn" type="button" aria-label="หยุดชั่วคราว · Pause"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="3" width="4.5" height="14" rx="1.2"/><rect x="11.5" y="3" width="4.5" height="14" rx="1.2"/></svg></button>
 
 <div class="ov on" id="menu"><div class="card scroll">
 <div class="tape"></div>
@@ -106,7 +103,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <li><b>!</b><span>ทุก 1,500 เมตร มีเซอร์ไพรส์ เช่น Safety Officer โผล่มาทัก ฝน PPE หรือคะแนน x2<br><span class="en">Surprise every 1,500 m</span></span></li>
 <li><b>PPE</b><span>เก็บครบ 5 ชนิด ได้โล่ Full PPE กันชน 1 ครั้ง<br><span class="en">Collect all 5 PPE for a shield</span></span></li>
 </ul>
-<p class="small">กดเริ่มแล้วนับเป็น 1 ครั้งทันที ห้ามปิดหน้าจอระหว่างเล่น · กดปุ่ม ‖ เพื่อหยุดชั่วคราว · คอมพิวเตอร์ใช้ปุ่มลูกศร หยุดด้วย P หรือ Esc</p>
+<p class="small">กดเริ่มแล้วนับเป็น 1 ครั้งทันที ห้ามปิดหน้าจอระหว่างเล่น · คอมพิวเตอร์ใช้ปุ่มลูกศร</p>
 </div></div>
 
 <div class="ov" id="over"><div class="card">
@@ -118,15 +115,6 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <div class="stats"><div><strong id="sScore">0</strong><span>คะแนน · Score</span></div><div><strong id="sDist">0</strong><span>ระยะทาง (ม.) · Distance</span></div></div>
 <button class="btn" id="chanceBtn">ตอบคำถามความปลอดภัย เพื่อวิ่งต่อ</button>
 <button class="btn alt" id="endBtn">จบเกม ส่งคะแนน · Submit score</button>
-</div></div>
-
-<div class="ov" id="pauseOv"><div class="card">
-<div class="tape"></div>
-<p class="hit">หยุดชั่วคราว · Paused</p>
-<div class="stats"><div><strong id="pScore">0</strong><span>คะแนน · Score</span></div><div><strong id="pDist">0</strong><span>ระยะทาง (ม.) · Distance</span></div></div>
-<button class="btn" id="pResume" type="button">เล่นต่อ · Resume</button>
-<button class="btn alt" id="pMenu" type="button">เมนูหลัก · Main menu</button>
-<p class="msg" id="pMsg"></p>
 </div></div>
 
 <div class="ov" id="quiz"><div class="card">
@@ -153,7 +141,6 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <p class="msg" id="doneMsg"></p>
 <button class="btn" id="retryBtn" style="display:none">ส่งคะแนนอีกครั้ง · Retry</button>
 <button class="btn" id="againBtn" style="display:none"></button>
-<button class="btn alt" id="homeBtn" type="button" style="display:none">เมนูหลัก · Main menu</button>
 <ol class="board" id="doneBoard"></ol>
 <p class="small">ขอบคุณที่ร่วมกิจกรรม EHS Day 2026 · Thank you for playing safe</p>
 </div></div>
@@ -220,7 +207,7 @@ function beep(f,d=.08,type='square',v=.05){if(!ac)return;try{const o=ac.createOs
 
 function reset(){dist=0;lane=0;px=0;py=0;vy=0;slide=0;objs=[];got=new Set();shield=0;inv=1;revives=0;ppeScore=0;toast='';toastT=0;flash=0;sur=null;dbl=0}
 const score=()=>Math.floor(dist)+ppeScore;
-function show(id){for(const o of ['menu','over','quiz','done','boardOv','avOv','pauseOv'])$(o).classList.toggle('on',o===id)}
+function show(id){for(const o of ['menu','over','quiz','done','boardOv','avOv'])$(o).classList.toggle('on',o===id)}
 
 function jump(){if(state==='play'){record("up");return}if(state!=='tutor')return;if(py===0){vy=9.2;slide=0;beep(520,.06)}tutorHit('up')}
 function duck(){if(state==='play'){record("down");return}if(state!=='tutor')return;if(py>0)vy=-16;slide=SLIDE_SECONDS;beep(220,.06);tutorHit('down')}
@@ -513,36 +500,11 @@ function draw(){
  const list=(objs||[]).filter(o=>!o.gone).sort((a,b)=>b.z-a.z);let drawn=false;
  for(const o of list){if(!drawn&&o.z<0){drawPlayer();drawn=true}drawObj(o)}
  if(!drawn)drawPlayer();
- if(state==='play'||state==='pause'||state==='resume'){drawSurprise();hud()}
- if(state==='resume'){ctx.textAlign='center';ctx.font='800 96px Kanit';ctx.lineWidth=8;ctx.strokeStyle='#111';ctx.fillStyle='#ffd400';const n=String(Math.max(1,Math.ceil(cd)));ctx.strokeText(n,W/2,H*.45);ctx.fillText(n,W/2,H*.45)}
+ if(state==='play'){drawSurprise();hud()}
  if(state==='tutor')drawTutor();
 }
-let last=0,cd=0,pauseShown=false;
-function loop(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;if(state==='play')update(dt);else if(state==='tutor')tutorUpdate(dt);else if(state==='resume'){cd-=dt;if(cd<=0){accumulator=0;state='play'}}
- const want=state==='play';if(want!==pauseShown){pauseShown=want;$('pauseBtn').style.display=want?'grid':'none'}
- draw();requestAnimationFrame(loop)}
-
-/* ---------- pause / main menu ---------- */
-// The game only steps while state==='play', so pausing adds no ticks and the server replay is unchanged.
-let leaveAsk=false;
-function pauseRun(){
- if(state!=='play'&&state!=='resume')return;
- state='pause';leaveAsk=false;swiping=false;
- $('pScore').textContent=score();$('pDist').textContent=Math.floor(dist);$('pMsg').textContent='';$('pMenu').textContent='เมนูหลัก · Main menu';
- show('pauseOv')}
-function resumeRun(){if(state!=='pause')return;show(null);state='resume';cd=3}
-function goMenu(){reset();state='menu';$('loginMsg').textContent='';show('menu')}
-function leaveRun(){LS.set('srPending',null);sess=null;goMenu();$('loginMsg').textContent='ออกจากรอบก่อนหน้าแล้ว นับเป็น 1 ครั้ง · Previous run was left and counted'}
-$('pauseBtn').onclick=pauseRun;
-$('pauseBtn').addEventListener('pointerdown',e=>e.stopPropagation());
-$('pResume').onclick=resumeRun;
-$('pMenu').onclick=()=>{
- if(!leaveAsk){leaveAsk=true;$('pMsg').textContent='ออกตอนนี้ คะแนนรอบนี้จะไม่ถูกบันทึก และนับเป็น 1 ครั้ง · This run will not be scored';$('pMenu').textContent='ยืนยันออกจากรอบนี้ · Confirm leave';return}
- leaveRun()};
-$('homeBtn').onclick=goMenu;
-document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseRun()});
-addEventListener('blur',pauseRun);
-addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();if(k==='escape'||k==='p'){if(state==='play'||state==='resume')pauseRun();else if(state==='pause')resumeRun()}});
+let last=0;
+function loop(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;if(state==='play')update(dt);else if(state==='tutor')tutorUpdate(dt);draw();requestAnimationFrame(loop)}
 
 /* ---------- input ---------- */
 const shell=$('shell');let sx=0,sy=0,swiping=false;
@@ -583,20 +545,20 @@ $('boardBtn').onclick=async()=>{show('boardOv');$('boardTotal').textContent='ก
 $('boardBack').onclick=()=>show('menu');
 async function submit(){
  const p=LS.get('srPending');if(!p)return;show('done');
- const ag=$('againBtn');ag.style.display='none';$('homeBtn').style.display='none';
+ const ag=$('againBtn');ag.style.display='none';
  $('doneHead').textContent='กำลังส่งคะแนน… · Submitting';$('doneScore').textContent=p.score+' คะแนน';$('doneRank').textContent=avName(p.avatar);$('doneMsg').textContent='';$('retryBtn').style.display='none';$('doneBoard').innerHTML='';
  try{const r=await api('/api/finish',{id:p.id,run:p.run,token:p.token,ticks:p.ticks,inputs:p.inputs});
   if(r.ok){LS.set('srPending',null);sess=null;
    $('doneHead').textContent=`ส่งคะแนนแล้ว · รอบที่ ${r.used}`;$('doneScore').textContent=`รอบนี้ ${r.score} คะแนน`;
    $('doneRank').textContent=`${avName(p.avatar)} · คะแนนดีที่สุด ${r.best}`;
-   ag.textContent='เล่นอีกครั้ง · Play again';ag.style.display='block';ag.onclick=()=>startRun(p.id,$('doneMsg'),ag,ag.textContent);$('homeBtn').style.display='block';
+   ag.textContent='เล่นอีกครั้ง · Play again';ag.style.display='block';ag.onclick=()=>startRun(p.id,$('doneMsg'),ag,ag.textContent);
    const b=await loadBoard('doneBoard',p.id);if(b.rank){$('doneRank').textContent=`${avName(p.avatar)} · คะแนนดีที่สุด ${r.best} · อันดับที่ ${b.rank} จาก ${b.total} คน`;if(b.rank<=5)$('doneMsg').innerHTML=`<div class="win">ตอนนี้คุณอยู่อันดับ ${b.rank} รักษาอันดับไว้จนประกาศผล</div>`}}
   else if(r.status>=400&&r.status<500){LS.set('srPending',null);sess=null;$('doneHead').textContent='รอบนี้ส่งคะแนนไม่ได้';$('doneMsg').textContent='ข้อมูลการเล่นไม่ผ่านการตรวจสอบ กรุณาเริ่มรอบใหม่ · Start a new run';
-   ag.textContent='กลับหน้าเริ่ม · Back to start';ag.style.display='block';ag.onclick=goMenu}
+   ag.textContent='กลับหน้าเริ่ม · Back to start';ag.style.display='block';ag.onclick=()=>show('menu')}
   else throw 0}
  catch(e){$('doneHead').textContent='ยังส่งคะแนนไม่ได้';$('doneMsg').textContent='เชื่อมต่อไม่ได้ คะแนนยังเก็บไว้ในเครื่อง กดส่งอีกครั้ง · Saved on this device, tap retry';$('retryBtn').style.display='block'}}
 $('retryBtn').onclick=submit;$('endBtn').onclick=submit;
-addEventListener('beforeunload',e=>{if(state==='play'||state==='pause'||state==='resume'||state==='tutor'){e.preventDefault();e.returnValue=''}});
+addEventListener('beforeunload',e=>{if(state==='play'||state==='pause'||state==='tutor'){e.preventDefault();e.returnValue=''}});
 function askQuiz(){
  const {prompt,options}=game.quiz,ans=game.correct;
  $('qHead').textContent='โอกาสรอด ตอบให้ถูกเพื่อวิ่งต่อ (ได้ 1 ครั้ง)';
