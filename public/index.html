@@ -330,7 +330,8 @@ async function submit(){
    const left=r.max-r.used;if(left>0){ag.textContent=`เล่นอีกครั้ง · เหลือ ${left} ครั้ง`;ag.style.display='block';ag.onclick=()=>startRun(p.id,p.name,$('doneMsg'),ag,ag.textContent)}
    else $('doneMsg').textContent='ใช้สิทธิ์ครบแล้ว ระบบนับคะแนนครั้งที่ดีที่สุด';
    const b=await loadBoard('doneBoard',p.id);if(b.rank)$('doneRank').textContent=`${p.name} · คะแนนดีที่สุด ${r.best} · อันดับที่ ${b.rank} จาก ${b.total} คน`}
-  else if(r.error==='token'){LS.set('srPending',null);$('doneHead').textContent='ส่งคะแนนไม่สำเร็จ';$('doneMsg').textContent='สิทธิ์นี้ไม่ถูกต้อง กรุณาติดต่อทีม EHS · Please contact the EHS team'}
+  else if(r.status>=400&&r.status<500){LS.set('srPending',null);sess=null;$('doneHead').textContent='รอบนี้ส่งคะแนนไม่ได้';$('doneMsg').textContent='ข้อมูลรอบเก่าไม่ตรงกับระบบใหม่ กดเริ่มใหม่ได้เลย · Old run data cleared';
+   ag.textContent='กลับหน้าเริ่ม · Back to start';ag.style.display='block';ag.onclick=()=>show('menu')}
   else throw 0}
  catch(e){$('doneHead').textContent='ยังส่งคะแนนไม่ได้';$('doneMsg').textContent='เชื่อมต่อไม่ได้ คะแนนยังเก็บไว้ในเครื่อง กดส่งอีกครั้ง · Saved on this device, tap retry';$('retryBtn').style.display='block'}}
 $('retryBtn').onclick=submit;$('endBtn').onclick=submit;
@@ -347,7 +348,7 @@ $('chanceBtn').onclick=()=>{
 
 const ro=new ResizeObserver(size);ro.observe(cv);
 reset();state='menu';requestAnimationFrame(loop);
-{const p=LS.get('srPending');if(p&&p.token){if(p.score>0)submit();else{LS.set('srPending',null);$('loginMsg').textContent='รอบก่อนหน้าถูกปิดระหว่างเล่น นับเป็น 1 ครั้งแล้ว · Previous run was closed and counted'}}}
+{const p=LS.get('srPending');if(p&&!p.run)LS.set('srPending',null);else if(p&&p.token){if(p.score>0)submit();else{LS.set('srPending',null);$('loginMsg').textContent='รอบก่อนหน้าถูกปิดระหว่างเล่น นับเป็น 1 ครั้งแล้ว · Previous run was closed and counted'}}}
 }
 </script>
 </body>
