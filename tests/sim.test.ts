@@ -51,23 +51,31 @@ describe('coins and PPE', () => {
   type G = { seed: number; ticks: number; inputs: [number, Action | number][]; score: number };
   const play = (g: G) => {
     const r = createRun(g.seed);
-    for (const [at, a] of g.inputs) { while (r.tick < at) r.step(); typeof a === 'number' ? r.answer(a) : r.input(a); }
-    while (r.tick < g.ticks) r.step();
+    for (const [at, a] of g.inputs) { while (r.tick < at && !r.finished) r.step(); typeof a === 'number' ? r.answer(a) : r.input(a); }
+    while (r.tick < g.ticks && !r.finished) r.step();
     return r;
   };
+  /** every object that showed up, per seed (a hazard ends a run early, so one seed isn't enough) */
   const seen = (seed: number, ticks: number) => {
-    const r = createRun(seed), all = new Set<GameObject>();
-    for (let i = 0; i < ticks; i++) { r.step(); if (r.finished) break; for (const o of r.view().objs) all.add(o); }
-    return [...all];
+    const runs: GameObject[][] = [];
+    for (let s = seed; s < seed + 8; s++) {
+      const r = createRun(s), all = new Set<GameObject>();
+      for (let i = 0; i < ticks; i++) { r.step(); if (r.finished) break; for (const o of r.view().objs) all.add(o); }
+      runs.push([...all]);
+    }
+    return runs;
   };
 
   it('coin trails come in the free lane, with PPE as single items among them', () => {
-    const objs = seen(11, 3000), coins = objs.filter(o => o.k === 'coin'), ppe = objs.filter(o => o.k === 'ppe');
-    expect(coins.length).toBeGreaterThan(40);
-    expect(ppe.length).toBeGreaterThan(3);
+    const runs = seen(11, 3000), objs = runs.flat(), coins = objs.filter(o => o.k === 'coin'), ppe = objs.filter(o => o.k === 'ppe');
+    expect(coins.length).toBeGreaterThan(80);
+    expect(ppe.length).toBeGreaterThan(5);
     expect(coins.length).toBeGreaterThan(ppe.length * 4);
-    // a PPE item never sits right next to another one in the same lane
-    for (const a of ppe) for (const b of ppe) if (a !== b && a.l === b.l) expect(Math.abs(a.z - b.z)).toBeGreaterThan(3);
+    // a PPE item never sits right next to another one in the same lane (within one run)
+    for (const run of runs) {
+      const p = run.filter(o => o.k === 'ppe');
+      for (const a of p) for (const b of p) if (a !== b && a.l === b.l) expect(Math.abs(a.z - b.z)).toBeGreaterThan(3);
+    }
   });
 
   it('no pickup sits inside a hazard', () => {

@@ -37,6 +37,7 @@ export async function startApp() {
   /* ---------- run lifecycle ---------- */
   function begin(first: boolean) {
     show(null);
+    game.pb = LS.get<number>('srPb') ?? 0;          // the distance to beat, shown in the HUD
     game.begin(first);
   }
 
@@ -44,6 +45,9 @@ export async function startApp() {
     const h = game.hazardInfo(), s = game.score;
     $('hTitle').textContent = h.th; $('hTitleEn').textContent = h.en; $('hTip').textContent = h.tip; $('hTipEn').textContent = h.tipEn;
     $('sScore').textContent = String(s); $('sDist').textContent = String(game.dist);
+    const best = Math.max(LS.get<number>('srPb') ?? 0, game.dist);
+    LS.set('srPb', best);
+    void showGap(s);
     $('chanceBtn').textContent = `ตอบคำถามให้ถูก รักษา ${s} คะแนนไว้ แล้ววิ่งต่อ (ได้ 1 ครั้ง)`;
     $('chanceBtn').style.display = game.revives || !game.lastHit ? 'none' : 'block';
     if (game.sess && game.run) LS.set('srPending', { ...game.sess, score: s, ticks: game.run.tick, inputs: game.inputs } satisfies Pending);
@@ -57,6 +61,25 @@ export async function startApp() {
   $('howBtn').onclick = openHow;
   $('howClose').onclick = closeHow;
   how.onclick = e => { if (e.target === how) closeHow(); };   // a tap on the dimmed backdrop closes it
+
+  /** "N points to rank k": how close the run was to the next place on the board (a nudge to try once more) */
+  async function showGap(score: number) {
+    const el = $('overGap');
+    el.classList.remove('on');
+    const id = game.sess?.id;
+    if (!id) return;
+    try {
+      const r = await api<BoardResp>('/api/leaderboard?id=' + encodeURIComponent(id));
+      if (!r.top || game.state !== 'over') return;
+      const above = r.top.map((e, i) => ({ ...e, rank: i + 1 })).filter(e => e.score > score);
+      const t = above[above.length - 1];
+      let html = '';
+      if (!t) html = r.top.length ? 'คะแนนรอบนี้สูงกว่าทุกคนบนอันดับ <b>เป็นที่ 1</b> แล้ว!' : '';
+      else if (t.me) html = `อีก <b>${t.score - score}</b> คะแนน จะทำลายสถิติของคุณเอง (อันดับ ${t.rank})`;
+      else html = `เหลืออีก <b>${t.score - score}</b> คะแนน ถึงอันดับ <b>${t.rank}</b>${t.rank <= 5 ? ' ซึ่งได้รางวัล' : ''}`;
+      if (html) { el.innerHTML = html; el.classList.add('on'); }
+    } catch { /* the board is a nicety, never block the crash screen */ }
+  }
 
   skipTut.onclick = e => { e.stopPropagation(); if (game.state === 'tutor') game.startReal(); };
   skipTut.addEventListener('pointerdown', e => e.stopPropagation());

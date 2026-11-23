@@ -13,7 +13,8 @@ Eight safety-gear icons redrawn from the pixel reference sheet as flat vector il
 | `svg/mask.svg` | asset only |
 | `svg/vest.svg` | asset only |
 | `svg/firstaid.svg` | asset only |
-| `svg/sheet.svg` | all eight in a row (each in a `<g id>`) |
+| `svg/power-*.svg` | the five power-ups: `estop`, `broom`, `lift`, `toolbox`, `firstaid` (same art as `firstaid.svg`) |
+| `svg/sheet.svg` | the eight PPE icons in a row (each in a `<g id>`) |
 | `preview.png` | contact sheet (light / dark background / 40 px) |
 
 Mask, vest and first-aid are not pickup types: adding one would change the deterministic sim, which
@@ -21,7 +22,7 @@ the server replays to verify scores (`shared/hazards.ts` → `PPE`).
 
 ## Source of truth
 
-`src/render/ppe-icons.ts` — each icon is a list of layers (SVG path data in a 100 × 100 box).
+`src/render/ppe-icons.ts` (PPE) and `src/render/power-icons.ts` (power-ups) — each icon is a list of layers (SVG path data in a 100 × 100 box).
 The game draws it with `Path2D` (`drawPpeIcon`), the SVG files are generated from the same data (`iconSvg`),
 so they can't drift.
 

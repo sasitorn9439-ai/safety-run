@@ -1,6 +1,7 @@
 import type { HazardKind, PpeType } from '../../shared/hazards.js';
+import type { PowerType } from '../../shared/sim.js';
 import { HAZARD_KINDS, PPE } from '../../shared/hazards.js';
-import { HAZARD_BOX, drawCoin, drawDot, drawHalo, drawHazard, drawLight, drawMascotRun, drawMascotSlide, drawPillar, drawPpeBadge, drawShadow, drawShield, type Ctx } from './draw.js';
+import { HAZARD_BOX, drawCoin, drawCrate, drawLiftPlatform, drawPowerBadge, drawDot, drawHalo, drawHazard, drawLight, drawMascotRun, drawMascotSlide, drawPillar, drawPpeBadge, drawShadow, drawShield, type Ctx } from './draw.js';
 import { RUN_FRAMES, SLIDE_FRAMES } from './fx.js';
 
 export const PAD = 2;
@@ -15,6 +16,12 @@ export interface Art { box: Box; draw: (c: Ctx, u: number) => void; scale: numbe
 const OBJ = 1.35, MASCOT = 1.1;
 export const hazardArt = (k: HazardKind, blink = false): Art => ({ box: HAZARD_BOX[k], draw: (c, u) => drawHazard(c, k, u, blink), scale: OBJ, mips: true });
 export const ppeArt = (t: PpeType): Art => ({ box: [-.4, -.4, .4, .4], draw: (c, u) => drawPpeBadge(c, t, u), scale: OBJ, mips: true });
+export const POWERS: readonly PowerType[] = ['estop', 'broom', 'lift', 'firstaid', 'toolbox'];
+export const powerArt = (t: PowerType): Art => ({ box: [-.46, -.46, .46, .46], draw: (c, u) => drawPowerBadge(c, t, u), scale: OBJ, mips: true });
+export const liftArt: Art = { box: [-.46, -.04, .46, 1.4], draw: drawLiftPlatform, scale: MASCOT, mips: false };
+/** hazards that have a second look (the `blink` flag in the draw list) */
+export const ON_KINDS: readonly HazardKind[] = ['forklift', 'drop', 'sparks'];
+export const crateArt: Art = { box: [-.44, -1.16, .44, .02], draw: drawCrate, scale: OBJ, mips: true };
 export const coinArt: Art = { box: [-.25, -.25, .25, .25], draw: drawCoin, scale: OBJ, mips: true };
 export const haloArt: Art = { box: [-1, -1, 1, 1], draw: drawHalo, scale: .5, mips: true };
 export const shadowArt: Art = { box: [-.5, -.12, .5, .12], draw: drawShadow, scale: OBJ, mips: true };
@@ -67,24 +74,31 @@ export class Sprite {
 
 export class SpriteSet {
   hazards = {} as Record<HazardKind, Sprite>;
-  forkliftOn: Sprite;
+  /** the lit variant of a hazard: forklift lights, a locked drop mark, a live arc */
+  on = {} as Partial<Record<HazardKind, Sprite>>;
+  crate: Sprite;
   ppe = {} as Record<PpeType, Sprite>;
   run: Sprite[] = [];
   slide: Sprite[] = [];
   shadow: Sprite;
   halo: Sprite;
   coin: Sprite;
+  power = {} as Record<PowerType, Sprite>;
+  lift: Sprite;
   pillar: Sprite;
   light: Sprite;
 
   constructor(lw: number, dpr: number) {
     const mk = (art: Art) => new Sprite(art.box, art, lw * dpr * art.scale, art.mips ? 5 : 1);
     for (const k of HAZARD_KINDS) this.hazards[k] = mk(hazardArt(k));
-    this.forkliftOn = mk(hazardArt('forklift', true));
+    for (const k of ON_KINDS) this.on[k] = mk(hazardArt(k, true));
+    this.crate = mk(crateArt);
     for (const t of PPE) this.ppe[t] = mk(ppeArt(t));
     this.shadow = mk(shadowArt);
     this.halo = mk(haloArt);
     this.coin = mk(coinArt);
+    for (const t of POWERS) this.power[t] = mk(powerArt(t));
+    this.lift = mk(liftArt);
     this.pillar = mk(pillarArt);
     this.light = mk(lightArt);
     for (let i = 0; i < RUN_FRAMES; i++) this.run.push(mk(runArt(i)));

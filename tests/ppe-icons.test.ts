@@ -30,3 +30,26 @@ describe('PPE flat vector icons', () => {
     }
   });
 });
+
+import { POWER_ICONS, POWER_TYPES, powerIconSvg } from '../src/render/power-icons.js';
+
+describe('power-up icons', () => {
+  it('has one for every power-up', () => {
+    expect([...POWER_TYPES].sort()).toEqual(['broom', 'estop', 'firstaid', 'lift', 'toolbox']);
+  });
+  it('only uses supported path commands and stays inside the 100x100 box', () => {
+    for (const t of POWER_TYPES) for (const l of POWER_ICONS[t]) {
+      expect(l.d, `${t}/${l.name}`).toMatch(/^[MLHVCQAZ0-9 .,\-]+$/);
+      expect(l.fill || l.stroke, `${t}/${l.name} paints`).toBeTruthy();
+      for (const n of (l.d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number)) { expect(n).toBeGreaterThanOrEqual(-10); expect(n).toBeLessThanOrEqual(110); }
+    }
+  });
+  it('exports well-formed standalone SVG', () => {
+    for (const t of POWER_TYPES) {
+      const svg = powerIconSvg(t, 64);
+      expect(svg).toMatch(/^<svg [^>]*viewBox="0 0 100 100"/);
+      expect(svg.trim().endsWith('</svg>')).toBe(true);
+      expect((svg.match(/<path /g) ?? []).length).toBe(POWER_ICONS[t].length);
+    }
+  });
+});

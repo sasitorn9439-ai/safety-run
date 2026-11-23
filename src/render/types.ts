@@ -4,6 +4,8 @@ import type { GameObject, SimEvent } from '../../shared/sim.js';
 export interface SceneState {
   dist: number; lane: number; px: number; py: number; vy: number; slide: number; inv: number; shield: number;
   objs: readonly GameObject[];
+  /** seconds left on the man-lift (the mascot rides a platform up to its feet) */
+  lift?: number;
 }
 /** The state one simulation tick earlier; renderers blend prev → s by `alpha` so motion stays smooth at any refresh rate. */
 export interface PrevState { dist: number; px: number; py: number; slide: number }

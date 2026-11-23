@@ -33,6 +33,8 @@ export class Game {
   runLabel = '';
 
   private tutorial: Tutorial | null = null;
+  /** best distance (m) on this device, set by the app; 0 = none yet */
+  pb = 0;
   private acc = 0;
   private alpha = 1;
   private prev: PrevState = { dist: 0, px: 0, py: 0, slide: 0 };
@@ -73,7 +75,9 @@ export class Game {
     if (!this.sess) return;
     this.tutorial = null;
     this.hud.tutor(null);
-    this.run = createRun(this.sess.seed, this.sfx.beep, e => this.onSimEvent(e));
+    // dev only: `?start=3000` starts part-way down the corridor to look at a later area (the server replays from 0, so such a score is rejected)
+    const startDist = import.meta.env.DEV ? Number(new URLSearchParams(location.search).get('start')) || 0 : 0;
+    this.run = createRun(this.sess.seed, this.sfx.beep, e => this.onSimEvent(e), { startDist });
     this.inputs = [];
     this.acc = 0; this.alpha = 1;
     this.snapshot();
@@ -183,7 +187,10 @@ export class Game {
         let toast = v.toast, toastT = v.toastT;
         const t0 = this.run.tick * STEP;
         if (!toastT && t0 < 2) { toast = this.runLabel; toastT = 2 - t0; }
-        this.hud.update({ score: this.run.score(), coins: v.coins, dbl: v.dbl, got: v.got, shield: v.shield, toast, toastT, sur: v.sur });
+        this.hud.update({
+          score: this.run.score(), coins: v.coins, dbl: v.dbl, got: v.got, shield: v.shield, toast, toastT, sur: v.sur,
+          zone: { index: v.zone, n: v.zoneN }, combo: v.combo, mult: v.mult, slow: v.slow, magnet: v.magnet, lift: v.lift, hearts: v.hearts, dist: v.dist, pb: this.pb,
+        });
       }
     } else frame = { s: IDLE, prev: IDLE, alpha: 1, playing: false, flash: 0 };
     this.renderer.render(frame, now);

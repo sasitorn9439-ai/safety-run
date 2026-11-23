@@ -160,7 +160,12 @@ export class Canvas2DRenderer implements GameRenderer {
       const it = list.items[i]!;
       if (it.kind === 'player') { this.drawPlayer(f, I, now); continue; }
       ctx.globalAlpha = it.fade;
-      if (it.kind === 'coin') {
+      if (it.kind === 'power') {
+        ctx.globalAlpha = it.fade * it.halo; sprites.halo.draw(ctx, it.x, it.y, it.u * 1.9, dpr);
+        ctx.globalAlpha = it.fade * .5; sprites.shadow.draw(ctx, it.x, it.gy, it.u * .6, dpr);
+        ctx.globalAlpha = it.fade;
+        ctx.save(); ctx.translate(it.x, it.y); ctx.scale(it.sx, 1); sprites.power[it.pw].draw(ctx, 0, 0, it.u, dpr); ctx.restore();
+      } else if (it.kind === 'coin') {
         ctx.globalAlpha = it.fade * .35; sprites.shadow.draw(ctx, it.x, it.gy, it.u * .3, dpr);
         ctx.globalAlpha = it.fade;
         ctx.save(); ctx.translate(it.x, it.y); ctx.scale(it.sx, 1); sprites.coin.draw(ctx, 0, 0, it.u, dpr); ctx.restore();
@@ -171,8 +176,9 @@ export class Canvas2DRenderer implements GameRenderer {
         ctx.globalAlpha = it.fade;
         ctx.save(); ctx.translate(it.x, it.y); ctx.scale(it.sx, 1); sprites.ppe[it.p].draw(ctx, 0, 0, it.u, dpr); ctx.restore();
       } else {
-        sprites.shadow.draw(ctx, it.x, it.y, it.u * .95, dpr);
-        (it.blink ? sprites.forkliftOn : sprites.hazards[it.k]).draw(ctx, it.x, it.y, it.u, dpr);
+        if (it.k !== 'drop') sprites.shadow.draw(ctx, it.x, it.y, it.u * .95, dpr);
+        ((it.blink && sprites.on[it.k]) || sprites.hazards[it.k]).draw(ctx, it.x, it.y, it.u, dpr);
+        if (it.k === 'drop' && it.fall >= 0) sprites.crate.draw(ctx, it.x, it.y - it.fall * it.u, it.u, dpr);
       }
       ctx.globalAlpha = 1;
     }
@@ -187,6 +193,11 @@ export class Canvas2DRenderer implements GameRenderer {
     if (P.shield) {
       ctx.fillStyle = 'rgba(90,210,255,.18)'; ctx.strokeStyle = 'rgba(120,225,255,.8)'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.ellipse(P.x, P.feetY + P.bob - u * .52, u * .42 * P.shieldPulse, u * .66 * P.shieldPulse, 0, 0, 7); ctx.fill(); ctx.stroke();
+    }
+    if ((f.s.lift ?? 0) > 0 && P.groundY > P.feetY + 2) {
+      // the man-lift: its scissor stack reaches from the floor up to the mascot's feet
+      ctx.save(); ctx.translate(P.x, P.feetY); ctx.scale(1, (P.groundY - P.feetY) / (1.4 * u));
+      sprites.lift.draw(ctx, 0, 0, u, dpr); ctx.restore();
     }
     if (this.pxSprites) { this.drawPixel(f, I, now, P); ctx.globalAlpha = 1; return; }
     const sprite = P.sliding ? sprites.slide[P.frame]! : sprites.run[P.frame]!;

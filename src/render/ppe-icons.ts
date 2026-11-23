@@ -8,15 +8,15 @@ import type { Ctx } from './draw.js';
 export type PpeIconName = 'helmet' | 'glasses' | 'gloves' | 'earmuffs' | 'mask' | 'boots' | 'vest' | 'firstaid';
 export interface IconLayer { name: string; d: string; fill?: string; stroke?: string; sw?: number; cap?: 'round' }
 
-const INK = '#3b2a10';
+export const INK = '#3b2a10';
 
 /* ---- path helpers: only M L H V C Q A Z, so Path2D and SVG read them identically ---- */
 const n = (v: number) => +v.toFixed(2);
-const rr = (x: number, y: number, w: number, h: number, r: number) =>
+export const rr = (x: number, y: number, w: number, h: number, r: number) =>
   `M${n(x + r)} ${n(y)}H${n(x + w - r)}A${n(r)} ${n(r)} 0 0 1 ${n(x + w)} ${n(y + r)}V${n(y + h - r)}A${n(r)} ${n(r)} 0 0 1 ${n(x + w - r)} ${n(y + h)}H${n(x + r)}A${n(r)} ${n(r)} 0 0 1 ${n(x)} ${n(y + h - r)}V${n(y + r)}A${n(r)} ${n(r)} 0 0 1 ${n(x + r)} ${n(y)}Z`;
-const ell = (cx: number, cy: number, rx: number, ry: number) =>
+export const ell = (cx: number, cy: number, rx: number, ry: number) =>
   `M${n(cx - rx)} ${n(cy)}A${n(rx)} ${n(ry)} 0 1 0 ${n(cx + rx)} ${n(cy)}A${n(rx)} ${n(ry)} 0 1 0 ${n(cx - rx)} ${n(cy)}Z`;
-const L = (name: string, d: string, fill?: string, stroke?: string, sw?: number, cap?: 'round'): IconLayer => ({ name, d, fill, stroke, sw, cap });
+export const L = (name: string, d: string, fill?: string, stroke?: string, sw?: number, cap?: 'round'): IconLayer => ({ name, d, fill, stroke, sw, cap });
 /** a rounded rectangle mirrored across x = 50 */
 const mrr = (x: number, y: number, w: number, h: number, r: number) => rr(100 - x - w, y, w, h, r);
 
@@ -127,10 +127,13 @@ const cache = new Map<IconLayer, Path2D>();
 const pathOf = (l: IconLayer) => { let p = cache.get(l); if (!p) { p = new Path2D(l.d); cache.set(l, p); } return p; };
 
 /** Draws an icon centred on the origin, `size` px across. */
-export function drawPpeIcon(c: Ctx, name: PpeIconName, size: number) {
+export function drawPpeIcon(c: Ctx, name: PpeIconName, size: number) { drawLayers(c, PPE_ICONS[name], size); }
+
+/** Any list of icon layers (100 × 100 box), centred on the origin, `size` px across. */
+export function drawLayers(c: Ctx, layers: readonly IconLayer[], size: number) {
   const k = size / 100;
   c.save(); c.scale(k, k); c.translate(-50, -50); c.lineJoin = 'round'; c.lineCap = 'butt';
-  for (const l of PPE_ICONS[name]) {
+  for (const l of layers) {
     const p = pathOf(l);
     if (l.fill && l.fill !== 'none') { c.fillStyle = l.fill; c.fill(p); }
     if (l.stroke) { c.strokeStyle = l.stroke; c.lineWidth = l.sw ?? 2; c.lineCap = l.cap ?? 'butt'; c.stroke(p); }
@@ -139,8 +142,10 @@ export function drawPpeIcon(c: Ctx, name: PpeIconName, size: number) {
 }
 
 /** One icon as a standalone SVG document. */
-export function iconSvg(name: PpeIconName, size = 100): string {
-  const body = PPE_ICONS[name].map(l => {
+export function iconSvg(name: PpeIconName, size = 100): string { return layersSvg(PPE_ICONS[name], size); }
+
+export function layersSvg(layers: readonly IconLayer[], size = 100): string {
+  const body = layers.map(l => {
     let a = `<path id="${l.name}" d="${l.d}" fill="${l.fill ?? 'none'}"`;
     if (l.stroke) a += ` stroke="${l.stroke}" stroke-width="${l.sw ?? 2}" stroke-linejoin="round"${l.cap ? ` stroke-linecap="${l.cap}"` : ''}`;
     return a + '/>';

@@ -1,13 +1,13 @@
 import { Application, CanvasSource, Container, Mesh, MeshGeometry, Shader, Sprite, Texture, Ticker } from 'pixi.js';
 import { HAZARD_KINDS, PPE, type HazardKind, type PpeType } from '../../shared/hazards.js';
-import type { SimEvent } from '../../shared/sim.js';
+import type { PowerType, SimEvent } from '../../shared/sim.js';
 import { BACKDROP_MARGIN, FOG_HEIGHT, makeBackdrop, makeFog } from './backdrop.js';
 import { Camera, type Pt } from './camera.js';
 import { DrawList, Fx, RUN_FRAMES, SLIDE_FRAMES, envItems, interp, pose, type EnvItem } from './fx.js';
 import { FLOOR_FRAGMENT, FLOOR_VERTEX, floorShaderCompiles } from './floor-shader.js';
 import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
 import type { MascotSet } from './pixel-mascot.js';
-import { PAD, coinArt, dotArt, haloArt, hazardArt, lightArt, pillarArt, ppeArt, rasterize, runArt, shadowArt, shieldArt, slideArt, type Art } from './sprites.js';
+import { PAD, ON_KINDS, POWERS, coinArt, crateArt, dotArt, liftArt, powerArt, haloArt, hazardArt, lightArt, pillarArt, ppeArt, rasterize, runArt, shadowArt, shieldArt, slideArt, type Art } from './sprites.js';
 import type { Frame, GameRenderer } from './types.js';
 
 /** A texture plus the numbers needed to place it: anchor (normalised) and how many texture pixels one art unit is. */
@@ -53,7 +53,8 @@ function place(s: Sprite, t: Tex, x: number, y: number, u: number, alpha = 1, z 
 }
 
 interface Textures {
-  hazards: Record<HazardKind, Tex>; forkliftOn: Tex; ppe: Record<PpeType, Tex>;
+  hazards: Record<HazardKind, Tex>; on: Partial<Record<HazardKind, Tex>>; crate: Tex; ppe: Record<PpeType, Tex>;
+  power: Record<PowerType, Tex>; lift: Tex;
   shadow: Tex; halo: Tex; coin: Tex; pillar: Tex; light: Tex; shield: Tex; dot: Tex; run: Tex[]; slide: Tex[]; mascot: Record<PixelAnim, Tex[]> | null;
   backdrop: Texture; fog: Texture;
 }
@@ -95,6 +96,7 @@ export class PixiRenderer implements GameRenderer {
   private fxPool: Pool;
   private playerSprite = new Sprite();
   private shieldSprite = new Sprite();
+  private liftSprite = new Sprite();
   private playerShadow = new Sprite();
 
   static async create(canvas: HTMLCanvasElement, pixel?: MascotSet): Promise<PixiRenderer> {
@@ -140,7 +142,7 @@ export class PixiRenderer implements GameRenderer {
     this.shadowPool = new Pool(this.shadowLayer);
     this.actorPool = new Pool(this.actorLayer);
     this.fxPool = new Pool(this.fxLayer);
-    this.actorLayer.addChild(this.shieldSprite, this.playerSprite);
+    this.actorLayer.addChild(this.liftSprite, this.shieldSprite, this.playerSprite);
     this.shadowLayer.addChild(this.playerShadow);
   }
 
@@ -176,11 +178,12 @@ export class PixiRenderer implements GameRenderer {
     this.destroyTextures();
     const base = cam.lw * this.maxDpr;
     const mk = (art: Art) => makeTex(art, base * art.scale);
-    const hazards = {} as Record<HazardKind, Tex>, ppe = {} as Record<PpeType, Tex>;
+    const hazards = {} as Record<HazardKind, Tex>, ppe = {} as Record<PpeType, Tex>, power = {} as Record<PowerType, Tex>;
+    for (const t of POWERS) power[t] = mk(powerArt(t));
     for (const k of HAZARD_KINDS) hazards[k] = mk(hazardArt(k));
     for (const t of PPE) ppe[t] = mk(ppeArt(t));
     this.tx = {
-      hazards, ppe, forkliftOn: mk(hazardArt('forklift', true)),
+      hazards, ppe, power, lift: mk(liftArt), on: Object.fromEntries(ON_KINDS.map(k => [k, mk(hazardArt(k, true))])) as Partial<Record<HazardKind, Tex>>, crate: mk(crateArt),
       shadow: mk(shadowArt), halo: mk(haloArt), coin: mk(coinArt), pillar: mk(pillarArt), light: mk(lightArt), shield: mk(shieldArt), dot: mk(dotArt),
       run: Array.from({ length: RUN_FRAMES }, (_, i) => mk(runArt(i))),
       slide: Array.from({ length: SLIDE_FRAMES }, (_, i) => mk(slideArt(i))),
@@ -206,10 +209,10 @@ export class PixiRenderer implements GameRenderer {
   private destroyTextures() {
     if (!this.tx) return;
     for (const p of [this.envPool, this.shadowPool, this.actorPool, this.fxPool]) p.detach();
-    for (const s of [this.playerSprite, this.shieldSprite, this.playerShadow, this.backdrop, this.fog]) s.texture = Texture.EMPTY;
+    for (const s of [this.playerSprite, this.shieldSprite, this.liftSprite, this.playerShadow, this.backdrop, this.fog]) s.texture = Texture.EMPTY;
     const t = this.tx;
     const all: Texture[] = [
-      ...Object.values(t.hazards).map(x => x.tex), ...Object.values(t.ppe).map(x => x.tex), t.forkliftOn.tex,
+      ...Object.values(t.hazards).map(x => x.tex), ...Object.values(t.ppe).map(x => x.tex), ...Object.values(t.power).map(x => x.tex), t.lift.tex, t.crate.tex, ...Object.values(t.on).map(x => x!.tex),
       t.shadow.tex, t.halo.tex, t.coin.tex, t.pillar.tex, t.light.tex, t.shield.tex, t.dot.tex, ...t.run.map(x => x.tex), ...t.slide.map(x => x.tex), t.backdrop, t.fog,
       ...(t.mascot ? Object.values(t.mascot).flat().map(x => x.tex) : []),
     ];
@@ -252,10 +255,18 @@ export class PixiRenderer implements GameRenderer {
     const sh = this.shadowPool, ac = this.actorPool;
     sh.begin(); ac.begin();
     this.list.build(f, cam, I, now);
-    this.playerSprite.visible = this.shieldSprite.visible = this.playerShadow.visible = false;
+    this.playerSprite.visible = this.shieldSprite.visible = this.playerShadow.visible = this.liftSprite.visible = false;
     for (let i = 0; i < this.list.n; i++) {
       const it = this.list.items[i]!;
       if (it.kind === 'player') { this.placePlayer(f, I, now); continue; }
+      if (it.kind === 'power') {
+        place(sh.get(), tx.halo, it.x, it.y, it.u * 1.9, it.fade * it.halo);
+        place(sh.get(), tx.shadow, it.x, it.gy, it.u * .6, it.fade * .5);
+        const s = ac.get();
+        place(s, tx.power[it.pw], it.x, it.y, it.u, it.fade, -it.z);
+        s.scale.x *= it.sx;
+        continue;
+      }
       if (it.kind === 'coin') {
         place(sh.get(), tx.shadow, it.x, it.gy, it.u * .3, it.fade * .35);
         const s = ac.get();
@@ -272,8 +283,9 @@ export class PixiRenderer implements GameRenderer {
         s.scale.x *= it.sx;
         continue;
       }
-      place(sh.get(), tx.shadow, it.x, it.y, it.u * .95, it.fade);
-      place(ac.get(), it.blink ? tx.forkliftOn : tx.hazards[it.k], it.x, it.y, it.u, it.fade, -it.z);
+      if (it.k !== 'drop') place(sh.get(), tx.shadow, it.x, it.y, it.u * .95, it.fade);
+      place(ac.get(), (it.blink && tx.on[it.k]) || tx.hazards[it.k], it.x, it.y, it.u, it.fade, -it.z);
+      if (it.k === 'drop' && it.fall >= 0) place(ac.get(), tx.crate, it.x, it.y - it.fall * it.u, it.u, it.fade, -it.z + .01);
     }
     sh.end(); ac.end();
 
@@ -300,6 +312,13 @@ export class PixiRenderer implements GameRenderer {
     if (P.shield) {
       place(sh, tx.shield, P.x, P.feetY + P.bob - u * .52, u * P.shieldPulse, P.alpha, -0.0002);
       sh.visible = true;
+    }
+    if ((f.s.lift ?? 0) > 0 && P.groundY > P.feetY + 2) {
+      // the man-lift: its scissor stack reaches from the floor up to the mascot's feet
+      const ls = this.liftSprite;
+      place(ls, tx.lift, P.x, P.feetY, u, P.alpha, -0.0003);
+      ls.scale.y *= (P.groundY - P.feetY) / (1.4 * u);
+      ls.visible = true;
     }
     if (tx.mascot) {
       const pick = pixelFrame(f, I, this.fx, now, this.pixel!.cfg), dpr = this.dpr;

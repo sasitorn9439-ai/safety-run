@@ -4,7 +4,7 @@
  * Both renderers (WebGL and Canvas2D) read from here, so they move identically.
  */
 import type { HazardKind, PpeType } from '../../shared/hazards.js';
-import { SLIDE_SECONDS, ZMAX, type GameObject, type SimEvent } from '../../shared/sim.js';
+import { SLIDE_SECONDS, ZMAX, type GameObject, type PowerType, type SimEvent } from '../../shared/sim.js';
 import { Camera, type Pt } from './camera.js';
 import type { Frame } from './types.js';
 
@@ -43,6 +43,10 @@ export class Fx {
       for (let i = 0; i < 3; i++) this.burst(p.x, p.y - u * .55, 0xffe45c, 60 + Math.random() * 40, -.2 - Math.random() * 2.4, u * .02);
     } else if (e.type === 'pickup') {
       for (let i = 0; i < 9; i++) this.burst(p.x, p.y - u * .55, 0xffd400, 70 + Math.random() * 60, -.2 - Math.random() * 3.2, u * .028);
+    } else if (e.type === 'power') {
+      for (let i = 0; i < 18; i++) this.burst(p.x, p.y - u * .6, i % 2 ? 0xffffff : 0x3ccf7a, 110 + Math.random() * 90, -.4 - Math.random() * 3.6, u * .03);
+    } else if (e.type === 'near') {
+      for (let i = 0; i < 6; i++) this.burst(p.x, p.y - u * .5, 0xfff6a8, 90 + Math.random() * 60, -.2, u * .022);
     } else if (e.type === 'saved') {
       this.shake = Math.max(this.shake, .55);
       for (let i = 0; i < 14; i++) this.burst(p.x, p.y - u * .5, 0x7fe3ff, 120 + Math.random() * 90, 0, u * .03);
@@ -90,7 +94,7 @@ export class Fx {
 /* ---------- what to draw, far to near ---------- */
 
 export interface DrawItem {
-  kind: 'hazard' | 'ppe' | 'coin' | 'player';
+  kind: 'hazard' | 'ppe' | 'coin' | 'power' | 'player';
   z: number;
   /** art origin on screen (feet for hazards, centre for PPE) */
   x: number; y: number;
@@ -99,16 +103,20 @@ export interface DrawItem {
   fade: number;
   k: HazardKind;
   p: PpeType;
+  /** which power-up (kind 'power') */
+  pw: PowerType;
   blink: boolean;
   /** pickups: horizontal squeeze of the slow coin-like turn (0.6–1), glow strength (0–1) and the ground point under the item */
   sx: number; halo: number; gy: number;
+  /** drop: height of the falling crate above its mark in units (-1 = the mark has not locked yet) */
+  fall: number;
 }
 
 /** how much bigger a pickup is drawn at the far end of the corridor (0 = true perspective size) */
 export const PPE_FAR_BOOST = .5;
 
 /** how much bigger than true perspective each hazard is drawn: the tall ones a bit larger (so they outweigh the pickups); flat ones and the scaffold (already as tall as a jump) unchanged */
-export const HAZARD_SCALE: Record<HazardKind, number> = { forklift: 1.15, pallet: 1.15, pipe: 1, spill: 1, hose: 1 };
+export const HAZARD_SCALE: Record<HazardKind, number> = { forklift: 1.15, pallet: 1.15, pipe: 1, spill: 1, hose: 1, fumes: 1, drop: 1, sparks: 1 };
 
 export class DrawList {
   items: DrawItem[] = [];
@@ -117,7 +125,7 @@ export class DrawList {
   private pt: Pt = { x: 0, y: 0, s: 1 };
 
   private next(): DrawItem {
-    if (this.n === this.items.length) this.items.push({ kind: 'hazard', z: 0, x: 0, y: 0, u: 0, fade: 1, k: 'spill', p: 'helmet', blink: false, sx: 1, halo: 0, gy: 0 });
+    if (this.n === this.items.length) this.items.push({ kind: 'hazard', z: 0, x: 0, y: 0, u: 0, fade: 1, k: 'spill', p: 'helmet', pw: 'toolbox', blink: false, sx: 1, halo: 0, gy: 0, fall: -1 });
     return this.items[this.n++]!;
   }
 
@@ -136,12 +144,18 @@ export class DrawList {
       const p = cam.project(o.l, z, 0, this.pt), u = cam.lw * p.s;
       const it = this.next();
       it.z = z; it.fade = clamp((ZMAX - z) / 22, 0, 1); // fade in from the haze instead of popping in
-      it.sx = 1; it.halo = 0; it.gy = p.y;
+      it.sx = 1; it.halo = 0; it.gy = p.y; it.fall = -1;
       if (o.k === 'coin') {
         // coins stay a little larger than true perspective too, and spin all the way round, each a little behind the last (a ripple down the trail)
         const boost = 1 + PPE_FAR_BOOST * .5 * (1 - p.s);
         it.kind = 'coin'; it.x = p.x; it.y = p.y - (.55 + Math.sin((I.dist + o.z) * .8 + now * .005) * .05) * u * .9; it.u = u * boost; it.blink = false;
         it.sx = .12 + .88 * Math.abs(Math.cos(now * .006 + (I.dist + o.z) * .9));
+      } else if (o.k === 'power') {
+        // power-ups are bigger than PPE and glow harder: they are the thing worth swerving for
+        const phase = (I.dist + o.z) * .8 + now * .005, boost = 1 + PPE_FAR_BOOST * (1 - p.s);
+        it.kind = 'power'; it.pw = o.t; it.x = p.x; it.y = p.y - (.7 + Math.sin(phase) * .1) * u * .9; it.u = u * boost * (1 + Math.sin(phase * 1.3) * .06); it.blink = false;
+        it.sx = .85 + .15 * Math.cos(now * .004 + (I.dist + o.z) * .8);
+        it.halo = .75 + .2 * Math.sin(phase * 1.3);
       } else if (o.k === 'ppe') {
         const phase = (I.dist + o.z) * .8 + now * .005;
         const bob = Math.sin(phase) * .08, pulse = 1 + Math.sin(phase * 1.3) * .05;
@@ -153,6 +167,11 @@ export class DrawList {
       } else {
         it.kind = 'hazard'; it.k = o.k; it.x = p.x; it.y = p.y; it.u = u * HAZARD_SCALE[o.k];
         it.blink = o.k === 'forklift' && ((I.dist * 3) | 0) % 2 === 1;
+        if (o.k === 'sparks') it.blink = !!o.on && ((now * .03) | 0) % 3 !== 0;                       // a live arc flickers
+        else if (o.k === 'drop') {
+          it.blink = !!o.locked && ((now * .012) | 0) % 2 === 0;                                      // a locked mark blinks
+          if (o.locked) it.fall = Math.pow(1 - clamp(1 - z / (o.fz || 1), 0, 1), 2) * 2.6;          // the crate comes down, landing as it reaches you
+        }
       }
     }
     if (!player) addPlayer();

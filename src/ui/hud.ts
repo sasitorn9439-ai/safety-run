@@ -1,18 +1,34 @@
 import { PPE, type PpeType } from '../../shared/hazards.js';
-import type { Surprise } from '../../shared/sim.js';
+import type { PowerType, Surprise } from '../../shared/sim.js';
+import { ZONES } from '../../shared/zones.js';
 import { $ } from '../lib/dom.js';
 import { avatarURL } from '../lib/avatar.js';
 import { drawCoin, drawOfficer, ppeIcon } from '../render/draw.js';
+import { drawPowerIcon } from '../render/power-icons.js';
 import { STEPS, type Tutorial } from '../game/tutorial.js';
 
 export interface HudData {
   score: number; coins: number; dbl: number; got: ReadonlySet<PpeType>; shield: number; toast: string; toastT: number; sur: Surprise | null;
+  /** the rest only exists in a real run (the tutorial leaves it out) */
+  zone?: { index: number; n: number };
+  combo?: number; mult?: number;
+  slow?: number; magnet?: number; lift?: number; hearts?: number;
+  dist?: number; pb?: number;
 }
 
 function ppeIconURL(t: PpeType) {
   const cv = document.createElement('canvas');
   cv.width = cv.height = 72;
   ppeIcon(cv.getContext('2d')!, t, 36, 36, 30);
+  return cv.toDataURL();
+}
+
+function powerIconURL(t: PowerType) {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 72;
+  const c = cv.getContext('2d')!;
+  c.translate(36, 36);
+  drawPowerIcon(c, t, 66);
   return cv.toDataURL();
 }
 
@@ -39,18 +55,21 @@ function officerURLs() {
 }
 
 const TUT_HEAD = { move: 'ฝึกหลบอันตราย', ppe: 'ฝึกเก็บ PPE', shield: 'ฝึกใช้เกราะ' } as const;
-const BANNER_COLOR = { rain: '#5ad1ff', star: '#ffd400', double: '#ff7a1a' } as const;
+const BANNER_COLOR = { rain: '#5ad1ff', star: '#ffd400', double: '#ff7a1a', toolbox: '#3ccf7a' } as const;
 
 /** In-game overlay built from DOM elements: crisp Thai text, CSS animation, and no per-frame text drawing on the canvas. */
 export class Hud {
   private el = {
     hud: $('hud'), av: $<HTMLImageElement>('hudAv'), score: $('hudScore'), coins: $('hudCoins'), coinBox: $('hudCoinsBox'), coinImg: $<HTMLImageElement>('hudCoinImg'), x2: $('hudX2'), ppe: $('hudPpe'),
+    pb: $('hudPb'), pbText: $('hudPbText'), pbBar: $('hudPbBar'), chips: $('hudChips'), zone: $('zoneBanner'), zoneNo: $('zoneNo'), zoneTh: $('zoneTh'), zoneTip: $('zoneTip'), tint: $('zoneTint'),
     shield: $('hudShield'), shieldBar: $('hudShieldBar'), toast: $('toast'), banner: $('banner'), bnMsg: $('bnMsg'), bnSub: $('bnSub'),
     officer: $('officer'), ofA: $<HTMLImageElement>('ofA'), ofB: $<HTMLImageElement>('ofB'), ofMsg: $('ofMsg'),
     count: $('count'), tut: $('tut'), tutHead: $('tutHead'), tutTh: $('tutTh'), tutEn: $('tutEn'), tutOk: $('tutOk'), tutArrow: $('tutArrow'),
   };
   private slots = new Map<PpeType, HTMLElement>();
-  private last = { score: -1, coins: -1, dbl: -1, shield: -1, toast: '', toastOp: -1, ppe: '', sur: null as Surprise | null, closing: false, count: 0, tutKey: '', arrow: '', ok: -1 };
+  private chips = new Map<string, { el: HTMLElement; b: HTMLElement; text: string }>();
+  private zoneTimer = 0;
+  private last = { score: -1, coins: -1, dbl: -1, shield: -1, toast: '', toastOp: -1, ppe: '', sur: null as Surprise | null, closing: false, zoneN: 0, pb: '', count: 0, tutKey: '', arrow: '', ok: -1 };
 
   constructor() {
     for (const t of PPE) {
@@ -59,7 +78,30 @@ export class Hud {
       this.el.ppe.appendChild(s);
       this.slots.set(t, s);
     }
+    this.addChip('mult', '#ffd400', null, 'NEAR');
+    this.addChip('lift', '#ffd400', 'lift', '');
+    this.addChip('estop', '#ff5a4a', 'estop', '');
+    this.addChip('broom', '#3ccf7a', 'broom', '');
+    this.addChip('hearts', '#ff6b81', 'firstaid', '');
     this.refreshArt();
+  }
+
+  private addChip(key: string, color: string, icon: PowerType | null, label: string) {
+    const el = document.createElement('span');
+    el.className = 'chip'; el.style.setProperty('--c', color); el.style.display = 'none';
+    el.innerHTML = `${icon ? `<img src="${powerIconURL(icon)}" alt="" width="26" height="26">` : ''}<b></b>${label ? `<small>${label}</small>` : ''}`;
+    this.el.chips.appendChild(el);
+    this.chips.set(key, { el, b: el.querySelector('b')!, text: '' });
+  }
+
+  private setChip(key: string, text: string, on: boolean, color?: string) {
+    const c = this.chips.get(key)!;
+    if (!on) { if (c.text !== '') { c.text = ''; c.el.style.display = 'none'; } return; }
+    if (c.text === text) return;
+    const first = c.text === '';
+    c.text = text; c.b.textContent = text; c.el.style.display = '';
+    if (color) c.el.style.setProperty('--c', color);
+    if (!first) { c.el.classList.remove('pop'); void c.el.offsetWidth; c.el.classList.add('pop'); }
   }
 
   /** Redraw the images that contain text, e.g. once the web font has loaded. */
@@ -85,6 +127,39 @@ export class Hud {
     this.el.officer.classList.remove('on');
     this.count(0);
     this.tutor(null);
+    l.zoneN = 0; l.pb = '';
+    clearTimeout(this.zoneTimer); this.el.zone.classList.remove('on');
+    this.el.tint.style.background = 'transparent'; this.el.tint.classList.remove('pulse');
+    this.el.pb.classList.remove('on', 'beat');
+    for (const k of this.chips.keys()) this.setChip(k, '', false);
+  }
+
+  /** The area banner and the coloured light of the area; shown when the run enters a new one. */
+  private zone(z: { index: number; n: number } | undefined) {
+    const l = this.last, e = this.el;
+    if (!z) { if (l.zoneN) { l.zoneN = 0; e.tint.style.background = 'transparent'; e.tint.classList.remove('pulse'); e.zone.classList.remove('on'); } return; }
+    if (z.n === l.zoneN) return;
+    l.zoneN = z.n;
+    const info = ZONES[z.index]!;
+    e.tint.style.background = info.tint;
+    e.tint.classList.toggle('pulse', info.id === 'evac');
+    e.zone.style.setProperty('--c', info.accent);
+    e.zoneNo.textContent = `ZONE ${z.n} · ${info.en}`; e.zoneTh.textContent = info.th; e.zoneTip.textContent = info.tip;
+    e.zone.classList.add('on');
+    clearTimeout(this.zoneTimer);
+    this.zoneTimer = window.setTimeout(() => e.zone.classList.remove('on'), 4200);
+  }
+
+  /** Your best distance on this device, with a bar of how far along you are. */
+  private personalBest(dist: number | undefined, pb: number | undefined) {
+    const l = this.last, e = this.el;
+    if (!pb || dist == null) { if (l.pb) { l.pb = ''; e.pb.classList.remove('on', 'beat'); } return; }
+    const beat = dist > pb, key = beat ? 'beat' : String(pb);
+    if (key !== l.pb) {
+      l.pb = key; e.pb.classList.add('on'); e.pb.classList.toggle('beat', beat);
+      e.pbText.textContent = beat ? 'ทำลายสถิติแล้ว!' : `สถิติ ${pb.toLocaleString('en-US')} ม.`;
+    }
+    e.pbBar.style.transform = `scaleX(${beat ? 1 : Math.min(1, Math.max(0, dist / pb)).toFixed(3)})`;
   }
 
   update(d: HudData) {
@@ -94,6 +169,14 @@ export class Hud {
       if (l.coins >= 0 && d.coins > l.coins) { e.coinBox.classList.remove('pop'); void e.coinBox.offsetWidth; e.coinBox.classList.add('pop'); }
       l.coins = d.coins; e.coins.textContent = String(d.coins);
     }
+    this.zone(d.zone);
+    this.personalBest(d.dist, d.pb);
+    const mult = d.mult ?? 1;
+    this.setChip('mult', `x${mult}`, (d.combo ?? 0) > 0, mult >= 4 ? '#ff5a4a' : mult >= 3 ? '#ff7a1a' : '#ffd400');
+    this.setChip('lift', `${Math.ceil(d.lift ?? 0)}s`, (d.lift ?? 0) > 0);
+    this.setChip('estop', `${Math.ceil(d.slow ?? 0)}s`, (d.slow ?? 0) > 0);
+    this.setChip('broom', `${Math.ceil(d.magnet ?? 0)}s`, (d.magnet ?? 0) > 0);
+    this.setChip('hearts', 'x1', (d.hearts ?? 0) > 0);
     const dbl = d.dbl > 0 ? Math.ceil(d.dbl) : 0;
     if (dbl !== l.dbl) { l.dbl = dbl; e.x2.textContent = dbl ? `x2 ${dbl}s` : ''; }
     const key = PPE.filter(t => d.got.has(t)).join();

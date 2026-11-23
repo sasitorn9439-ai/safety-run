@@ -183,3 +183,22 @@ describe('pickups vs hazards: obstacles must outweigh the things you collect', (
     for (const k of ['spill', 'hose'] as const) expect(-HAZARD_BOX[k][1]).toBeGreaterThanOrEqual(.45);
   });
 });
+
+describe('power-ups', () => {
+  const item = (z: number, now = 0) => {
+    const f = frame(scene({ objs: [{ k: 'power', t: 'lift', l: 0, z }] })), dl = new DrawList(); dl.build(f, cam(), interp(f), now);
+    return dl.items.slice(0, dl.n).find(i => i.kind === 'power')!;
+  };
+  it('are drawn as their own kind, with the power-up type, a strong glow and the floor point below', () => {
+    const i = item(10);
+    expect(i.pw).toBe('lift'); expect(i.halo).toBeGreaterThan(.5); expect(i.gy).toBeGreaterThan(i.y);
+  });
+  it('are bigger than a PPE item at the same distance', () => {
+    const f = frame(scene({ objs: [{ k: 'power', t: 'estop', l: -1, z: 10 }, { k: 'ppe', p: 'helmet', l: 1, z: 10 }] })), dl = new DrawList(); dl.build(f, cam(), interp(f), 0);
+    const items = dl.items.slice(0, dl.n), pw = items.find(i => i.kind === 'power')!, pp = items.find(i => i.kind === 'ppe')!;
+    expect(pw.u * .8).toBeGreaterThan(pp.u * .58);                 // art sizes in units: power .8, PPE .58
+  });
+  it('turn slowly and never edge-on', () => {
+    for (let now = 0; now < 4000; now += 97) { const s = item(10, now).sx; expect(s).toBeGreaterThanOrEqual(.69); expect(s).toBeLessThanOrEqual(1.01); }
+  });
+});

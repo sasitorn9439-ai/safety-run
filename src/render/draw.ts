@@ -3,7 +3,9 @@
  * so the sprite builder can rasterise it once per size. Nothing here runs per frame.
  */
 import type { HazardKind, PpeType } from '../../shared/hazards.js';
+import type { PowerType } from '../../shared/sim.js';
 import { PPE_ICON_OF, drawPpeIcon } from './ppe-icons.js';
+import { drawPowerIcon } from './power-icons.js';
 
 export type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
@@ -26,6 +28,25 @@ export function ppeIcon(c: Ctx, t: PpeType, x: number, y: number, r: number) {
 /** PPE pickup: just the flat vector item itself, floating (no frame). Centred on the origin; `u` = the sprite unit. */
 export function drawPpeBadge(c: Ctx, t: PpeType, u: number) {
   drawPpeIcon(c, PPE_ICON_OF[t], u * .58);
+}
+
+/** Power-up pickup: the flat vector icon, a little bigger than a PPE item. Centred on the origin. */
+export function drawPowerBadge(c: Ctx, t: PowerType, u: number) { drawPowerIcon(c, t, u * .8); }
+
+/** The man-lift under the mascot: a platform at the origin and a scissor stack going down 1.4 u (the renderer stretches it to the ground). */
+export function drawLiftPlatform(c: Ctx, u: number) {
+  const g = '#8c949e';
+  c.lineJoin = 'round'; c.lineCap = 'round';
+  for (const [y0, y1] of [[.08, .5], [.5, .92], [.92, 1.34]] as const) {
+    c.beginPath(); c.moveTo(-.3 * u, y0 * u); c.lineTo(.3 * u, y1 * u); c.moveTo(.3 * u, y0 * u); c.lineTo(-.3 * u, y1 * u);
+    c.strokeStyle = INK; c.lineWidth = u * .1; c.stroke();
+    c.strokeStyle = g; c.lineWidth = u * .055; c.stroke();
+  }
+  rr(c, -.4 * u, 1.34 * u, .8 * u, .06 * u, u * .02, '#3a3a3a');
+  rr(c, -.44 * u, -.03 * u, .88 * u, .1 * u, u * .03, INK);
+  rr(c, -.42 * u, -.02 * u, .84 * u, .08 * u, u * .025, '#ffd400');
+  c.fillStyle = '#2b2b2b';
+  for (let i = -3; i < 3; i++) { c.beginPath(); c.moveTo((i * .14 + .02) * u, -.02 * u); c.lineTo((i * .14 + .08) * u, -.02 * u); c.lineTo((i * .14 + .05) * u, .06 * u); c.lineTo((i * .14 - .01) * u, .06 * u); c.fill(); }
 }
 
 /** A coin: flat gold disc, dark outline, a darker inner ring and a shine. Centred on the origin, diameter about .42 u. */
@@ -123,6 +144,47 @@ export function drawHazard(c: Ctx, k: HazardKind, u: number, blink = false) {
     rr(c, x - u * .24, yy(1.0), u * .48, u * .13, u * .03, '#fff');
     c.fillStyle = '#c62828'; c.font = `600 ${u * .09}px Kanit`; c.textAlign = 'center'; c.fillText('ระวังศีรษะ', x, yy(1.0) + u * .105);
   }
+  if (k === 'fumes') {
+    // a toxic cloud: lumpy green puffs, lighter on top, with a hazard diamond inside
+    const puff = (cx: number, cy: number, r: number, col: string) => { c.fillStyle = col; c.beginPath(); c.arc(x + cx * u, g - cy * u, r * u, 0, 7); c.fill(); };
+    puff(-.3, .27, .25, '#7fb02a'); puff(.3, .25, .26, '#7fb02a'); puff(0, .2, .3, '#7fb02a');
+    puff(-.22, .56, .27, '#a3d33c'); puff(.24, .58, .29, '#a3d33c'); puff(0, .43, .3, '#a3d33c');
+    puff(-.05, .83, .25, '#c4ea5e'); puff(.2, .8, .17, '#c4ea5e'); puff(-.26, .79, .15, '#c4ea5e');
+    puff(-.12, .9, .08, 'rgba(255,255,255,.45)');
+    c.save(); c.translate(x, g - u * .46); c.rotate(Math.PI / 4);
+    rr(c, -.12 * u, -.12 * u, .24 * u, .24 * u, u * .03, '#ffd400'); c.restore();
+    c.fillStyle = '#352900'; c.font = `800 ${u * .17}px Kanit`; c.textAlign = 'center'; c.fillText('!', x, g - u * .4);
+  }
+  if (k === 'drop') {
+    // the mark on the floor: it follows you, then (blink = locked) it goes solid red
+    const cy = g - u * .02;
+    c.fillStyle = blink ? 'rgba(232,50,58,.55)' : 'rgba(232,50,58,.2)'; c.beginPath(); c.ellipse(x, cy, u * .44, u * .14, 0, 0, 7); c.fill();
+    c.strokeStyle = '#e8323a'; c.lineWidth = u * .05;
+    c.beginPath(); c.ellipse(x, cy, u * .44, u * .14, 0, 0, 7); c.stroke();
+    c.beginPath(); c.ellipse(x, cy, u * .24, u * .075, 0, 0, 7); c.stroke();
+    c.beginPath(); c.moveTo(x - u * .56, cy); c.lineTo(x - u * .3, cy); c.moveTo(x + u * .3, cy); c.lineTo(x + u * .56, cy);
+    c.moveTo(x, cy - u * .17); c.lineTo(x, cy - u * .06); c.moveTo(x, cy + u * .06); c.lineTo(x, cy + u * .15); c.stroke();
+    if (blink) { c.fillStyle = '#fff'; c.font = `800 ${u * .16}px Kanit`; c.textAlign = 'center'; c.fillText('!', x, cy + u * .055); }
+  }
+  if (k === 'sparks') {
+    // two posts with a cable between them; blink = the arc is live
+    const post = (px: number) => { rr(c, px - u * .06, g - u * .4, u * .12, u * .4, u * .02, '#4a525c'); rr(c, px - u * .09, g - u * .43, u * .18, u * .06, u * .02, '#2b3138'); };
+    c.strokeStyle = '#2b3138'; c.lineWidth = u * .05; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(x - u * .5, g - u * .03); c.lineTo(x - u * .38, g - u * .03); c.moveTo(x + u * .38, g - u * .03); c.lineTo(x + u * .5, g - u * .03); c.stroke();
+    post(x - u * .38); post(x + u * .38);
+    rr(c, x - u * .45, g - u * .07, u * .9, u * .07, u * .02, '#ffd400');
+    c.fillStyle = '#151515'; for (let i = -4; i < 4; i++) { c.beginPath(); c.moveTo(x + i * u * .11, g); c.lineTo(x + i * u * .11 + u * .055, g); c.lineTo(x + i * u * .11 + u * .09, g - u * .07); c.lineTo(x + i * u * .11 + u * .035, g - u * .07); c.fill(); }
+    if (blink) {
+      const gl = c.createRadialGradient(x, g - u * .36, 0, x, g - u * .36, u * .55);
+      gl.addColorStop(0, 'rgba(160,235,255,.55)'); gl.addColorStop(1, 'rgba(160,235,255,0)');
+      c.fillStyle = gl; c.beginPath(); c.arc(x, g - u * .36, u * .55, 0, 7); c.fill();
+      const arc = () => { c.beginPath(); c.moveTo(x - u * .38, g - u * .4); c.lineTo(x - u * .2, g - u * .52); c.lineTo(x - u * .08, g - u * .3); c.lineTo(x + u * .08, g - u * .55); c.lineTo(x + u * .2, g - u * .32); c.lineTo(x + u * .38, g - u * .4); };
+      c.lineJoin = 'round'; c.strokeStyle = '#33c4ff'; c.lineWidth = u * .09; arc(); c.stroke();
+      c.strokeStyle = '#ffffff'; c.lineWidth = u * .035; arc(); c.stroke();
+    } else {
+      c.fillStyle = '#33c4ff'; for (const s of [-.38, .38]) { c.beginPath(); c.arc(x + s * u, g - u * .44, u * .025, 0, 7); c.fill(); }
+    }
+  }
   if (k === 'pallet') {
     rr(c, x - u * .42, g - u * .12, u * .84, u * .12, 2, '#7a5230');
     c.fillStyle = '#3d2a18'; for (const s of [-.25, .15]) c.fillRect(x + s * u, g - u * .08, u * .12, u * .08);
@@ -146,7 +208,21 @@ export function drawHazard(c: Ctx, k: HazardKind, u: number, blink = false) {
 }
 
 /** Sprite bounding boxes in units of u: [x0, y0, x1, y1] (y is negative upward). */
+/** The crate that falls onto a locked mark. Feet at the origin. */
+export function drawCrate(c: Ctx, u: number) {
+  c.strokeStyle = '#2b3138'; c.lineWidth = u * .03;
+  c.beginPath(); c.moveTo(-.16 * u, -.74 * u); c.lineTo(0, -1.12 * u); c.lineTo(.16 * u, -.74 * u); c.stroke();      // the sling above it
+  rr(c, -.4 * u, -.74 * u, .8 * u, .74 * u, u * .04, '#9a6e3e');
+  c.fillStyle = '#c8955a'; for (const y of [.06, .26, .46]) c.fillRect(-.36 * u, -(y + .17) * u, .72 * u, .17 * u);
+  c.fillStyle = '#ffd400'; c.fillRect(-.4 * u, -.5 * u, .8 * u, .1 * u);
+  c.fillStyle = '#151515'; for (let i = -3; i < 4; i++) { c.beginPath(); c.moveTo((i * .12 - .05) * u, -.4 * u); c.lineTo((i * .12 + .01) * u, -.4 * u); c.lineTo((i * .12 + .06) * u, -.5 * u); c.lineTo((i * .12) * u, -.5 * u); c.fill(); }
+  c.fillStyle = '#e8323a'; c.font = `800 ${u * .2}px Kanit`; c.textAlign = 'center'; c.fillText('!', 0, -.2 * u);
+}
+
 export const HAZARD_BOX: Record<HazardKind, [number, number, number, number]> = {
+  fumes: [-.62, -1.14, .62, .06],
+  drop: [-.6, -.2, .6, .14],
+  sparks: [-.62, -.78, .62, .06],
   spill: [-.62, -.54, .62, .24],
   hose: [-.56, -.5, .56, .2],
   pipe: [-.58, -2.02, .58, .06],

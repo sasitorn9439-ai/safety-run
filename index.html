@@ -13,6 +13,7 @@
 <body>
 <div class="shell" id="shell">
 <canvas id="c"></canvas>
+<div class="zone-tint" id="zoneTint" aria-hidden="true"></div>
 <div class="hud" id="hud">
 <div class="hud-bar">
 <img id="hudAv" class="av hud-av" alt="" width="40" height="40">
@@ -20,7 +21,9 @@
 <span class="hud-x2" id="hudX2"></span>
 <div class="hud-ppe" id="hudPpe"></div>
 </div>
-<div class="hud-coins" id="hudCoinsBox"><img id="hudCoinImg" alt="" width="22" height="22"><b id="hudCoins">0</b></div>
+<div class="hud-row"><div class="hud-coins" id="hudCoinsBox"><img id="hudCoinImg" alt="" width="22" height="22"><b id="hudCoins">0</b></div><div class="hud-pb" id="hudPb"><span id="hudPbText"></span><i><u id="hudPbBar"></u></i></div></div>
+<div class="hud-chips" id="hudChips"></div>
+<div class="zone" id="zoneBanner"><small id="zoneNo"></small><strong id="zoneTh"></strong><span id="zoneTip"></span></div>
 <div class="hud-shield" id="hudShield"><i id="hudShieldBar"></i></div>
 <div class="toast" id="toast"></div>
 <div class="banner" id="banner"><b id="bnMsg"></b><span id="bnSub"></span></div>
@@ -67,6 +70,9 @@
 <li><b>!</b><span>ทุก 1,500 เมตร มีเซอร์ไพรส์ เช่น Safety Officer โผล่มาทัก ฝนเหรียญ หรือคะแนน x2<br><span class="en">Surprise every 1,500 m</span></span></li>
 <li><b>●</b><span>เก็บเหรียญเพิ่มคะแนน แถวเหรียญจะมี PPE แทรกอยู่ทีละชิ้น<br><span class="en">Grab coins; PPE items turn up one at a time among them</span></span></li>
 <li><b>PPE</b><span>เก็บครบ 5 ชนิด ได้โล่ Full PPE กันชน 1 ครั้ง<br><span class="en">Collect all 5 PPE for a shield</span></span></li>
+<li><b>x3</b><span>หลบเฉียดฉิว (เปลี่ยนเลน กระโดด หรือสไลด์ในจังหวะสุดท้าย) ต่อคอมโบ Near Miss คะแนนเหรียญและ PPE คูณสูงสุด x4<br><span class="en">Late dodges build a Near Miss combo: up to x4 on coins and PPE</span></span></li>
+<li><b>★</b><span>ไอเทม Safety ในแถวเหรียญ: E-Stop ทำให้เกมช้าลง · ไม้กวาด 5ส ดูดเหรียญ · รถกระเช้าลอยข้ามอันตราย · ชุดปฐมพยาบาลกันชนเพิ่ม 1 ครั้ง · กล่อง Toolbox Talk ได้ของรางวัลพร้อมเกร็ดความรู้<br><span class="en">Power-ups: E-Stop, 5S broom, man-lift, first-aid kit, Toolbox Talk box</span></span></li>
+<li><b>Z</b><span>วิ่งผ่านหลายพื้นที่ของโรงงาน แต่ละที่มีอันตรายและเรื่อง Safety ต่างกัน เช่น ไอสารเคมีที่ลอยข้ามเลน ของที่ตกใส่เลนที่คุณยืนอยู่ (ออกจากเลนเมื่อเครื่องหมายแดงนิ่ง) และประกายไฟที่ติดดับเป็นจังหวะ<br><span class="en">Moving hazards: drifting fumes, a load that locks onto your lane, a switching electrical arc</span></span></li>
 </ul>
 <p class="small">กดเริ่มแล้วนับเป็น 1 ครั้งทันที ห้ามปิดหน้าจอระหว่างเล่น · กดปุ่ม ‖ เพื่อหยุดชั่วคราว · คอมพิวเตอร์ใช้ปุ่มลูกศร หยุดด้วย P หรือ Esc</p>
 <button class="btn" id="howClose" type="button">เข้าใจแล้ว · Got it</button>
@@ -79,6 +85,7 @@
 <div class="en" id="hTitleEn"></div>
 <div class="lesson"><p id="hTip"></p><p class="en" id="hTipEn"></p></div>
 <div class="stats"><div><strong id="sScore">0</strong><span>คะแนน · Score</span></div><div><strong id="sDist">0</strong><span>ระยะทาง (ม.) · Distance</span></div></div>
+<p class="gap" id="overGap"></p>
 <button class="btn" id="chanceBtn">ตอบคำถามความปลอดภัย เพื่อวิ่งต่อ</button>
 <button class="btn alt" id="endBtn">จบเกม ส่งคะแนน · Submit score</button>
 </div></div>

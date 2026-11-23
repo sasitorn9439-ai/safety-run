@@ -45,9 +45,28 @@ open during a deploy would be rejected. `tests/golden.json` holds bot-played run
 ~14 after 5, the top speed of 34 only about 10 minutes in (`speedAt` in `shared/sim.ts`). The idea: players bank score early, so when they
 crash later they'd rather answer the quiz to keep running than give the run up.
 
+**Areas (zones).** The run is one long corridor split by distance into areas of the plant (`shared/zones.ts`): warehouse entrance (0–800 m),
+then forklift lane, chemical area, work at height, electrical room and evacuation drill, 1 000 m each, repeating. Each has a Safety point on a banner
+as you enter, a coloured light over the screen, its own mix of hazards and a lean towards the PPE it asks for. Hazards come as *patterns* that are
+solvable by construction: single, double (one lane free), slalom (three rows, the free lane walks left-centre-right), low wall (jump), high wall of
+scaffolding (slide), and jump-then-slide. Each area also has a hazard of its own that moves:
+**fumes** (chemical area) drift sideways across the lanes; a **falling load** (work at height) follows the lane you are in, then locks and
+falls, so you have to leave the lane once the mark goes solid; **sparks** (electrical room) are an arc that is live for 0.8 s and dead for 0.8 s:
+jump it, or time your run through it. The evacuation drill mixes all of them. Rows are never closer than 0.9 s of running (0.6 s between patterns), so the late game stays fair.
+
 **What's on the track:** hazards, trails of coins (+1 each, counted in the HUD) down the free lane, and PPE items (+4) that turn up
 one at a time inside a trail, always one of the kinds you don't have yet. Collect all five for the shield. The Coin Rain surprise fills
 all three lanes with coins and a few PPE items.
+
+**Near Miss combo.** A late dodge (changing lane, jumping or sliding at the last moment) is reported as a near miss: +2, and every three in a row
+raises a multiplier on coins, PPE and near misses (x2, x3, x4). The combo runs out after 6 s without one and breaks when something saves you.
+
+**Power-ups** (in the coin trails, never closer than 450 m, each from its own random stream): 🚨 E-Stop slows the world to 60 % for 5 s ·
+🧹 5S broom pulls coins in for 8 s · 🏗️ man-lift carries you over everything for 5 s along a zig-zag of coins · 🩹 first-aid kit absorbs one hit ·
+📦 Toolbox Talk box gives a random reward (coins, shield, x2, broom, E-Stop) and a Safety tip.
+
+**Personal best and the next place.** The HUD shows your best distance on this device with a bar; the crash screen says how many points
+are missing to the next rank on the leaderboard.
 
 **Scoring:** 1 point per 2 m (`METRES_PER_POINT`), coin +1, PPE +4, Safety Officer praise +60. Calibrated so that a good run of about
 20 minutes lands around 20 000 points (distance alone is ~15 000 at that point; coins and PPE make up the rest); a 5-minute run is around
