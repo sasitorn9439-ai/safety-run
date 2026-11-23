@@ -147,7 +147,6 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 <div class="ov" id="boardOv"><div class="card scroll">
 <div class="tape"></div>
 <h2>อันดับ · Leaderboard</h2>
-<p class="sub">อันดับ 1 รับ HUAWEI Band 11 Series (Polym Black) · อันดับ 2–3 รับ BEZ ร่มพับอัตโนมัติ</p>
 <p class="sub" id="boardTotal"></p>
 <ol class="board" id="boardList"></ol>
 <button class="btn alt" id="boardBack">กลับ · Back</button>
@@ -509,7 +508,7 @@ $('skipTut').onclick=e=>{e.stopPropagation();if(state==='tutor')startReal()};
 $('skipTut').addEventListener('pointerdown',e=>e.stopPropagation());
 const ERR={bad_id:'รหัสพนักงานไม่ถูกต้อง (ตัวอักษร/ตัวเลข 3–15 ตัว) · Invalid employee ID',no_name:'กรุณากรอกชื่อ · Please enter your name',busy:'มีการเริ่มเล่นรหัสนี้พร้อมกันจากอีกเครื่อง ลองใหม่ · Try again',server:'ระบบขัดข้อง ลองใหม่อีกครั้ง · Server error, try again'};
 {const lp=LS.get('srPlayer');if(lp)$('empId').value=lp.id||''}
-function boardRow(e,i){return `<li${e.me?' style="outline:2px solid #ffd400"':''}><span class="n">${i<3?`<span class="medal m${i+1}">${i+1}</span>`:i+1}</span>${avImg(e.avatar,36)}<span class="who">${esc(avName(e.avatar))}${e.me?' (คุณ)':''}${i<3?`<span class="pz">${PRIZE[i]}</span>`:''}</span><span class="sc">${e.score}</span></li>`}
+function boardRow(e,i){return `<li${e.me?' style="outline:2px solid #ffd400"':''}><span class="n">${i<3?`<span class="medal m${i+1}">${i+1}</span>`:i+1}</span>${avImg(e.avatar,36)}<span class="who">${esc(avName(e.avatar))}${e.me?' (คุณ)':''}</span><span class="sc">${e.score}</span></li>`}
 async function startRun(id,m,btn,label){
  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume&&ac.resume()}catch(e){}
  btn.disabled=true;btn.textContent='กำลังตรวจสอบสิทธิ์…';m.textContent='';
@@ -540,7 +539,7 @@ async function submit(){
    $('doneHead').textContent=`ส่งคะแนนแล้ว · รอบที่ ${r.used}`;$('doneScore').textContent=`รอบนี้ ${r.score} คะแนน`;
    $('doneRank').textContent=`${avName(p.avatar)} · คะแนนดีที่สุด ${r.best}`;
    ag.textContent='เล่นอีกครั้ง · Play again';ag.style.display='block';ag.onclick=()=>startRun(p.id,$('doneMsg'),ag,ag.textContent);
-   const b=await loadBoard('doneBoard',p.id);if(b.rank){$('doneRank').textContent=`${avName(p.avatar)} · คะแนนดีที่สุด ${r.best} · อันดับที่ ${b.rank} จาก ${b.total} คน`;if(b.rank<=3)$('doneMsg').innerHTML=`<div class="win">ตอนนี้อยู่อันดับ ${b.rank} ลุ้นรับ <b>${PRIZE[b.rank-1]}</b> · รักษาอันดับไว้จนจบงาน!</div>`}}
+   const b=await loadBoard('doneBoard',p.id);if(b.rank){$('doneRank').textContent=`${avName(p.avatar)} · คะแนนดีที่สุด ${r.best} · อันดับที่ ${b.rank} จาก ${b.total} คน`;if(b.rank<=3)$('doneMsg').innerHTML=`<div class="win">ตอนนี้คุณอยู่อันดับ ${b.rank} รักษาอันดับไว้จนประกาศผล</div>`}}
   else if(r.status>=400&&r.status<500){LS.set('srPending',null);sess=null;$('doneHead').textContent='รอบนี้ส่งคะแนนไม่ได้';$('doneMsg').textContent='ข้อมูลรอบเก่าไม่ตรงกับระบบใหม่ กดเริ่มใหม่ได้เลย · Old run data cleared';
    ag.textContent='กลับหน้าเริ่ม · Back to start';ag.style.display='block';ag.onclick=()=>show('menu')}
   else throw 0}
