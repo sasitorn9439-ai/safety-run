@@ -10,6 +10,10 @@ h1{margin:0 0 4px;font-size:28px;color:#ffd400}
 input{min-height:44px;padding:8px 12px;border-radius:10px;border:2px solid #3a3f48;background:#1d2026;color:#fff;font:16px Kanit}
 button{min-height:44px;padding:8px 16px;border:0;border-radius:10px;background:#ffd400;color:#111;font:600 15px Kanit;cursor:pointer}
 button.alt{background:#2e333b;color:#fff}
+td button{min-height:36px;padding:4px 12px;font-size:14px;margin-right:6px}
+button.danger{background:#5a1f1a;color:#ffd7d1}
+tr.hid td:not(:nth-last-child(-n+2)){opacity:.55}
+th:last-child,td:last-child{position:sticky;right:0;background:#1d2026;box-shadow:-8px 0 8px -8px #000}
 #msg{color:#ffb4a8;min-height:22px}
 .scroll{overflow-x:auto}
 table{border-collapse:collapse;width:100%;min-width:560px;background:#1d2026;border-radius:10px}
@@ -18,14 +22,13 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 .flag{color:#ff8a7a}
 </style></head><body>
 <h1>Safety Run · Admin</h1>
-<div>EHS Day 2026 — ดูผลผู้เล่น (รหัสพนักงาน ↔ ไอคอน) ส่งออก CSV และลบผลเล่น</div>
+<div>EHS Day 2026 — ดูผลผู้เล่น (รหัสพนักงาน ↔ ไอคอน) ส่งออก CSV ซ่อนคะแนนจากตารางอันดับ และลบผลเล่นรายบุคคล</div>
 <div class="row"><input id="key" type="password" placeholder="Admin key"><button id="load">โหลดข้อมูล</button><button class="alt" id="csv">คัดลอก CSV</button></div>
-<div class="row"><input id="rid" placeholder="รหัสพนักงานที่จะลบผลเล่น"><button class="alt" id="reset">ลบผลเล่นของรหัสนี้</button></div>
 <p id="msg"></p>
-<div class="scroll"><table><thead><tr><th>#</th><th>รหัส</th><th>ไอคอน (ชื่อบนตารางอันดับ)</th><th>คะแนนดีที่สุด</th><th>เล่นแล้ว</th><th>คะแนนแต่ละครั้ง</th><th>เริ่มครั้งแรก</th><th>หมายเหตุ</th></tr></thead><tbody id="tb"></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>#</th><th>รหัส</th><th>ไอคอน (ชื่อบนตารางอันดับ)</th><th>คะแนนดีที่สุด</th><th>เล่นแล้ว</th><th>คะแนนแต่ละครั้ง</th><th>เริ่มครั้งแรก</th><th>หมายเหตุ</th><th>จัดการ</th></tr></thead><tbody id="tb"></tbody></table></div>
 <script>
 {
-const $=id=>document.getElementById(id);let rows=[];
+const $=id=>document.getElementById(id);let rows=[],note='';
 const AV_G=['หมวก','ถุงมือ','แว่น','ที่ครอบหู','รองเท้า','กรวย','ถังดับเพลิง','กล่องยา','สายฟ้า','ดาว','โล่','ประแจ'];
 const AV_C=[['#e53935','แดง'],['#ef6c00','ส้ม'],['#b58900','ทอง'],['#2e9e47','เขียว'],['#00897b','เขียวมรกต'],['#0288d1','ฟ้า'],['#3949ab','คราม'],['#8e24aa','ม่วง'],['#d81b60','ชมพู'],['#6d4c41','น้ำตาล'],['#546e7a','เทา'],['#0b1f3f','กรมท่า']];
 const AV_F=['','ขอบเงิน','ขอบทอง'],AV_N=AV_G.length*AV_C.length*AV_F.length;
@@ -37,13 +40,19 @@ const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 async function call(data){const key=$('key').value.trim();try{sessionStorage.setItem('srKey',key)}catch(e){}
  const r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,...data})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error==='key'?'Admin key ไม่ถูกต้อง':'ผิดพลาด: '+(j.error||r.status));return j}
 async function load(){$('msg').textContent='กำลังโหลด…';try{rows=(await call({action:'export'})).rows;
- $('tb').innerHTML=rows.map((r,i)=>`<tr><td class="n">${i+1}</td><td>${esc(r.id)}</td><td>${esc(avName(r.avatar))}</td><td class="n">${r.best??'—'}</td><td class="n">${r.plays}</td><td>${esc(r.scores)}</td><td>${new Date(r.startedAt).toLocaleString('th-TH')}</td><td class="flag">${[r.unfinished?r.unfinished+' ครั้งไม่ได้ส่งคะแนน':'',r.flagged?'มีคะแนนถูกปรับลด':''].filter(Boolean).join(' · ')}</td></tr>`).join('');
- $('msg').textContent=`ผู้เล่น ${rows.length} คน · มีคะแนนแล้ว ${rows.filter(r=>r.best!=null).length} คน · เล่นรวม ${rows.reduce((a,r)=>a+r.plays,0)} ครั้ง`}catch(e){$('msg').textContent=e.message}}
+ $('tb').innerHTML=rows.map((r,i)=>`<tr${r.hidden?' class="hid"':''}><td class="n">${i+1}</td><td>${esc(r.id)}</td><td>${esc(avName(r.avatar))}</td><td class="n">${r.best??'—'}</td><td class="n">${r.plays}</td><td>${esc(r.scores)}</td><td>${new Date(r.startedAt).toLocaleString('th-TH')}</td><td class="flag">${[r.unfinished?r.unfinished+' ครั้งไม่ได้ส่งคะแนน':'',r.flagged?'มีคะแนนถูกปรับลด':'',r.hidden?'ซ่อนจากตารางอันดับ':''].filter(Boolean).join(' · ')}</td><td><button class="alt" data-act="hide" data-id="${esc(r.id)}">${r.hidden?'แสดงคะแนน':'ซ่อนคะแนน'}</button><button class="danger" data-act="del" data-id="${esc(r.id)}">ลบผลเล่น</button></td></tr>`).join('');
+ $('msg').textContent=(note?note+' · ':'')+`ผู้เล่น ${rows.length} คน · มีคะแนนแล้ว ${rows.filter(r=>r.best!=null).length} คน · เล่นรวม ${rows.reduce((a,r)=>a+r.plays,0)} ครั้ง`}catch(e){$('msg').textContent=e.message}}
 $('load').onclick=load;
 $('csv').onclick=async()=>{if(!rows.length)await load();const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;
- const csv='﻿rank,employee_id,avatar_name,best_score,plays,scores,first_started,note\n'+rows.map((r,i)=>[i+1,r.id,avName(r.avatar),r.best??'',r.plays,r.scores,r.startedAt,r.flagged?'capped':''].map(q).join(',')).join('\n');
+ const csv='﻿rank,employee_id,avatar_name,best_score,plays,scores,first_started,note\n'+rows.map((r,i)=>[i+1,r.id,avName(r.avatar),r.best??'',r.plays,r.scores,r.startedAt,[r.flagged?'capped':'',r.hidden?'hidden':''].filter(Boolean).join(' ')].map(q).join(',')).join('\n');
  try{await navigator.clipboard.writeText(csv);$('msg').textContent='คัดลอก CSV แล้ว วางใน Excel ได้เลย'}catch(e){$('msg').textContent='คัดลอกไม่ได้ในเบราว์เซอร์นี้'}};
-$('reset').onclick=async()=>{const id=$('rid').value.trim().toUpperCase();if(!id)return;
- try{await call({action:'reset',id});$('msg').textContent=`ลบผลเล่นของ ${id} แล้ว (ไอคอนเดิมยังเป็นของรหัสนี้)`;$('rid').value='';load()}catch(e){$('msg').textContent=e.message}};
+$('tb').onclick=async e=>{const b=e.target.closest('button[data-act]');if(!b)return;const id=b.dataset.id,r=rows.find(x=>x.id===id);if(!r)return;
+ try{
+  if(b.dataset.act==='hide'){const hide=!r.hidden;
+   if(hide&&!confirm(`ซ่อนคะแนนของ ${id} (${avName(r.avatar)}) จากตารางอันดับ?\nข้อมูลยังอยู่ และกดแสดงกลับได้`))return;
+   await call({action:'hide',id,hidden:hide});note=hide?`ซ่อนคะแนนของ ${id} จากตารางอันดับแล้ว`:`แสดงคะแนนของ ${id} บนตารางอันดับแล้ว`}
+  else{if(!confirm(`ลบผลเล่นทั้งหมดของ ${id} (${avName(r.avatar)}) ?\nคะแนนดีที่สุด ${r.best??'—'} · เล่น ${r.plays} ครั้ง\nลบแล้วกู้คืนไม่ได้ (ไอคอนยังเป็นของรหัสนี้)`))return;
+   await call({action:'reset',id});note=`ลบผลเล่นของ ${id} แล้ว (ไอคอนเดิมยังเป็นของรหัสนี้)`}
+  await load();note=''}catch(err){$('msg').textContent=err.message}};
 }
 </script></body></html>

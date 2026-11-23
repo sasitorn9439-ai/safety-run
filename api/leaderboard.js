@@ -1,9 +1,10 @@
 import { sql, init, normId, json } from '../lib/db.js';
 
-// best run per employee; ties go to whoever reached that score first
+// best run per employee (hidden players excluded); ties go to whoever reached that score first
 const BEST = sql => sql`
   select distinct on (emp_id) emp_id, name, score, finished_at
-  from safety_run_runs where score is not null and game_seed is not null
+  from safety_run_runs r where score is not null and game_seed is not null
+    and not exists (select 1 from safety_run_players p where p.emp_id = r.emp_id and p.hidden)
   order by emp_id, score desc, finished_at asc`;
 
 export default async function handler(req, res) {
@@ -12,7 +13,7 @@ export default async function handler(req, res) {
     const id = normId(req.query?.id);
     // sequential on purpose: one pooled connection, no pipelining
     const top = await sql`select b.emp_id, b.score, p.avatar from (${BEST(sql)}) b left join safety_run_players p using (emp_id) order by b.score desc, b.finished_at asc limit 20`;
-    const cnt = await sql`select count(distinct emp_id)::int as total from safety_run_runs where score is not null and game_seed is not null`;
+    const cnt = await sql`select count(distinct emp_id)::int as total from (${BEST(sql)}) b`;
     let rank = 0;
     if (id) {
       const r = await sql`with b as (${BEST(sql)})
