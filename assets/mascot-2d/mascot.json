@@ -1,0 +1,142 @@
+{
+  "name": "safety-run-mascot-2d",
+  "version": 1,
+  "style": "flat 2D, same look as the game's vector mascot",
+  "view": "From behind, like the game camera. The mascot runs away from the camera.",
+  "howToUse": "Each animation is a grid sheet (row-major, frame size = cell). Place the sprite so `anchor` (the feet) sits on the ground point and scale by (game u in px) / unit. Squash, stretch, lean and cape flutter are already drawn into the frames: play them as they are, do not scale or rotate the sprite. Sprites are not trimmed.",
+  "variants": {
+    "256": {
+      "cell": {
+        "w": 256,
+        "h": 256
+      },
+      "unit": 200,
+      "anchor": {
+        "x": 128,
+        "y": 220
+      }
+    },
+    "384": {
+      "cell": {
+        "w": 384,
+        "h": 384
+      },
+      "unit": 300,
+      "anchor": {
+        "x": 192,
+        "y": 330
+      }
+    }
+  },
+  "animations": {
+    "idle": {
+      "image": "idle.png",
+      "frames": 12,
+      "cols": 6,
+      "rows": 2,
+      "fps": 10,
+      "loop": true,
+      "tags": {},
+      "note": "Standing and breathing; menu and the moment before the run starts."
+    },
+    "run": {
+      "image": "run.png",
+      "frames": 16,
+      "cols": 8,
+      "rows": 2,
+      "fps": 24,
+      "loop": true,
+      "tags": {
+        "contactA": [
+          0,
+          0
+        ],
+        "contactB": [
+          8,
+          8
+        ]
+      },
+      "note": "Running away from the camera. One loop = two steps. Body bob, lean and cape flutter are drawn in."
+    },
+    "jump": {
+      "image": "jump.png",
+      "frames": 16,
+      "cols": 8,
+      "rows": 2,
+      "fps": 24,
+      "loop": false,
+      "tags": {
+        "takeoff": [
+          0,
+          2
+        ],
+        "rise": [
+          3,
+          5
+        ],
+        "apex": [
+          6,
+          8
+        ],
+        "fall": [
+          9,
+          11
+        ],
+        "land": [
+          12,
+          15
+        ]
+      },
+      "note": "takeoff→rise while vy > 0, apex near vy = 0, fall while vy < 0 (hold the last fall frame), land plays on touchdown. The sprite already contains the squash and stretch; the game only moves it up and down."
+    },
+    "slide": {
+      "image": "slide.png",
+      "frames": 14,
+      "cols": 7,
+      "rows": 2,
+      "fps": 20,
+      "loop": false,
+      "tags": {
+        "drop": [
+          0,
+          3
+        ],
+        "hold": [
+          4,
+          9
+        ],
+        "recover": [
+          10,
+          13
+        ]
+      },
+      "note": "Tuck ball: curls into a round bundle with the head sunk into the cape, rocking gently"
+    }
+  },
+  "contentBounds384": {
+    "idle": {
+      "minX": 108,
+      "minY": 24,
+      "maxX": 285,
+      "maxY": 328
+    },
+    "run": {
+      "minX": 105,
+      "minY": 26,
+      "maxX": 290,
+      "maxY": 328
+    },
+    "jump": {
+      "minX": 56,
+      "minY": 6,
+      "maxX": 331,
+      "maxY": 328
+    },
+    "slide": {
+      "minX": 92,
+      "minY": 30,
+      "maxX": 308,
+      "maxY": 333
+    }
+  }
+}

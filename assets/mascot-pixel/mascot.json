@@ -1,0 +1,144 @@
+{
+  "name": "safety-run-mascot-pixel",
+  "version": 2,
+  "style": "pixel art (stubby proportions), adapted from the 16x32 character template; exact vector export included",
+  "view": "From behind, like the game camera.",
+  "howToUse": "PNG strips: horizontal, frame size = cell, left to right. Place the sprite so `anchor` (the feet, bottom centre) sits on the ground point and scale by u_px / unit; use NEAREST filtering. svg/ and vector.json are the same frames as exact vectors and can be drawn at any size. Squash, stretch and cape/arm motion are drawn into the frames.",
+  "variants": {
+    "x1": {
+      "cell": {
+        "w": 32,
+        "h": 32
+      },
+      "scale": 1,
+      "anchor": {
+        "x": 16,
+        "y": 32
+      },
+      "unit": 24
+    },
+    "x4": {
+      "cell": {
+        "w": 128,
+        "h": 128
+      },
+      "scale": 4,
+      "anchor": {
+        "x": 64,
+        "y": 128
+      },
+      "unit": 96
+    }
+  },
+  "animations": {
+    "idle": {
+      "image": "idle.png",
+      "frames": 8,
+      "cols": 8,
+      "rows": 1,
+      "fps": 6,
+      "loop": true,
+      "tags": {},
+      "note": "Breathing; head timing from the template back-view idle (cols 16-19), halved. Plays twice with the cape hem shifting."
+    },
+    "run": {
+      "image": "run.png",
+      "frames": 6,
+      "cols": 6,
+      "rows": 1,
+      "fps": 12,
+      "loop": true,
+      "tags": {
+        "stepA": [
+          0,
+          2
+        ],
+        "stepB": [
+          3,
+          5
+        ]
+      },
+      "note": "6-frame loop = two steps, driven by the template back-view walk (head bob and foot lift scaled to this short body). Frames 0-2 = left step, 3-5 = right step."
+    },
+    "jump": {
+      "image": "jump.png",
+      "frames": 12,
+      "cols": 12,
+      "rows": 1,
+      "fps": 14,
+      "loop": false,
+      "tags": {
+        "takeoff": [
+          0,
+          1
+        ],
+        "rise": [
+          2,
+          3
+        ],
+        "apex": [
+          4,
+          5
+        ],
+        "fall": [
+          6,
+          7
+        ],
+        "land": [
+          8,
+          11
+        ]
+      },
+      "note": "takeoff/rise while vy > 0, apex near 0, fall while vy < 0 (hold the last fall frame), land plays on touchdown. Squash and stretch are drawn in."
+    },
+    "slide": {
+      "image": "slide.png",
+      "frames": 9,
+      "cols": 9,
+      "rows": 1,
+      "fps": 14,
+      "loop": false,
+      "tags": {
+        "drop": [
+          0,
+          1
+        ],
+        "hold": [
+          2,
+          5
+        ],
+        "recover": [
+          6,
+          8
+        ]
+      },
+      "note": "Slides under low pipes (0.7 s): drop, hold (loop frames 2-5 if the slide lasts longer), recover."
+    }
+  },
+  "contentBoundsNative": {
+    "idle": {
+      "minX": 6,
+      "minY": 9,
+      "maxX": 25,
+      "maxY": 31
+    },
+    "run": {
+      "minX": 6,
+      "minY": 7,
+      "maxX": 25,
+      "maxY": 31
+    },
+    "jump": {
+      "minX": 2,
+      "minY": 7,
+      "maxX": 29,
+      "maxY": 31
+    },
+    "slide": {
+      "minX": 1,
+      "minY": 9,
+      "maxX": 30,
+      "maxY": 31
+    }
+  }
+}

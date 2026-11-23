@@ -1,1 +1,1 @@
-{ "regions": ["iad1"], "cleanUrls": true, "outputDirectory": "public" }
+{ "regions": ["iad1"], "cleanUrls": true, "framework": "vite", "buildCommand": "npm run build", "outputDirectory": "dist" }

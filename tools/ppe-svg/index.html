@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PPE icons</title>
+<style>
+  body{margin:0;padding:20px;background:#8a8e95;color:#111;font:14px system-ui,sans-serif}
+  h1{margin:0 0 4px;font-size:18px}
+  .row{display:flex;flex-wrap:wrap;gap:18px;margin:14px 0}
+  figure{margin:0;text-align:center}
+  figure img{display:block;background:#fff;border-radius:14px}
+  .dark img{background:#3d4148}
+  figcaption{margin-top:4px;font-weight:600}
+  button{padding:8px 16px;border:0;border-radius:8px;background:#ffd400;color:#111;font:600 14px system-ui;cursor:pointer}
+</style>
+</head>
+<body>
+<h1>PPE icons · flat vector</h1>
+<p>Source: <code>src/render/ppe-icons.ts</code>. <button id="save">Save SVGs to assets/ppe/</button> <span id="log"></span></p>
+<div class="row" id="light"></div>
+<div class="row dark" id="dark"></div>
+<div class="row" id="small"></div>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>
