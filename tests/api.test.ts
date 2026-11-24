@@ -103,6 +103,38 @@ describe('admin', () => {
     expect(((await admin(store, { key: 'secret', action: 'reset', id: 'emp1' })).body as Body).found).toBe(1);
     expect(((await admin(store, { key: 'secret', action: 'export' })).body as Body).rows).toHaveLength(0);
   });
+  it('hides a player from the leaderboard without deleting anything, and shows them again', async () => {
+    process.env.ADMIN_KEY = 'secret';
+    const hide = (id: string, hidden?: unknown, key = 'secret') => admin(store, { key, action: 'hide', id, hidden });
+    for (const id of ['EMP1', 'EMP2']) {
+      const { s, ticks } = await play(id);
+      await finish(store, { id, run: s.run, token: s.token, ticks, inputs: [] });
+    }
+    const board = async (id = '') => (await leaderboard(store, id)).body as Body;
+    expect((await board('EMP1')).total).toBe(2);
+    expect((await board('EMP1')).rank).toBeGreaterThan(0);
+
+    expect((await hide('emp1', true)).status).toBe(200);
+    expect((await board('EMP1')).total).toBe(1);
+    expect((await board('EMP1')).rank).toBe(0);
+    expect((await board()).top).toHaveLength(1);
+    const row = (((await admin(store, { key: 'secret', action: 'export' })).body as Body).rows as Body[]).find(r => r.id === 'EMP1')!;
+    expect(row.hidden).toBe(true);
+    expect(row.best).not.toBeNull(); // the score is still stored
+
+    expect((await hide('EMP1', false)).status).toBe(200);
+    expect((await board('EMP1')).total).toBe(2);
+    expect((await board('EMP1')).rank).toBeGreaterThan(0);
+  });
+  it('validates the hide request', async () => {
+    process.env.ADMIN_KEY = 'secret';
+    await start(store, { id: 'EMP1' }, '');
+    expect((await admin(store, { key: 'nope', action: 'hide', id: 'EMP1', hidden: true })).status).toBe(401);
+    expect((await admin(store, { key: 'secret', action: 'hide', id: 'EMP1' })).status).toBe(400);
+    expect((await admin(store, { key: 'secret', action: 'hide', id: 'EMP1', hidden: 'yes' })).status).toBe(400);
+    expect((await admin(store, { key: 'secret', action: 'hide', id: '', hidden: true })).status).toBe(400);
+    expect(((await admin(store, { key: 'secret', action: 'hide', id: 'NOBODY', hidden: true })).body as Body).found).toBe(0);
+  });
   it('is closed when no ADMIN_KEY is configured', async () => {
     expect((await admin(store, { key: '', action: 'export' })).status).toBe(401);
   });

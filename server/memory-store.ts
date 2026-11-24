@@ -9,12 +9,13 @@ interface Run {
 export function createMemoryStore(): Store {
   const runs: Run[] = [];
   const avatars = new Map<string, number>();
+  const hidden = new Set<string>();
   let nextId = 1;
 
   const bests = () => {
     const by = new Map<string, Run>();
     for (const r of runs) {
-      if (r.score == null) continue;
+      if (r.score == null || hidden.has(r.empId)) continue;
       const cur = by.get(r.empId);
       if (!cur || r.score > cur.score! || (r.score === cur.score && r.finishedAt! < cur.finishedAt!)) by.set(r.empId, r);
     }
@@ -71,7 +72,7 @@ export function createMemoryStore(): Store {
           best: scored.length ? Math.max(...scored.map(r => r.score!)) : null,
           scores: mine.map(r => (r.score == null ? '—' : String(r.score))).join(' / '),
           startedAt: new Date(Math.min(...mine.map(r => r.startedAt))).toISOString(),
-          flagged: false, unfinished: mine.filter(r => r.score == null).length,
+          flagged: false, unfinished: mine.filter(r => r.score == null).length, hidden: hidden.has(id),
         };
       });
       return rows.sort((a, b) => (b.best ?? -1) - (a.best ?? -1));
@@ -80,6 +81,11 @@ export function createMemoryStore(): Store {
       const n = runs.filter(r => r.empId === id).length;
       for (let i = runs.length - 1; i >= 0; i--) if (runs[i]!.empId === id) runs.splice(i, 1);
       return n;
+    },
+    async adminHide(id, hide) {
+      if (!avatars.has(id) && !runs.some(r => r.empId === id)) return 0;
+      if (hide) hidden.add(id); else hidden.delete(id);
+      return 1;
     },
   };
 }

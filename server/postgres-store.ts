@@ -4,10 +4,11 @@ import type { Store } from './store.js';
 export function createPostgresStore(url: string): Store {
   const sql = postgres(url, { ssl: 'require', prepare: false, max: 1, idle_timeout: 5, connect_timeout: 10 });
 
-  // best run per employee; ties go to whoever reached that score first
+  // best run per employee, hidden players excluded; ties go to whoever reached that score first
   const best = () => sql`
     select distinct on (emp_id) emp_id, name, score, finished_at
-    from safety_run_runs where score is not null and game_seed is not null
+    from safety_run_runs r where score is not null and game_seed is not null
+      and not exists (select 1 from safety_run_players p where p.emp_id = r.emp_id and p.hidden)
     order by emp_id, score desc, finished_at asc`;
 
   let ready: Promise<void> | null = null;
@@ -36,6 +37,8 @@ export function createPostgresStore(url: string): Store {
           emp_id text primary key,
           avatar integer not null unique default nextval('safety_run_avatar_seq'),
           created_at timestamptz not null default now())`;
+        // admin can hide a player's scores from the leaderboard without deleting anything
+        await sql`alter table safety_run_players add column if not exists hidden boolean not null default false`;
         // block the public anon/publishable keys; server connects as table owner
         await sql`alter table safety_run_runs enable row level security`;
         await sql`alter table safety_run_players enable row level security`;
@@ -85,7 +88,7 @@ export function createPostgresStore(url: string): Store {
     async leaderboard(id) {
       // sequential on purpose: one pooled connection, no pipelining
       const top = await sql`select b.emp_id, b.score, p.avatar from (${best()}) b left join safety_run_players p using (emp_id) order by b.score desc, b.finished_at asc limit 20`;
-      const cnt = await sql`select count(distinct emp_id)::int as total from safety_run_runs where score is not null and game_seed is not null`;
+      const cnt = await sql`select count(*)::int as total from (${best()}) b`;
       let rank = 0;
       if (id) {
         const r = await sql`with b as (${best()})
@@ -99,7 +102,7 @@ export function createPostgresStore(url: string): Store {
     async adminExport() {
       const rows = await sql`select r.emp_id as id, max(p.avatar) as avatar, count(*)::int as plays,
           max(score) filter (where game_seed is not null) as best, string_agg(case when score is null then '—' when game_seed is null then score::text || ' (legacy)' else score::text end, ' / ' order by run_no) as scores,
-          min(started_at) as "startedAt", bool_or(capped) as flagged,
+          min(started_at) as "startedAt", bool_or(capped) as flagged, coalesce(bool_or(p.hidden), false) as hidden,
           count(*) filter (where score is null)::int as unfinished
         from safety_run_runs r left join safety_run_players p using (emp_id) group by r.emp_id
         order by max(score) filter (where game_seed is not null) desc nulls last, min(started_at) asc`;
@@ -108,6 +111,11 @@ export function createPostgresStore(url: string): Store {
 
     async adminReset(id) {
       const r = await sql`delete from safety_run_runs where emp_id = ${id} returning id`;
+      return r.length;
+    },
+
+    async adminHide(id, hidden) {
+      const r = await sql`update safety_run_players set hidden = ${hidden} where emp_id = ${id} returning emp_id`;
       return r.length;
     },
   };
