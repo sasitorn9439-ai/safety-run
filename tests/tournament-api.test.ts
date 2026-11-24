@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createMemoryStore } from '../server/memory-store.js';
 import { createMemoryTourStore } from '../server/tour-store.js';
-import { COUNTDOWN_MS, RESULT_GRACE_MS, tournament } from '../server/tournament.js';
-import { STEP, createRun } from '../shared/sim.js';
+import { COUNTDOWN_MS, RESULT_GRACE_MS, STAGES, tournament } from '../server/tournament.js';
+import { STEP, TOUR_DURATION, createRun } from '../shared/sim.js';
 
 type Body = Record<string, any>;
 let call: (b: Body, now?: number) => Promise<{ status: number; body: Body }>;
@@ -45,16 +45,14 @@ describe('tournament rooms', () => {
     expect((await call({ action: 'join', code: 'ZZZZ', id: 'E005' })).status).toBe(404);
   });
 
-  it('lets only the host configure, kick and start', async () => {
+  it('lets only the host start, and no one picks the stage or the time', async () => {
     const { code, hostToken } = await room();
     await call({ action: 'join', code, id: 'E001' });
-    expect((await call({ action: 'config', code, stage: 'chemical', duration: 60 })).status).toBe(403);
-    expect((await call({ action: 'config', code, hostToken, stage: 'moon', duration: 60 })).status).toBe(400);
-    expect((await call({ action: 'config', code, hostToken, stage: 'chemical', duration: 61 })).status).toBe(400);
-    const cfg = await call({ action: 'config', code, hostToken, stage: 'chemical', duration: 60 });
-    expect(cfg.body).toMatchObject({ stage: 'chemical', duration: 60, phase: 'lobby', seed: null });
+    expect((await call({ action: 'start', code })).status).toBe(403);
+    expect((await call({ action: 'config', code, hostToken, stage: 'chemical', duration: 60 })).status).toBe(400);
     const s = await call({ action: 'start', code, hostToken });
-    expect(s.body).toMatchObject({ phase: 'running', startAt: T0 + COUNTDOWN_MS });
+    expect(s.body).toMatchObject({ phase: 'running', startAt: T0 + COUNTDOWN_MS, duration: TOUR_DURATION });
+    expect(STAGES).toContain(s.body.stage);
     expect(typeof s.body.seed).toBe('number');
     expect((await call({ action: 'join', code, id: 'E009' })).body.error).toBe('started');
   });
@@ -62,16 +60,15 @@ describe('tournament rooms', () => {
   it('scores a race from its replay, once the race has had time to run', async () => {
     const { code, hostToken } = await room();
     const a = (await call({ action: 'join', code, id: 'E001' })).body, b = (await call({ action: 'join', code, id: 'E002' })).body;
-    await call({ action: 'config', code, hostToken, stage: 'tour', duration: 60 });
-    const { seed, startAt } = (await call({ action: 'start', code, hostToken })).body;
-    const end = startAt + 60_000;
+    const { seed, startAt, stage } = (await call({ action: 'start', code, hostToken })).body;
+    const end = startAt + TOUR_DURATION * 1000;
 
     expect((await call({ action: 'finish', code, slot: 0, token: a.token, inputs: [] }, end - 5000)).body.error).toBe('too_early');
     expect((await call({ action: 'finish', code, slot: 0, token: b.token, inputs: [] }, end)).status).toBe(403);
     expect((await call({ action: 'finish', code, slot: 0, token: a.token, inputs: [[999999, 'left']] }, end)).body.error).toBe('invalid_replay');
 
     const first = await call({ action: 'finish', code, slot: 0, token: a.token, inputs: [] }, end);
-    expect(first.body.players[0].score).toBe(idle(seed, 'tour', 60));
+    expect(first.body.players[0].score).toBe(idle(seed, stage, TOUR_DURATION));
     expect(first.body.phase).toBe('running');           // still waiting for the second player
     const both = await call({ action: 'finish', code, slot: 1, token: b.token, inputs: [] }, end + 1000);
     expect(both.body.phase).toBe('finished');
@@ -81,7 +78,7 @@ describe('tournament rooms', () => {
     const { code, hostToken } = await room();
     await call({ action: 'join', code, id: 'E001' });
     const { startAt } = (await call({ action: 'start', code, hostToken })).body;
-    const later = startAt + 120_000 + RESULT_GRACE_MS + 1;
+    const later = startAt + TOUR_DURATION * 1000 + RESULT_GRACE_MS + 1;
     expect((await call({ action: 'state', code }, later)).body.phase).toBe('finished');
   });
 
@@ -93,5 +90,16 @@ describe('tournament rooms', () => {
     expect(again.body).toMatchObject({ phase: 'lobby', startAt: null, players: [{ slot: 0, score: null }] });
     const second = (await call({ action: 'start', code, hostToken })).body.seed;
     expect(second).not.toBe(first);
+  });
+
+  it('draws the stage at random for each race', async () => {
+    const { code, hostToken } = await room();
+    await call({ action: 'join', code, id: 'E001' });
+    const seen = new Set<string>();
+    for (let i = 0; i < 40; i++) {
+      seen.add((await call({ action: 'start', code, hostToken })).body.stage);
+      await call({ action: 'reset', code, hostToken });
+    }
+    expect(seen.size).toBeGreaterThan(1);
   });
 });

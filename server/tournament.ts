@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { STEP, TOUR_DURATIONS, replayTour, type StageId } from '../shared/sim.js';
+import { STEP, TOUR_DURATION, replayTour, type StageId } from '../shared/sim.js';
 import { ZONES } from '../shared/zones.js';
 import { idOk, normId, sha, timingSafeKey, type Reply } from './handlers.js';
 import type { Store } from './store.js';
@@ -17,6 +17,7 @@ const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
 const newCode = () => Array.from(crypto.randomBytes(4), b => CODE_CHARS[b % CODE_CHARS.length]).join('');
 const newSeed = () => crypto.randomBytes(4).readUInt32BE();
+const randomStage = () => STAGES[crypto.randomInt(STAGES.length)];
 const newToken = () => crypto.randomBytes(18).toString('base64url');
 const cleanCode = (s: unknown) => String(s || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
 const asSlot = (s: unknown): Slot | null => (SLOTS.includes(s as Slot) ? (s as Slot) : null);
@@ -36,8 +37,9 @@ function view(room: TourRoom, now: number) {
 export type RoomView = ReturnType<typeof view>;
 
 /**
- * Tournament rooms: the host creates one (admin key), up to three players join by employee id, the host picks the stage and
- * the time and starts it. Each phone plays the race itself; its inputs are replayed here with the room's seed for the score.
+ * Tournament rooms: the host creates one (admin key), up to three players join by employee id and the host starts it. Every
+ * race lasts TOUR_DURATION and its stage is drawn at random when it starts. Each phone plays the race itself; its inputs are
+ * replayed here with the room's seed for the score.
  */
 export async function tournament(store: Store, tours: TourStore, b: Json, now = Date.now()): Promise<Reply> {
   await tours.init();
@@ -48,7 +50,7 @@ export async function tournament(store: Store, tours: TourStore, b: Json, now = 
     const hostToken = newToken();
     for (let attempt = 0; attempt < 5; attempt++) {
       const code = newCode();
-      if (await tours.create({ code, hostHash: sha(hostToken), seed: newSeed(), stage: 'tour', duration: 120 })) return reply(200, { code, hostToken });
+      if (await tours.create({ code, hostHash: sha(hostToken), seed: newSeed(), stage: randomStage(), duration: TOUR_DURATION })) return reply(200, { code, hostToken });
     }
     return reply(503, { error: 'busy' });
   }
@@ -92,12 +94,10 @@ export async function tournament(store: Store, tours: TourStore, b: Json, now = 
     const slot = asSlot(b.slot);
     if (slot == null) return reply(400, { error: 'slot' });
     await tours.kick(code, slot);
-  } else if (action === 'config') {
-    const stage = b.stage as StageId, duration = b.duration as number;
-    if (!STAGES.includes(stage) || !TOUR_DURATIONS.includes(duration as never)) return reply(400, { error: 'config' });
-    await tours.config(code, stage, duration);
   } else if (action === 'start') {
     if (!room.players.length) return reply(409, { error: 'empty' });
+    if (room.status !== 'lobby') return reply(409, { error: 'started' });
+    await tours.config(code, randomStage(), TOUR_DURATION);
     if (!(await tours.start(code, now + COUNTDOWN_MS))) return reply(409, { error: 'started' });
   } else if (action === 'reset') {
     await tours.reset(code, newSeed());

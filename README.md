@@ -73,8 +73,8 @@ are missing to the next rank on the leaderboard.
 ## Tournament (`/tournament`)
 
 A live race for three players on one big screen. The host opens `/tournament`, presses **เป็น Host**, enters the admin key and gets a
-room with a QR code. Players scan it (`/tournament?room=CODE`), enter their employee ID and wait in the lobby. The host picks the stage
-(one plant area, or the whole plant) and the time (1, 2, 3 or 5 minutes) and starts the race. The host can kick a player in the lobby and
+room with a QR code. Players scan it (`/tournament?room=CODE`), enter their employee ID and wait in the lobby. The host starts the race;
+every race lasts 2 minutes and its stage (one plant area, or the whole plant) is drawn at random when it starts. The host can kick a player in the lobby and
 start a rematch with the same players.
 
 * **Same track for everyone.** All three phones run `shared/sim.ts` in tournament mode (`RunOptions.tour`) on the room's seed. A crash

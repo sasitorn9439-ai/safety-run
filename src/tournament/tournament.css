@@ -56,12 +56,8 @@ body.host .hud,body.host .t-race{display:none}
 .h-code{margin:12px 0 0;font-size:22px}
 .h-code b{color:var(--y);font-size:44px;letter-spacing:.12em}
 .h-setup{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;align-self:center}
-.h-setup h3{margin:16px 0 6px;font-size:16px;font-weight:500;color:var(--secondary)}
 .t-seats.big li{font-size:18px}
 .t-seats .kick{margin-left:auto;width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer}
-.h-pick{display:flex;flex-wrap:wrap;gap:6px}
-.h-pick button{min-height:40px;padding:6px 12px;border-radius:8px;border:2px solid var(--line);background:var(--surface);color:var(--ink);font:15px Kanit,sans-serif;cursor:pointer}
-.h-pick button.on{border-color:var(--y);background:#2a2410;color:var(--y)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 
 .h-side.on{position:absolute;top:0;right:0;bottom:0;width:min(380px, 34vw);z-index:3;display:flex;flex-direction:column;gap:12px;padding:16px;background:var(--card);border-left:1px solid var(--line)}
