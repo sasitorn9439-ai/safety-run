@@ -52,7 +52,7 @@ export const MULT_MAX = 4;
 export const NEAR_SCORE = 2;
 
 /** a mystery coin: touch it and answer a safety question for a random points bonus; metres between two at the least */
-export const BONUS_GAP = 380;
+export const BONUS_GAP = 1555;
 export const BONUS_MIN = 50, BONUS_MAX = 300, BONUS_STEP = 10;
 /** seconds the run waits for an answer before giving up on its own (keeps a replay from ever waiting forever) */
 export const BONUS_SECONDS = 7;
@@ -282,10 +282,10 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       if (powerAt === at) powerAt = (powerAt + 1) % trail.length;
       lastPower = dist;
     }
-    // bonus coin: its own stream too, three numbers every spawn whether or not it is used
-    const ba = bonusRandom(), bc = bonusRandom();
+    // bonus coin: its own stream too, a number every spawn whether or not it is used; once every BONUS_GAP metres, not a dice roll
+    const bc = bonusRandom();
     let bonusAt = -1;
-    if (trail.length >= 3 && dist - lastBonus >= BONUS_GAP && ba < 0.4) {
+    if (trail.length >= 3 && dist - lastBonus >= BONUS_GAP) {
       bonusAt = Math.floor(bc * trail.length);
       if (bonusAt === at) bonusAt = (bonusAt + 1) % trail.length;
       if (bonusAt === powerAt) bonusAt = (bonusAt + 1) % trail.length;
