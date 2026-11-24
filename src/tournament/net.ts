@@ -49,11 +49,11 @@ export interface Channel { send(m: Msg): void; close(): void }
  * One channel per room. Supabase Realtime (broadcast) when VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set;
  * under `npm run dev` without them, the dev server's relay (server/dev-api.ts).
  */
-export async function openChannel(code: string, onMsg: (m: Msg) => void): Promise<Channel> {
+async function openChannel(code: string, onMsg: (m: Msg) => void): Promise<Channel> {
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined, key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
   if (url && key) {
     const { createClient } = await import('@supabase/supabase-js');
-    const client = createClient(url, key, { auth: { persistSession: false } });
+    const client = createClient(supabaseUrl(url), key, { auth: { persistSession: false } });
     const ch = client.channel(`safety-run-tour-${code}`, { config: { broadcast: { self: false } } });
     ch.on('broadcast', { event: 'm' }, ({ payload }) => onMsg(payload as Msg));
     await new Promise<void>((resolve, reject) => ch.subscribe(status => {
@@ -76,6 +76,31 @@ export async function openChannel(code: string, onMsg: (m: Msg) => void): Promis
   };
 }
 
+/** the project URL; the bare project ref the dashboard shows as the project ID works too */
+export const supabaseUrl = (v: string) => (/^https?:\/\//.test(v.trim()) ? v.trim() : `https://${v.trim()}.supabase.co`);
+
+/**
+ * Opens the room's channel and keeps trying every few seconds while `wanted()` holds, with a banner over the screen meanwhile:
+ * a phone that can't reach the channel is invisible to the big screen, so that must never fail quietly.
+ */
+export async function connect(code: string, onMsg: (m: Msg) => void, wanted: () => boolean): Promise<Channel | null> {
+  const banner = document.getElementById('tNet');
+  for (;;) {
+    try {
+      const ch = await openChannel(code, onMsg);
+      banner?.classList.remove('on');
+      if (wanted()) return ch;
+      ch.close();
+      return null;
+    } catch (e) {
+      console.error('realtime channel', e);
+      if (banner) { banner.textContent = errText((e as Error).message === 'realtime' ? 'realtime' : 'realtime_down'); banner.classList.add('on'); }
+      await new Promise(r => setTimeout(r, 3000));
+      if (!wanted()) { banner?.classList.remove('on'); return null; }
+    }
+  }
+}
+
 export const STAGE_NAMES: Record<StageId, string> = {
   tour: 'ทั่วโรงงาน (เปลี่ยนโซนตามระยะ)',
   entry: 'ทางเข้าคลังสินค้า', forklift: 'ทางรถโฟล์คลิฟท์', chemical: 'พื้นที่สารเคมี',
@@ -91,6 +116,7 @@ export const TOUR_ERR: Record<string, string> = {
   key: 'รหัส Host ไม่ถูกต้อง',
   empty: 'ยังไม่มีผู้เล่นในห้อง',
   realtime: 'ยังไม่ได้ตั้งค่า Realtime (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)',
+  realtime_down: 'เชื่อมต่อจอกลางไม่ได้ กำลังลองใหม่…',
   server: 'ระบบขัดข้อง ลองใหม่อีกครั้ง',
 };
 export const errText = (e: string | undefined) => TOUR_ERR[e ?? 'server'] ?? TOUR_ERR.server!;

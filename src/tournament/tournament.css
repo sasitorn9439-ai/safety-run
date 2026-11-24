@@ -3,6 +3,8 @@
 .small a{color:var(--muted)}
 
 /* ---------- phone: race overlay ---------- */
+.t-net{position:absolute;left:50%;top:max(12px, env(safe-area-inset-top));transform:translateX(-50%);z-index:6;display:none;margin:0;padding:8px 14px;border-radius:10px;background:#3a1a17;border:2px solid #ff5a4a;color:#ffd2cc;font-size:15px;text-align:center;max-width:calc(100% - 24px)}
+.t-net.on{display:block}
 .t-race{position:absolute;inset:0;display:none;pointer-events:none;z-index:2}
 .t-race.on{display:block}
 .t-top{position:absolute;top:max(64px, calc(env(safe-area-inset-top) + 58px));right:10px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}

@@ -3,7 +3,7 @@ import { STEP, TOUR_DURATIONS, type StageId } from '../../shared/sim.js';
 import { avName, avImg } from '../lib/avatar.js';
 import { $, esc } from '../lib/dom.js';
 import type { GameRenderer } from '../render/index.js';
-import { Clock, STAGE_NAMES, errText, fmtTime, openChannel, tourApi, type Channel, type Msg, type Room, type Slot } from './net.js';
+import { Clock, STAGE_NAMES, connect, errText, fmtTime, tourApi, type Channel, type Msg, type Room, type Slot } from './net.js';
 import { Race } from './race.js';
 import { showScreen } from './player.js';
 import { GatePanel, fxHtml } from './ui.js';
@@ -108,7 +108,8 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
     races = new Map(r.players.map(p => [p.slot, new Race({ seed: r.seed!, stage: r.stage, duration: r.duration, startAt: r.startAt! })]));
     focus = r.players[0]?.slot ?? 0; focusSince = performance.now(); leader = null;
     $('hStage').textContent = STAGE_NAMES[r.stage];
-    try { channel = await openChannel(code, onMsg); } catch (e) { $('hMsg').textContent = errText((e as Error).message); }
+    const seed = r.seed;
+    channel = await connect(code, onMsg, () => raceSeed === seed);
   }
 
   function stopRace() {
