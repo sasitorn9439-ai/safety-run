@@ -64,13 +64,21 @@ export async function startApp() {
     setTimeout(() => show('over'), 350);
   }
 
-  /* ---------- how to play: a modal over the menu ---------- */
-  const how = $('howOv');
-  function openHow() { how.classList.add('on'); $('howClose').focus({ preventScroll: true }); how.querySelector('.card')!.scrollTop = 0; }
-  function closeHow() { how.classList.remove('on'); $('howBtn').focus(); }
-  $('howBtn').onclick = openHow;
-  $('howClose').onclick = closeHow;
-  how.onclick = e => { if (e.target === how) closeHow(); };   // a tap on the dimmed backdrop closes it
+  /* ---------- how to play and what's new: modals over the menu ---------- */
+  function menuModal(name: 'how' | 'news', onClose = () => {}) {
+    const ov = $(name + 'Ov');
+    const close = () => { ov.classList.remove('on'); $(name + 'Btn').focus(); onClose(); };
+    const open = () => { ov.classList.add('on'); $(name + 'Close').focus({ preventScroll: true }); ov.querySelector('.card')!.scrollTop = 0; };
+    $(name + 'Btn').onclick = open;
+    $(name + 'Close').onclick = close;
+    ov.onclick = e => { if (e.target === ov) close(); };   // a tap on the dimmed backdrop closes it
+    return { ov, open, close };
+  }
+  const how = menuModal('how');
+  // what's new opens by itself once per version
+  const newsVersion = $('newsOv').dataset.version!;
+  const news = menuModal('news', () => LS.set('srNewsSeen', newsVersion));
+  if (LS.get<string>('srNewsSeen') !== newsVersion) news.open();
 
   /** "N points to rank k": how close the run was to the next place on the board (a nudge to try once more) */
   async function showGap(score: number) {
@@ -142,7 +150,7 @@ export async function startApp() {
   addEventListener('pointercancel', () => { swiping = false; });
   const KEYS: Record<string, Action> = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', arrowup: 'up', w: 'up', ' ': 'up', arrowdown: 'down', s: 'down' };
   addEventListener('keydown', e => {
-    if (e.key === 'Escape' && how.classList.contains('on')) { closeHow(); return; }
+    for (const m of [news, how]) if (e.key === 'Escape' && m.ov.classList.contains('on')) { m.close(); return; }
     if ((e.target as HTMLElement).tagName === 'INPUT') return;
     const k = e.key.toLowerCase();
     if (k === 'escape' || k === 'p') {
