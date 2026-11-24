@@ -3,6 +3,7 @@ import type { PowerType } from '../../shared/sim.js';
 import { HAZARD_KINDS, PPE } from '../../shared/hazards.js';
 import { HAZARD_BOX, drawBonusBadge, drawCoin, drawCrate, drawLiftPlatform, drawPowerBadge, drawDot, drawHalo, drawHazard, drawLight, drawMascotRun, drawMascotSlide, drawPillar, drawPpeBadge, drawShadow, drawShield, type Ctx } from './draw.js';
 import { RUN_FRAMES, SLIDE_FRAMES } from './fx.js';
+import { POWER_TYPES } from './power-icons.js';
 
 export const PAD = 2;
 export type Box = readonly [x0: number, y0: number, x1: number, y1: number];
@@ -16,7 +17,7 @@ export interface Art { box: Box; draw: (c: Ctx, u: number) => void; scale: numbe
 const OBJ = 1.35, MASCOT = 1.1;
 export const hazardArt = (k: HazardKind, blink = false): Art => ({ box: HAZARD_BOX[k], draw: (c, u) => drawHazard(c, k, u, blink), scale: OBJ, mips: true });
 export const ppeArt = (t: PpeType): Art => ({ box: [-.4, -.4, .4, .4], draw: (c, u) => drawPpeBadge(c, t, u), scale: OBJ, mips: true });
-export const POWERS: readonly PowerType[] = ['estop', 'broom', 'lift', 'firstaid', 'toolbox'];
+export const POWERS: readonly PowerType[] = POWER_TYPES;
 export const powerArt = (t: PowerType): Art => ({ box: [-.46, -.46, .46, .46], draw: (c, u) => drawPowerBadge(c, t, u), scale: OBJ, mips: true });
 export const liftArt: Art = { box: [-.46, -.04, .46, 1.4], draw: drawLiftPlatform, scale: MASCOT, mips: false };
 /** hazards that have a second look (the `blink` flag in the draw list) */

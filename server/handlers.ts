@@ -8,16 +8,16 @@ type Json = Record<string, unknown>;
 // 0 / unset = unlimited plays per employee
 export const maxPlays = () => Math.max(0, +(process.env.MAX_PLAYS || 0) || 0);
 
-const sha = (s: unknown) => crypto.createHash('sha256').update(String(s)).digest('hex');
-const normId = (s: unknown) => String(s || '').trim().toUpperCase().replace(/\s+/g, '');
+export const sha = (s: unknown) => crypto.createHash('sha256').update(String(s)).digest('hex');
+export const normId = (s: unknown) => String(s || '').trim().toUpperCase().replace(/\s+/g, '');
 const cleanName = (s: unknown) => String(s || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40);
-const idOk = (id: string) => {
+export const idOk = (id: string) => {
   if (!/^[A-Z0-9-]{3,15}$/.test(id)) return false;
   const allow = (process.env.ALLOWED_IDS || '').split(/[,\s]+/).filter(Boolean).map(normId);
   return !allow.length || allow.includes(id);
 };
 const reply = (status: number, body: unknown, cache?: string): Reply => ({ status, body, cache });
-const timingSafeKey = (given: unknown) => {
+export const timingSafeKey = (given: unknown) => {
   const a = Buffer.from(String(given || '')), b = Buffer.from(process.env.ADMIN_KEY || '');
   return b.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b);
 };

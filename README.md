@@ -28,7 +28,9 @@ npm run build      # typecheck + production bundle into dist/
 | `src/app.ts` | Screens and flow: login, quiz, submit, leaderboard, pause |
 | `server/` | `handlers.ts` (all API logic) on a `Store` interface: `postgres-store.ts` for production, `memory-store.ts` for `npm run dev` |
 | `api/*.ts` | Thin Vercel functions that call `server/handlers.ts` |
-| `index.html`, `admin.html` | The two pages (`/` and `/admin`) |
+| `src/tournament/` | The tournament page: `player.ts` (phone), `host.ts` (big screen), `race.ts` (steps a race on the server clock), `net.ts` (API + realtime channel) |
+| `server/tournament.ts` | Tournament rooms on a `TourStore` (`tour-store.ts` in memory, `postgres-tour-store.ts`) |
+| `index.html`, `admin.html`, `tournament.html` | The three pages (`/`, `/admin` and `/tournament`) |
 
 ## How scores are verified
 
@@ -67,6 +69,32 @@ raises a multiplier on coins, PPE and near misses (x2, x3, x4). The combo runs o
 are missing to the next rank on the leaderboard.
 
 **Scoring:** 1 point per metre, coin +1, PPE +10, Safety Officer praise +150. With no bonuses or E-Stop, 10 minutes of running earns about 19 840 points.
+
+## Tournament (`/tournament`)
+
+A live race for three players on one big screen. The host opens `/tournament`, presses **เป็น Host**, enters the admin key and gets a
+room with a QR code. Players scan it (`/tournament?room=CODE`), enter their employee ID and wait in the lobby. The host picks the stage
+(one plant area, or the whole plant) and the time (1, 2, 3 or 5 minutes) and starts the race. The host can kick a player in the lobby and
+start a rematch with the same players.
+
+* **Same track for everyone.** All three phones run `shared/sim.ts` in tournament mode (`RunOptions.tour`) on the room's seed. A crash
+  costs about a second instead of ending the run, and the race ends on the clock. The normal power-ups and bonus coins are replaced
+  by the tournament items, which draw from their own random streams so the track never changes.
+* **Safety Check.** A row of question cards across all three lanes every 650 m. The world slows down and three gates (A/B/C) come up
+  with the answers. Run through the right one for a Safety Sprint (2× speed for 3 s); the wrong one slows you down. The questions are
+  trick questions (`shared/trick-questions.ts`), the same ones in the same order for every player.
+* **Items:** LOTO Lock (moving hazards stop for 8 s), fire extinguisher (clears your lane ahead), Buddy System (auto-dodge for 5 s),
+  Zero Accident ×2 (double distance points for 15 s, lost on a crash) and Spot Audit (+30, and the player in the lead gets a question:
+  wrong means slower). A Spot Audit arrives as an `audit` input, so it is part of the replay.
+* **The big screen doesn't stream video.** Each phone sends its `[tick, action]` presses over Supabase Realtime. The host runs the three
+  races itself, 0.25 s behind, and shows one of them: the one with a question up, a new leader, or each in turn (or the one you tap).
+* **Scores** come from `api/tournament` replaying each phone's presses with the room's seed (`replayTour`). Ties go to the most right
+  answers. Tournament results are kept apart from the main leaderboard (`safety_run_tour_*` tables).
+
+Under `npm run dev` the realtime channel goes through the dev server (`/api/relay`), so no Supabase is needed locally (host key: `dev`).
+For production, set the two `VITE_SUPABASE_*` variables below and allow public Realtime channels in the Supabase project
+(Realtime settings). The channel only carries what the big screen shows. Anyone with the anon key could send fake presses to the host,
+but the scores that count are always the server's own replay.
 
 ## Mascot sets
 
@@ -111,3 +139,5 @@ One data file, `src/render/ppe-icons.ts`, draws them in the game (floating picku
 | `ADMIN_KEY` | password for `/admin` |
 | `ALLOWED_IDS` | optional comma-separated list of valid employee IDs; empty = any 3–15 letters/digits |
 | `MAX_PLAYS` | optional cap on plays per employee; empty/0 = unlimited |
+| `VITE_SUPABASE_URL` | the Supabase project URL, for the tournament's realtime channel (read at build time) |
+| `VITE_SUPABASE_ANON_KEY` | the project's anon (public) key, same purpose |
