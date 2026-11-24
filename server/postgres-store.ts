@@ -11,39 +11,55 @@ export function createPostgresStore(url: string): Store {
       and not exists (select 1 from safety_run_players p where p.emp_id = r.emp_id and p.hidden)
     order by emp_id, score desc, finished_at asc`;
 
+  // Every `alter table` takes an ACCESS EXCLUSIVE lock, even when it ends up skipping. Run on every cold start,
+  // that lock queues behind any in-flight query and every request after it queues behind the lock.
+  // A plain catalog read takes no lock, so the DDL only runs when the schema is actually behind.
+  const migrated = (q: postgres.Sql | postgres.TransactionSql) => q`
+    select exists (select 1 from pg_attribute where attrelid = to_regclass('safety_run_players') and attname = 'hidden' and not attisdropped)
+       and exists (select 1 from pg_attribute where attrelid = to_regclass('safety_run_runs') and attname = 'game_seed' and not attisdropped) as ok`
+    .then(([r]) => !!r?.ok);
+
   let ready: Promise<void> | null = null;
   return {
     init() {
       ready ||= (async () => {
-        // one row per run; (emp_id, run_no) unique + run_no limit = hard cap on plays per employee
-        await sql`create table if not exists safety_run_runs (
-          id bigserial primary key,
-          emp_id text not null,
-          run_no smallint not null check (run_no >= 1),
-          name text not null,
-          token_hash text not null,
-          started_at timestamptz not null default now(),
-          score integer,
-          secs integer,
-          capped boolean not null default false,
-          finished_at timestamptz,
-          ua text,
-          unique (emp_id, run_no))`;
-        await sql`alter table safety_run_runs add column if not exists game_seed bigint`;
-        await sql`alter table safety_run_runs drop constraint if exists safety_run_runs_run_no_check`;
-        // one avatar per employee, never reused: the sequence hands out each number once
-        await sql`create sequence if not exists safety_run_avatar_seq minvalue 0 start 0`;
-        await sql`create table if not exists safety_run_players (
-          emp_id text primary key,
-          avatar integer not null unique default nextval('safety_run_avatar_seq'),
-          created_at timestamptz not null default now())`;
-        // admin can hide a player's scores from the leaderboard without deleting anything
-        await sql`alter table safety_run_players add column if not exists hidden boolean not null default false`;
-        // block the public anon/publishable keys; server connects as table owner
-        await sql`alter table safety_run_runs enable row level security`;
-        await sql`alter table safety_run_players enable row level security`;
-        // players who started before avatars existed get theirs now
-        await sql`insert into safety_run_players (emp_id) select distinct emp_id from safety_run_runs order by emp_id on conflict (emp_id) do nothing`;
+        if (await migrated(sql)) return;
+        await sql.begin(async tx => {
+          // fail fast instead of freezing the table for everyone; the next request retries
+          await tx`set local lock_timeout = '5s'`;
+          // one instance migrates, the rest wait here and then see it done (xact-scoped: safe behind a pooler)
+          await tx`select pg_advisory_xact_lock(hashtext('safety_run_migrate'))`;
+          if (await migrated(tx)) return;
+          // one row per run; (emp_id, run_no) unique + run_no limit = hard cap on plays per employee
+          await tx`create table if not exists safety_run_runs (
+            id bigserial primary key,
+            emp_id text not null,
+            run_no smallint not null check (run_no >= 1),
+            name text not null,
+            token_hash text not null,
+            started_at timestamptz not null default now(),
+            score integer,
+            secs integer,
+            capped boolean not null default false,
+            finished_at timestamptz,
+            ua text,
+            unique (emp_id, run_no))`;
+          await tx`alter table safety_run_runs add column if not exists game_seed bigint`;
+          await tx`alter table safety_run_runs drop constraint if exists safety_run_runs_run_no_check`;
+          // one avatar per employee, never reused: the sequence hands out each number once
+          await tx`create sequence if not exists safety_run_avatar_seq minvalue 0 start 0`;
+          await tx`create table if not exists safety_run_players (
+            emp_id text primary key,
+            avatar integer not null unique default nextval('safety_run_avatar_seq'),
+            created_at timestamptz not null default now())`;
+          // admin can hide a player's scores from the leaderboard without deleting anything
+          await tx`alter table safety_run_players add column if not exists hidden boolean not null default false`;
+          // block the public anon/publishable keys; server connects as table owner
+          await tx`alter table safety_run_runs enable row level security`;
+          await tx`alter table safety_run_players enable row level security`;
+          // players who started before avatars existed get theirs now
+          await tx`insert into safety_run_players (emp_id) select distinct emp_id from safety_run_runs order by emp_id on conflict (emp_id) do nothing`;
+        });
       })().catch(e => { ready = null; throw e; });
       return ready;
     },
