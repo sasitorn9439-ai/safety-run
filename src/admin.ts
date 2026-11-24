@@ -1,24 +1,39 @@
 import { avName } from '../shared/avatar.js';
-import { SCORE_BUCKET, filterRuns, runStatus, summarize, type RunFilter, type RunStatus } from './admin-stats.js';
-import type { AdminRow, AdminRun } from './lib/api.js';
+import { SCORE_BUCKET, filterRuns, playerHeat, runStatus, summarize, type Range, type RunFilter, type RunStatus } from './admin-stats.js';
+import type { AdminRun } from './lib/api.js';
 import { $, esc } from './lib/dom.js';
 
-const PAGE = 500;
-let rows: AdminRow[] = [];
-let runs: AdminRun[] = [];
-/** runs that pass the filter bar, newest first */
-let shown: AdminRun[] = [];
-let showAll = false;
-let note = '';
-const keyInput = $<HTMLInputElement>('key');
-try { keyInput.value = sessionStorage.getItem('srKey') || ''; } catch { /* storage blocked */ }
+const CACHE = 'srAdmin';
+/** what a correct key leaves in this browser: the key and the last runs it loaded, so a reopened page shows data straight away */
+interface Cache { key: string; runs: AdminRun[]; at: number }
 
+let key = '';
+let runs: AdminRun[] = [];
+let loadedAt = 0;
+/** runs that pass the column filters, newest first */
+let shown: AdminRun[] = [];
+/** 0-based page of the runs table */
+let page = 0;
+
+function readCache(): Cache | null {
+  try {
+    const c = JSON.parse(localStorage.getItem(CACHE) || 'null') as Cache | null;
+    return c && typeof c.key === 'string' && Array.isArray(c.runs) ? c : null;
+  } catch { return null; }
+}
+function writeCache() {
+  try { localStorage.setItem(CACHE, JSON.stringify({ key, runs, at: loadedAt } satisfies Cache)); } catch { /* storage full or blocked */ }
+}
+function clearCache() {
+  try { localStorage.removeItem(CACHE); sessionStorage.removeItem('srKey'); } catch { /* ignore */ }
+}
+
+class KeyError extends Error {}
 async function call<T>(data: object): Promise<T> {
-  const key = keyInput.value.trim();
-  try { sessionStorage.setItem('srKey', key); } catch { /* ignore */ }
   const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, ...data }) });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error === 'key' ? 'Admin key ไม่ถูกต้อง' : 'ผิดพลาด: ' + (j.error || r.status));
+  if (r.status === 401) throw new KeyError('Admin key ไม่ถูกต้อง');
+  if (!r.ok) throw new Error('ผิดพลาด: ' + (j.error || r.status));
   return j as T;
 }
 
@@ -26,17 +41,27 @@ const num = (v: string) => (v.trim() === '' || !Number.isFinite(+v) ? null : +v)
 const time = (v: string) => { const t = new Date(v).getTime(); return v && Number.isFinite(t) ? t : null; };
 
 function readFilter(): RunFilter {
-  const v = (id: string) => $<HTMLInputElement>(id).value, on = (id: string) => $<HTMLInputElement>(id).checked;
-  const status = v('f-status'), to = time(v('f-to'));
+  const v = (id: string) => {
+    const el = $<HTMLInputElement>(id);
+    el.classList.toggle('on', el.value !== '' && el.value !== 'all');
+    return el.value;
+  };
+  const range = (id: string, parse: (v: string) => number | null, slack = 0): Range => {
+    const max = parse(v(id + '-max'));
+    return { min: parse(v(id + '-min')), max: max == null ? null : max + slack };
+  };
+  const status = v('f-status'), hidden = v('f-hidden');
   return {
-    text: v('f-text'),
-    status: status === 'finished' || status === 'unfinished' ? status : 'all',
+    id: v('f-id'),
+    avatar: v('f-avatar'),
     runNo: num(v('f-run')) ?? 'all',
-    from: time(v('f-from')),
     // the picker stops at minutes, so "to 10:30" takes in 10:30:59
-    to: to == null ? null : to + 59_999,
-    minScore: num(v('f-min')), maxScore: num(v('f-max')),
-    includeHidden: on('f-hidden'), includeLegacy: on('f-legacy'),
+    started: range('f-start', time, 59_999),
+    finished: range('f-end', time, 59_999),
+    secs: range('f-secs', num),
+    score: range('f-score', num),
+    status: status in STATUS ? (status as RunStatus) : 'all',
+    hidden: hidden === 'shown' || hidden === 'hidden' ? hidden : 'all',
   };
 }
 
@@ -46,7 +71,7 @@ const clock = (secs: number | null) => {
   const t = Math.round(secs);
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 };
-const date = (t: string | null) => (t ? new Date(t).toLocaleString('th-TH') : '—');
+const date = (t: string | number | null) => (t ? new Date(t).toLocaleString('th-TH') : '—');
 const STATUS: Record<RunStatus, string> = { finished: 'ส่งคะแนนแล้ว', unfinished: 'ไม่ได้ส่งคะแนน', legacy: 'legacy' };
 
 /** one row per item: label, a bar split into finished and unfinished, then the count */
@@ -57,9 +82,25 @@ function bars(items: { label: string; fin: number; unf: number; text: string }[]
     i.fin ? `<i class="fin" style="flex:${i.fin}"></i>` : ''}${i.unf ? `<i class="unf" style="flex:${i.unf}"></i>` : ''}</div><b>${esc(i.text)}</b>`).join('')}</div>`;
 }
 
+/** day × hour grid; colour runs one hue from the card surface (none) to brand yellow (busiest cell) */
+function heat(runs: readonly AdminRun[]) {
+  const h = playerHeat(runs);
+  if (!h.days.length) return '<p class="empty">ไม่มีข้อมูลตามตัวกรองนี้</p>';
+  const hh = (n: number) => String(n).padStart(2, '0') + ':00';
+  const day = (t: number) => new Date(t).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+  const cell = (n: number, d: number, hour: number) => {
+    const k = n / h.max;
+    const bg = n ? `color-mix(in oklab, #ffd400 ${Math.round(15 + k * 85)}%, #2a2e35)` : '#191b20';
+    const tip = `${day(d)} ${hh(hour)}–${hh(hour + 1)} · ${n} คน`;
+    return `<td${k > 0.55 ? ' class="hi"' : ''} style="background:${bg}" title="${esc(tip)}" aria-label="${esc(tip)}">${n || ''}</td>`;
+  };
+  return `<div class="heat"><table><thead><tr><th></th>${h.hours.map(x => `<th>${hh(x)}</th>`).join('')}</tr></thead><tbody>${
+    h.days.map(d => `<tr><th>${esc(day(d.day))}</th>${d.players.map((n, i) => cell(n, d.day, h.hours[i]!)).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
 function runRow(r: AdminRun) {
   const st = runStatus(r);
-  return `<tr${r.hidden ? ' class="hid"' : ''}><td>${esc(r.id)}</td><td>${esc(avName(r.avatar))}</td><td class="n">${r.runNo}</td><td>${date(r.startedAt)}</td><td>${date(r.finishedAt)}</td><td class="n">${clock(r.secs)}</td><td class="n">${r.score ?? '—'}</td><td class="st-${st}">${STATUS[st]}${r.hidden ? ' · ซ่อน' : ''}</td></tr>`;
+  return `<tr${r.hidden ? ' class="hid"' : ''}><td>${esc(r.id)}</td><td>${esc(avName(r.avatar))}</td><td class="n">${r.runNo}</td><td>${date(r.startedAt)}</td><td>${date(r.finishedAt)}</td><td class="n">${clock(r.secs)}</td><td class="n">${r.score ?? '—'}</td><td class="st-${st}">${STATUS[st]}${r.hidden ? ' · ซ่อน' : ''}</td><td><button type="button" class="alt" data-id="${esc(r.id)}">${r.hidden ? 'แสดงคะแนน' : 'ซ่อนคะแนน'}</button></td></tr>`;
 }
 
 function render() {
@@ -81,76 +122,135 @@ function render() {
     label: new Date(h.hour).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
     fin: h.finished, unf: h.started - h.finished, text: `${h.finished} / ${h.started}`,
   })));
+  $('heat').innerHTML = heat(shown);
   $('by-score').innerHTML = bars(s.scoreBuckets.map(b => ({ label: `${b.from}–${b.from + SCORE_BUCKET - 1}`, fin: b.count, unf: 0, text: String(b.count) })));
-  const list = showAll ? shown : shown.slice(0, PAGE);
-  $('rb').innerHTML = list.map(runRow).join('');
-  $('runs-note').textContent = list.length < shown.length ? `แสดง ${fmt(list.length)} จาก ${fmt(shown.length)} รอบ` : `${fmt(shown.length)} รอบ`;
-  $('more').hidden = list.length === shown.length;
+  renderPage();
+}
+
+/** redraws only the table body and pager, so paging skips the stats and charts */
+function renderPage() {
+  const size = +$<HTMLSelectElement>('pg-size').value || 50;
+  const pages = Math.max(1, Math.ceil(shown.length / size));
+  page = Math.min(Math.max(page, 0), pages - 1);
+  const start = page * size, list = shown.slice(start, start + size);
+  $('rb').innerHTML = list.length ? list.map(runRow).join('') : '<tr><td colspan="9" class="empty">ไม่มีข้อมูลตามตัวกรองนี้</td></tr>';
+  $('runs-note').textContent = `${fmt(shown.length)} รอบ`;
+  $('export').textContent = `Export ข้อมูลวิ่งที่กรองอยู่ (${fmt(shown.length)} รอบ)`;
+  $<HTMLButtonElement>('export').disabled = !shown.length;
+  $('pg-info').textContent = list.length ? `${fmt(start + 1)}–${fmt(start + list.length)} จาก ${fmt(shown.length)} · หน้า ${fmt(page + 1)} / ${fmt(pages)}` : '';
+  $<HTMLButtonElement>('pg-first').disabled = $<HTMLButtonElement>('pg-prev').disabled = page === 0;
+  $<HTMLButtonElement>('pg-last').disabled = $<HTMLButtonElement>('pg-next').disabled = page >= pages - 1;
 }
 
 function fillRunNos() {
   const sel = $<HTMLSelectElement>('f-run'), cur = sel.value;
   const nos = [...new Set(runs.map(r => r.runNo))].sort((a, b) => a - b);
-  sel.innerHTML = '<option value="all">ทุกครั้งที่เล่น</option>' + nos.map(n => `<option value="${n}">ครั้งที่ ${n}</option>`).join('');
+  sel.innerHTML = '<option value="all">ทั้งหมด</option>' + nos.map(n => `<option value="${n}">ครั้งที่ ${n}</option>`).join('');
   sel.value = nos.includes(+cur) ? cur : 'all';
 }
 
-async function load() {
-  $('msg').textContent = 'กำลังโหลด…';
-  try {
-    [rows, runs] = await Promise.all([
-      call<{ rows: AdminRow[] }>({ action: 'export' }).then(j => j.rows),
-      call<{ runs: AdminRun[] }>({ action: 'runs' }).then(j => j.runs),
-    ]);
-    $('tb').innerHTML = rows.map((r, i) =>
-      `<tr${r.hidden ? ' class="hid"' : ''}><td class="n">${i + 1}</td><td>${esc(r.id)}</td><td>${esc(avName(r.avatar))}</td><td class="n">${r.best ?? '—'}</td><td class="n">${r.plays}</td><td>${esc(r.scores)}</td><td>${new Date(r.startedAt).toLocaleString('th-TH')}</td><td class="flag">${[r.unfinished ? r.unfinished + ' ครั้งไม่ได้ส่งคะแนน' : '', r.flagged ? 'มีคะแนนถูกปรับลด' : '', r.hidden ? 'ซ่อนจากตารางอันดับ' : ''].filter(Boolean).join(' · ')}</td><td><button class="alt" data-act="hide" data-id="${esc(r.id)}">${r.hidden ? 'แสดงคะแนน' : 'ซ่อนคะแนน'}</button></td></tr>`).join('');
-    fillRunNos();
-    render();
-    $('msg').textContent = (note ? note + ' · ' : '') + `ผู้เล่น ${rows.length} คน · มีคะแนนแล้ว ${rows.filter(r => r.best != null).length} คน · เล่นรวม ${rows.reduce((a, r) => a + r.plays, 0)} ครั้ง`;
-  } catch (e) { $('msg').textContent = (e as Error).message; }
+function showData(note = '') {
+  $('gate').hidden = true;
+  $('app').hidden = false;
+  fillRunNos();
+  render();
+  $('msg').textContent = note || `ข้อมูลเมื่อ ${date(loadedAt)}`;
 }
 
-async function copyCsv(btn: HTMLElement, header: string, lines: unknown[][]) {
+function lock(message = '') {
+  key = '';
+  runs = [];
+  clearCache();
+  $('app').hidden = true;
+  $('gate').hidden = false;
+  $('gate-msg').textContent = message;
+  $<HTMLInputElement>('key').value = '';
+  $('key').focus();
+}
+
+/** fetch fresh runs; a wrong key locks the page, any other failure keeps whatever is on screen */
+async function load(): Promise<boolean> {
+  try {
+    runs = (await call<{ runs: AdminRun[] }>({ action: 'runs' })).runs;
+    loadedAt = Date.now();
+    writeCache();
+    showData();
+    return true;
+  } catch (e) {
+    if (e instanceof KeyError) lock(e.message);
+    else if (!$('app').hidden) $('msg').textContent = `${(e as Error).message} · ยังแสดงข้อมูลเมื่อ ${date(loadedAt)}`;
+    else $('gate-msg').textContent = (e as Error).message;
+    return false;
+  }
+}
+
+$<HTMLFormElement>('gate').onsubmit = async e => {
+  e.preventDefault();
+  key = $<HTMLInputElement>('key').value.trim();
+  if (!key) return;
+  const btn = $<HTMLButtonElement>('login');
+  btn.disabled = true;
+  $('gate-msg').textContent = 'กำลังโหลด…';
+  await load();
+  btn.disabled = false;
+};
+$('refresh').onclick = async () => { $('msg').textContent = 'กำลังโหลด…'; await load(); };
+$('logout').onclick = () => lock();
+
+$('export').onclick = () => {
   const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const csv = '﻿' + header + '\n' + lines.map(l => l.map(q).join(',')).join('\n');
-  let text: string;
-  try { await navigator.clipboard.writeText(csv); text = `คัดลอก ${lines.length} แถวแล้ว`; }
-  catch { text = 'คัดลอกไม่ได้ในเบราว์เซอร์นี้'; }
-  $('msg').textContent = text;
-  btn.dataset.label ??= btn.textContent!;
-  btn.textContent = text;
-  setTimeout(() => (btn.textContent = btn.dataset.label!), 2000);
-}
+  const lines = shown.map(r => [r.id, avName(r.avatar), r.runNo, r.startedAt, r.finishedAt, r.secs, r.score, runStatus(r), r.hidden ? 'hidden' : '']);
+  // BOM so Excel reads the Thai avatar names as UTF-8
+  const csv = '﻿employee_id,avatar_name,run_no,started_at,finished_at,play_secs,score,status,hidden\n' + lines.map(l => l.map(q).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const d = new Date(), p = (n: number) => String(n).padStart(2, '0');
+  a.download = `safety-run-runs-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  $('msg').textContent = `Export ${fmt(lines.length)} รอบแล้ว`;
+};
 
-$('load').onclick = load;
-$('csv').onclick = async () => {
-  if (!rows.length) await load();
-  await copyCsv($('csv'), 'rank,employee_id,avatar_name,best_score,plays,scores,first_started,note',
-    rows.map((r, i) => [i + 1, r.id, avName(r.avatar), r.best ?? '', r.plays, r.scores, r.startedAt, [r.flagged ? 'capped' : '', r.hidden ? 'hidden' : ''].filter(Boolean).join(' ')]));
-};
-$('runs-csv').onclick = async () => {
-  if (!runs.length) await load();
-  await copyCsv($('runs-csv'), 'employee_id,avatar_name,run_no,started_at,finished_at,play_secs,score,status,hidden',
-    shown.map(r => [r.id, avName(r.avatar), r.runNo, r.startedAt, r.finishedAt, r.secs, r.score, runStatus(r), r.hidden ? 'hidden' : '']));
-};
-$('tb').onclick = async e => {
-  const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-act]');
+$('rb').onclick = async e => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-id]');
   if (!b) return;
-  const id = b.dataset.id!, r = rows.find(x => x.id === id);
+  const id = b.dataset.id!, r = runs.find(x => x.id === id);
   if (!r) return;
+  const hide = !r.hidden;
+  if (hide && !confirm(`ซ่อนคะแนนของ ${id} (${avName(r.avatar)}) จากตารางอันดับ?\nมีผลกับทุกรอบของผู้เล่นคนนี้ ข้อมูลยังอยู่ และกดแสดงกลับได้`)) return;
   try {
-    const hide = !r.hidden;
-    if (hide && !confirm(`ซ่อนคะแนนของ ${id} (${avName(r.avatar)}) จากตารางอันดับ?\nข้อมูลยังอยู่ และกดแสดงกลับได้`)) return;
     await call({ action: 'hide', id, hidden: hide });
-    note = hide ? `ซ่อนคะแนนของ ${id} จากตารางอันดับแล้ว` : `แสดงคะแนนของ ${id} บนตารางอันดับแล้ว`;
-    await load();
-    note = '';
-  } catch (err) { $('msg').textContent = (err as Error).message; }
+    for (const x of runs) if (x.id === id) x.hidden = hide;
+    writeCache();
+    render();
+    $('msg').textContent = hide ? `ซ่อนคะแนนของ ${id} จากตารางอันดับแล้ว` : `แสดงคะแนนของ ${id} บนตารางอันดับแล้ว`;
+  } catch (err) {
+    if (err instanceof KeyError) lock(err.message);
+    else $('msg').textContent = (err as Error).message;
+  }
 };
 
 const filters = $<HTMLFormElement>('filters');
-filters.oninput = render;
+// a new filter starts again from the first page
+filters.oninput = () => { page = 0; render(); };
 filters.onsubmit = e => e.preventDefault();
-$('f-reset').onclick = () => { filters.reset(); render(); };
-$('more').onclick = () => { showAll = true; render(); };
-render();
+$('f-reset').onclick = () => { filters.reset(); page = 0; render(); };
+const go = (p: number) => { page = p; renderPage(); $('runs').scrollIntoView({ block: 'start' }); };
+$('pg-first').onclick = () => go(0);
+$('pg-prev').onclick = () => go(page - 1);
+$('pg-next').onclick = () => go(page + 1);
+// renderPage clamps to the last page
+$('pg-last').onclick = () => go(Infinity);
+$('pg-size').onchange = () => { page = 0; renderPage(); };
+
+// a key that worked before opens the dashboard on the cached runs, then refreshes them
+const cached = readCache();
+if (cached) {
+  key = cached.key;
+  runs = cached.runs;
+  loadedAt = cached.at;
+  showData(`ข้อมูลเมื่อ ${date(loadedAt)} · กำลังอัปเดต…`);
+  void load();
+} else {
+  lock();
+}

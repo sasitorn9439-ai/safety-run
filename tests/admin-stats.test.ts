@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { NO_FILTER, filterRuns, runStatus, summarize, type RunFilter } from '../src/admin-stats.js';
+import { NO_FILTER, filterRuns, playerHeat, runStatus, summarize, type RunFilter } from '../src/admin-stats.js';
 import type { AdminRun } from '../src/lib/api.js';
+import { avName } from '../shared/avatar.js';
 
 // local wall-clock times, so the hour buckets match in any timezone
 const at = (h: number, m = 0, s = 0) => new Date(2026, 11, 1, h, m, s).getTime();
@@ -22,30 +23,39 @@ describe('filterRuns', () => {
     expect(filterRuns(ALL, NO_FILTER)).toEqual(ALL);
   });
   it('matches part of the employee id in any case', () => {
-    expect(pick({ text: 'emp2' })).toEqual([C]);
-    expect(pick({ text: ' Emp1 ' })).toEqual([A, B]);
-    expect(pick({ text: 'nobody' })).toEqual([]);
+    expect(pick({ id: 'emp2' })).toEqual([C]);
+    expect(pick({ id: ' Emp1 ' })).toEqual([A, B]);
+    expect(pick({ id: 'nobody' })).toEqual([]);
+  });
+  it('matches part of the avatar name', () => {
+    const C2 = { ...C, avatar: 1 };
+    expect(filterRuns([A, C2], { ...NO_FILTER, avatar: avName(1) })).toEqual([C2]);
+    expect(pick({ avatar: 'ไม่มีชื่อนี้' })).toEqual([]);
   });
   it('filters by status and run number', () => {
-    expect(pick({ status: 'finished' })).toEqual([A, C, D, E]);
+    expect(pick({ status: 'finished' })).toEqual([A, C, E]);
     expect(pick({ status: 'unfinished' })).toEqual([B]);
+    expect(pick({ status: 'legacy' })).toEqual([D]);
     expect(pick({ runNo: 2 })).toEqual([B]);
     expect(pick({ runNo: 3, status: 'unfinished' })).toEqual([]);
   });
   it('treats both ends of the start-time range as inclusive', () => {
-    expect(pick({ from: at(9, 5), to: at(9, 40) })).toEqual([A, B]);
-    expect(pick({ from: at(9, 5) + 1 })).toEqual([B, C, E]);
-    expect(pick({ to: at(8) })).toEqual([D]);
+    expect(pick({ started: { min: at(9, 5), max: at(9, 40) } })).toEqual([A, B]);
+    expect(pick({ started: { min: at(9, 5) + 1, max: null } })).toEqual([B, C, E]);
+    expect(pick({ started: { min: null, max: at(8) } })).toEqual([D]);
   });
-  it('applies score bounds to finished runs only', () => {
-    expect(pick({ minScore: 1000 })).toEqual([A, B, D]);
-    expect(pick({ maxScore: 499 })).toEqual([B, C, E]);
-    expect(pick({ minScore: 1200, maxScore: 1200, status: 'finished' })).toEqual([A]);
+  it('drops rows with no value once a range has a bound', () => {
+    expect(pick({ score: { min: 1000, max: null } })).toEqual([A, D]);
+    expect(pick({ score: { min: null, max: 499 } })).toEqual([C, E]);
+    expect(pick({ score: { min: 1200, max: 1200 } })).toEqual([A]);
+    expect(pick({ secs: { min: 30, max: null } })).toEqual([A, E]);
+    const F = { ...A, finishedAt: new Date(at(9, 6)).toISOString() };
+    expect(filterRuns([F, B], { ...NO_FILTER, finished: { min: at(9), max: null } })).toEqual([F]);
   });
-  it('can leave out hidden players and legacy runs', () => {
-    expect(pick({ includeHidden: false })).toEqual([A, B, D, E]);
-    expect(pick({ includeLegacy: false })).toEqual([A, B, C, E]);
-    expect(pick({ includeHidden: false, includeLegacy: false, status: 'finished' })).toEqual([A, E]);
+  it('shows only hidden or only visible players', () => {
+    expect(pick({ hidden: 'shown' })).toEqual([A, B, D, E]);
+    expect(pick({ hidden: 'hidden' })).toEqual([C]);
+    expect(pick({ hidden: 'shown', status: 'finished' })).toEqual([A, E]);
   });
 });
 
@@ -89,5 +99,23 @@ describe('summarize', () => {
 describe('runStatus', () => {
   it('marks legacy runs before finished or not', () => {
     expect([A, B, D, run({ start: at(9), legacy: true })].map(runStatus)).toEqual(['finished', 'unfinished', 'legacy', 'legacy']);
+  });
+});
+
+describe('playerHeat', () => {
+  it('is empty for no runs', () => {
+    expect(playerHeat([])).toEqual({ hours: [], days: [], max: 0 });
+  });
+  it('counts each player once per day and hour, gaps included', () => {
+    const A2 = run({ start: at(9, 50), runNo: 2 }); // EMP1 again in the 9:00 hour
+    const next = run({ start: new Date(2026, 11, 2, 10).getTime(), id: 'EMP7' });
+    expect(playerHeat([...ALL, A2, next])).toEqual({
+      hours: [8, 9, 10],
+      days: [
+        { day: new Date(2026, 11, 1).getTime(), players: [1, 1, 2] },
+        { day: new Date(2026, 11, 2).getTime(), players: [0, 0, 1] },
+      ],
+      max: 2,
+    });
   });
 });
