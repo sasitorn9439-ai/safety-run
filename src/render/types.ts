@@ -6,6 +6,8 @@ export interface SceneState {
   objs: readonly GameObject[];
   /** seconds left on the man-lift (the mascot rides a platform up to its feet) */
   lift?: number;
+  /** the scenery's area when it is fixed (a one-area tournament stage); otherwise it follows the distance */
+  stageZone?: number;
 }
 /** The state one simulation tick earlier; renderers blend prev → s by `alpha` so motion stays smooth at any refresh rate. */
 export interface PrevState { dist: number; px: number; py: number; slide: number }

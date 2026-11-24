@@ -134,8 +134,8 @@ export async function openChannel(code: string, role: Role, auth: SeatAuth, onMs
 
 export const STAGE_NAMES: Record<StageId, string> = {
   tour: 'ทั่วโรงงาน (เปลี่ยนโซนตามระยะ)',
-  entry: 'ทางเข้าคลังสินค้า', forklift: 'ทางรถโฟล์คลิฟท์', chemical: 'พื้นที่สารเคมี',
-  height: 'งานบนที่สูง', electrical: 'ห้องไฟฟ้า', evac: 'ซ้อมอพยพ (ผสมทุกอย่าง)',
+  entry: 'หน้าโรงงาน', forklift: 'พื้นที่โกดัง', chemical: 'ห้องเก็บสารเคมี',
+  height: 'งานบนที่สูง', electrical: 'ไลน์ผลิต', evac: 'ซ้อมหนีไฟ (ผสมทุกอย่าง)',
 };
 
 export const fmtTime = (secs: number) => `${Math.floor(secs / 60)}:${String(Math.floor(secs % 60)).padStart(2, '0')}`;

@@ -28,6 +28,7 @@ export const bonusArt: Art = { box: [-.38, -.38, .38, .38], draw: drawBonusBadge
 export const haloArt: Art = { box: [-1, -1, 1, 1], draw: drawHalo, scale: .5, mips: true };
 export const shadowArt: Art = { box: [-.5, -.12, .5, .12], draw: drawShadow, scale: OBJ, mips: true };
 export const pillarArt: Art = { box: [-.19, -7.2, .19, 0], draw: drawPillar, scale: .5, mips: true };
+export const whitePillarArt: Art = { ...pillarArt, draw: (c,u) => drawPillar(c,u,true) };
 export const lightArt: Art = { box: [-1.1, -.28, 1.1, .28], draw: drawLight, scale: .5, mips: true };
 export const shieldArt: Art = { box: [-.45, -.7, .45, .7], draw: drawShield, scale: MASCOT, mips: false };
 export const dotArt: Art = { box: [-.5, -.5, .5, .5], draw: drawDot, scale: .12, mips: false };
@@ -89,6 +90,7 @@ export class SpriteSet {
   power = {} as Record<PowerType, Sprite>;
   lift: Sprite;
   pillar: Sprite;
+  whitePillar: Sprite;
   light: Sprite;
 
   constructor(lw: number, dpr: number) {
@@ -104,6 +106,7 @@ export class SpriteSet {
     for (const t of POWERS) this.power[t] = mk(powerArt(t));
     this.lift = mk(liftArt);
     this.pillar = mk(pillarArt);
+    this.whitePillar = mk(whitePillarArt);
     this.light = mk(lightArt);
     for (let i = 0; i < RUN_FRAMES; i++) this.run.push(mk(runArt(i)));
     for (let i = 0; i < SLIDE_FRAMES; i++) this.slide.push(mk(slideArt(i)));

@@ -144,7 +144,7 @@ export class Hud {
     e.tint.style.background = info.tint;
     e.tint.classList.toggle('pulse', info.id === 'evac');
     e.zone.style.setProperty('--c', info.accent);
-    e.zoneNo.textContent = `ZONE ${z.n} · ${info.en}`; e.zoneTh.textContent = info.th; e.zoneTip.textContent = info.tip;
+    e.zoneNo.textContent = info.en; e.zoneTh.textContent = info.th; e.zoneTip.textContent = info.tip;
     e.zone.classList.add('on');
     clearTimeout(this.zoneTimer);
     this.zoneTimer = window.setTimeout(() => e.zone.classList.remove('on'), 4200);

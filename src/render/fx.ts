@@ -3,6 +3,7 @@
  * blending the last two sim steps, sorting what to draw, the mascot's pose, particles and screen shake.
  * Both renderers (WebGL and Canvas2D) read from here, so they move identically.
  */
+import { zoneIndexAt } from '../../shared/zones.js';
 import { HZ, type HazardKind, type PpeType } from '../../shared/hazards.js';
 import { LIFT_HEIGHT, POWER_SECONDS, SLIDE_SECONDS, START_SPEED, STEP, ZMAX, type GameObject, type PowerType, type SimEvent } from '../../shared/sim.js';
 import { Camera, type Pt } from './camera.js';
@@ -129,7 +130,7 @@ export interface DrawItem {
 export const PPE_FAR_BOOST = .5;
 
 /** how much bigger than true perspective each hazard is drawn: the tall ones a bit larger (so they outweigh the pickups); flat ones and the scaffold (already as tall as a jump) unchanged */
-export const HAZARD_SCALE: Record<HazardKind, number> = { forklift: 1.15, pallet: 1.15, pipe: 1, spill: 1, hose: 1, fumes: 1, drop: 1, sparks: 1 };
+export const HAZARD_SCALE: Record<HazardKind, number> = { forklift: 1.15, pallet: 1.15, pipe: 1, spill: 1, manhole: 1, hose: 1, fumes: 1, drop: 1, sparks: 1 };
 
 export class DrawList {
   items: DrawItem[] = [];
@@ -305,15 +306,44 @@ export function pose(f: Frame, cam: Camera, I: Interp, fx: Fx, now: number, pt: 
   };
 }
 
+const POLE_GAP = 24;
+
 /** Pillars and ceiling lights along the corridor, as {z, kind, lane}. Fills `out` and returns the count. */
-export interface EnvItem { z: number; light: boolean; l: number }
-export function envItems(dist: number, out: EnvItem[]): number {
+export interface EnvItem { white?: boolean; z: number; light: boolean; l: number }
+export function envItems(dist: number, out: EnvItem[], stageZone?: number): number {
   let n = 0;
-  const put = (z: number, light: boolean, l: number) => {
+  const put = (z: number, light: boolean, l: number, white = false) => {
     const it = (out[n] ||= { z: 0, light: false, l: 0 });
-    it.z = z; it.light = light; it.l = l; n++;
+    it.z = z; it.white = white; it.light = light; it.l = l; n++;
   };
-  for (let z = 12 - (dist % 12); z < ZMAX; z += 12) { put(z, false, -2.4); put(z, false, 2.4); }
-  for (let z = 8 - (dist % 8); z < ZMAX; z += 8) put(z, true, 0);
+  for (let m = (Math.floor(dist / POLE_GAP) + 1) * POLE_GAP; m < dist + ZMAX; m += POLE_GAP) {
+    const zone = zoneIndexAt(m, stageZone);
+    const white = zone === 1 || zone === 4;
+    put(m - dist, false, -2.4, white); put(m - dist, false, 2.4, white);
+  }
+  for (let z = 8 - (dist % 8); z < ZMAX; z += 8) {
+    if (zoneIndexAt(dist + z, stageZone) !== 0) put(z, true, 0);
+  }
   return n;
+}
+
+export function entranceWires(dist: number, stageZone: number | undefined, cam: Camera,
+  emit: (points: number[], z: number) => void) {
+  const pt = { x: 0, y: 0, s: 1 };
+  for (let m = Math.floor(dist / POLE_GAP) * POLE_GAP; m < dist + ZMAX; m += POLE_GAP) {
+    if (zoneIndexAt(m, stageZone) !== 0 || zoneIndexAt(m + POLE_GAP, stageZone) !== 0) continue;
+    const start = m - dist;
+    const near = Math.max(0, start), far = Math.min(ZMAX, start + POLE_GAP);
+    if (near >= far) continue;
+    for (const lane of [-2.4, 2.4]) {
+      const points: number[] = [];
+      for (let i = 0; i <= 12; i++) {
+        const z = near + (far - near) * i / 12;
+        const t = (z - start) / POLE_GAP;
+        cam.project(lane, z, (7.12 - 3.2 * t * (1 - t)) / .9, pt);
+        points.push(pt.x, pt.y);
+      }
+      emit(points, (near + far) / 2);
+    }
+  }
 }
