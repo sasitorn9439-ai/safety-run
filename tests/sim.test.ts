@@ -94,29 +94,23 @@ describe('coins and PPE', () => {
       expect(v.bonus).toBeGreaterThanOrEqual(v.coins * COIN_SCORE);
       expect(r.score()).toBe(g.score);
     }
-    expect(PPE_SCORE).toBe(4);
+    expect(PPE_SCORE).toBe(10);
   });
 });
 
 describe('speed curve', () => {
   it('starts calm, only ever speeds up, and tops out at MAX_SPEED', () => {
     expect(speedAt(0)).toBe(START_SPEED);
-    expect(START_SPEED).toBeLessThan(14);                         // slower than the first version's start
+    expect(START_SPEED).toBe(14);
     let prev = 0;
     for (let d = 0; d <= FULL_SPEED_AT * 1.5; d += 25) { const v = speedAt(d); expect(v).toBeGreaterThanOrEqual(prev); expect(v).toBeLessThanOrEqual(MAX_SPEED); prev = v; }
     expect(speedAt(FULL_SPEED_AT)).toBe(MAX_SPEED);
     expect(speedAt(FULL_SPEED_AT * 3)).toBe(MAX_SPEED);
   });
-  it('most of the speed-up comes late: the first quarter of the ramp adds under 20% of it', () => {
-    const gain = (d: number) => (speedAt(d) - START_SPEED) / (MAX_SPEED - START_SPEED);
-    expect(gain(FULL_SPEED_AT / 4)).toBeLessThan(.2);
-    expect(gain(FULL_SPEED_AT / 2)).toBeLessThan(.45);
-  });
-  it('is gentle early: under 12 after 3 minutes, under 16 after 5, full speed within 12 minutes', () => {
-    let d = 0, at: Record<number, number> = {}, full = 0;
-    for (let i = 1; i <= 15 * 60 * 60; i++) { d += speedAt(d) / 60; if (i % 3600 === 0) at[i / 3600] = speedAt(d); if (!full && speedAt(d) >= MAX_SPEED) full = i / 3600; }
-    expect(at[3]).toBeLessThan(12); expect(at[5]).toBeLessThan(16);
-    expect(full).toBeGreaterThan(8); expect(full).toBeLessThan(12);
+  it('gains 1 m/s every 55 metres until it reaches the cap', () => {
+    expect(speedAt(55)).toBe(15);
+    expect(speedAt(550)).toBe(24);
+    expect(FULL_SPEED_AT).toBe(1100);
   });
   it('the sim follows it', () => {
     const r = createRun(5); let last = r.view().dist;
@@ -132,11 +126,9 @@ describe('score calibration', () => {
     const v = r.view();
     expect(r.score()).toBe(Math.floor(v.dist / METRES_PER_POINT) + v.bonus);
   });
-  it('20 minutes of running adds up to the target: about 15 000 from distance, the rest from pickups', () => {
-    let d = 0;
-    for (let i = 0; i < 20 * 60 * 60; i++) d += speedAt(d) / 60;
-    const fromDistance = Math.floor(d / METRES_PER_POINT);
-    expect(fromDistance).toBeGreaterThan(14000);
-    expect(fromDistance).toBeLessThan(17000);
+  it('earns 19 840 distance points after 10 minutes of uninterrupted running', () => {
+    let dist = 0;
+    for (let tick = 0; tick < 10 * 60 * 60; tick++) dist += speedAt(dist) / 60;
+    expect(Math.floor(dist / METRES_PER_POINT)).toBe(19840);
   });
 });

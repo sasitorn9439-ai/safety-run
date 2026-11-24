@@ -1,5 +1,5 @@
 import { HZ, PPE, type HazardKind, type PpeType } from '../../shared/hazards.js';
-import { SLIDE_SECONDS, START_SPEED, type Action, type Beep, type Emit, type GameObject, type Obstacle } from '../../shared/sim.js';
+import { SLIDE_SECONDS, type Action, type Beep, type Emit, type GameObject, type Obstacle } from '../../shared/sim.js';
 import type { SceneState } from '../render/types.js';
 
 /**
@@ -19,7 +19,7 @@ export const STEPS: readonly TutorialStep[] = [
 ];
 
 const FREEZE = 4.5;
-const SPEED = START_SPEED;
+const SPEED = 10;
 const SHIELD_FULL = 8;
 interface PracticeObstacle extends Obstacle { ok?: boolean }
 

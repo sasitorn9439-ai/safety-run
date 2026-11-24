@@ -26,8 +26,16 @@ export async function startApp() {
   const hud = new Hud();
   const pauseBtn = $('pauseBtn'), skipTut = $('skipTut');
 
+  const tutorialSeen = new Set<string>();
+  const tutorialKey = (id: string) => `srTutorialSeen:${id}`;
+
   const game: Game = new Game(sfx, renderer, hud, {
-    onState(s: GameState) {
+    onState(s: GameState, previous: GameState) {
+      const id = game.sess?.id;
+      if (id && previous === 'tutor' && s === 'play') {
+        tutorialSeen.add(id);
+        LS.set(tutorialKey(id), true);
+      }
       pauseBtn.style.display = s === 'play' ? 'grid' : 'none';
       skipTut.style.display = s === 'tutor' ? 'block' : 'none';
     },
@@ -163,7 +171,7 @@ export async function startApp() {
         game.runLabel = `รอบที่ ${r.runNo} · GO!`;
         if (r.runNo === 1) {
           $('avBig').innerHTML = avImg(r.avatar, 120); $('avName').textContent = avName(r.avatar); show('avOv');
-          $('avGo').onclick = () => begin(true);
+          $('avGo').onclick = () => begin(!tutorialSeen.has(id) && LS.get<boolean>(tutorialKey(id)) !== true);
         } else begin(false);
       } else if (r.error === 'used') msg.textContent = `รหัสนี้เล่นครบ ${r.max} ครั้งแล้ว${r.best != null ? ` · คะแนนดีที่สุด ${r.best}` : ''}`;
       else msg.textContent = ERR[r.error ?? ''] ?? ERR.server!;

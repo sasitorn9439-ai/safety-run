@@ -16,7 +16,7 @@ const MAX_STEPS_PER_FRAME = 6;
 export interface GameHooks {
   /** the run ended: `kind` is the hazard that hit, or null if the time limit was reached */
   onCrash(kind: HazardKind | null): void;
-  onState(state: GameState): void;
+  onState(state: GameState, previous: GameState): void;
 }
 
 /**
@@ -51,10 +51,11 @@ export class Game {
   invalidate() { this.dirty = true; }
 
   private setState(s: GameState) {
+    const previous = this.state;
     this.state = s;
     this.dirty = true;
     this.hud.show(s === 'play' || s === 'pause' || s === 'resume' || s === 'tutor');
-    this.hooks.onState(s);
+    this.hooks.onState(s, previous);
   }
 
   private clear() {

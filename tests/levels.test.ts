@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DYNAMIC_KINDS, HAZARD_KINDS, HZ, type HazardKind } from '../shared/hazards.js';
 import {
-  COMBO_SECONDS, DROP_LOCK_SECONDS, ESTOP_FACTOR, FUME_DRIFT, SPARK_HALF_CYCLE, LIFT_HEIGHT, MULT_MAX, NEAR_SCORE, POWER_GAP, POWER_SECONDS, ROW_SECONDS,
+  COMBO_SECONDS, DROP_LOCK_SECONDS, ESTOP_FACTOR, FUME_DRIFT, SPARK_HALF_CYCLE, LIFT_HEIGHT, MAX_SPEED, MULT_MAX, NEAR_SCORE, POWER_GAP, POWER_SECONDS, ROW_SECONDS,
   createRun, speedAt, type Action, type GameObject, type Obstacle, type PowerType, type Run, type SimEvent,
 } from '../shared/sim.js';
 import { TIPS, ZONES, ZONE_FIRST, ZONE_LENGTH, zoneAt } from '../shared/zones.js';
@@ -123,8 +123,8 @@ describe('near misses', () => {
       const s = scenario('spill', (r, z) => { if (z < at && r.view().py === 0 && r.view().vy === 0 && z > 0.3) r.input('up'); });
       if (!s.crashed) low += s.near;
     }
-    for (const at of [4.2, 4.8, 5.4, 6, 6.6]) {
-      const s = scenario('pipe', (r, z) => { if (z < at && r.view().slide === 0 && z > 3) r.input('down'); });
+    for (const seconds of [0.48, 0.52, 0.56, 0.60, 0.64]) {
+      const s = scenario('pipe', (r, z) => { if (z < speedAt(r.view().dist) * seconds && r.view().slide === 0 && z > 3) r.input('down'); });
       if (!s.crashed) high += s.near;
     }
     expect(low).toBeGreaterThan(0); expect(high).toBeGreaterThan(0);
@@ -175,7 +175,10 @@ describe('power-ups', () => {
     const a = slowed.view().dist; steps(slowed, 60); const slowDz = slowed.view().dist - a;
     const b = base.view().dist; steps(base, 60); const baseDz = base.view().dist - b;
     expect(slowDz).toBeLessThan(baseDz * (ESTOP_FACTOR + 0.12));
-    steps(slowed, 60 * (POWER_SECONDS.estop + 1));
+    for (let i = 0; i < 60 * (POWER_SECONDS.estop + 1); i++) {
+      slowed.view().objs.length = 0;
+      slowed.step();
+    }
     expect(slowed.view().slow).toBe(0);
   });
 
@@ -231,7 +234,7 @@ describe('power-ups', () => {
     expect(rewards.size).toBeGreaterThan(2); expect(tips.size).toBeGreaterThan(5);
   });
 
-  it('power-ups turn up in trails, now and then, never closer than POWER_GAP, and in every kind', () => {
+  it('power-ups appear in different kinds and respect spawn spacing within trail offsets', () => {
     const kinds = new Set<string>(), gaps: number[] = [];
     for (let seed = 1; seed <= 40; seed++) {
       const at: number[] = [], seen = new Set<GameObject>();
@@ -240,7 +243,9 @@ describe('power-ups', () => {
       for (let i = 1; i < at.length; i++) gaps.push(at[i]! - at[i - 1]!);
     }
     expect(kinds.size).toBeGreaterThanOrEqual(4);
-    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(POWER_GAP - 20)           // a trail is up to ~15 units long;
+    // At top speed, a slalom can place its pickup two rows ahead of the spawn point.
+    const maxTrailOffsetDifference = 2 * MAX_SPEED * ROW_SECONDS + 7;
+    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(POWER_GAP - maxTrailOffsetDifference);
   });
 
   it('is deterministic with power-ups in play', () => {

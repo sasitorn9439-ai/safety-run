@@ -41,9 +41,7 @@ open during a deploy would be rejected. `tests/golden.json` holds bot-played run
 `npm test` fails there, the sim's behaviour changed. After a deliberate change, re-record them with
 `GOLDEN=1 npx vitest run tests/make-golden.test.ts`.
 
-**Speed:** a calm 10 units/s at the start (about 30 % slower than the first version) that eases up slowly: ~11 after 3 minutes,
-~14 after 5, the top speed of 34 only about 10 minutes in (`speedAt` in `shared/sim.ts`). The idea: players bank score early, so when they
-crash later they'd rather answer the quiz to keep running than give the run up.
+**Speed:** 14 m/s at the start, gaining 1 m/s every 55 m until it reaches 34 m/s at 1 100 m. This takes about 49 seconds without E-Stop. The tutorial runs at 10 m/s.
 
 **Areas (zones).** The run is one long corridor split by distance into areas of the plant (`shared/zones.ts`): warehouse entrance (0–800 m),
 then forklift lane, chemical area, work at height, electrical room and evacuation drill, 1 000 m each, repeating. Each has a Safety point on a banner
@@ -68,10 +66,7 @@ raises a multiplier on coins, PPE and near misses (x2, x3, x4). The combo runs o
 **Personal best and the next place.** The HUD shows your best distance on this device with a bar; the crash screen says how many points
 are missing to the next rank on the leaderboard.
 
-**Scoring:** 1 point per 2 m (`METRES_PER_POINT`), coin +1, PPE +4, Safety Officer praise +60. Calibrated so that a good run of about
-20 minutes lands around 20 000 points (distance alone is ~15 000 at that point; coins and PPE make up the rest); a 5-minute run is around
-2 500 because the speed is still low then. The pickup share is an assumption: re-tune the constants in `shared/sim.ts` once there are real
-scores. The scoring changed from the first version, so old scores aren't comparable.
+**Scoring:** 1 point per metre, coin +1, PPE +10, Safety Officer praise +150. With no bonuses or E-Stop, 10 minutes of running earns about 19 840 points.
 
 ## Mascot sets
 

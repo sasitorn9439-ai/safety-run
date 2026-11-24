@@ -17,18 +17,12 @@ export const SLIDE_SECONDS = 0.7;
 export const MAX_TICKS = 30 * 60 * 60;
 export const MAX_INPUTS = 12000;
 export const ZMAX = 72;
-/**
- * Running speed (units/s) at a distance: a calm start so players can bank score, easing in slowly (it is still only ~11 at
- * three minutes and ~14 at five) and reaching the top speed about 10 minutes in, where the difficulty and the risk of losing it all are.
- * The curve is t^1.5 (t * sqrt(t)): sqrt is correctly rounded everywhere, so browser and server agree to the last bit.
- */
-export const START_SPEED = 10;
+/** Running speed in metres per second. The original ramp adds 1 m/s every 55 m. */
+export const START_SPEED = 14;
 export const MAX_SPEED = 34;
-export const FULL_SPEED_AT = 11000;
-export const speedAt = (dist: number) => {
-  const t = Math.min(1, dist / FULL_SPEED_AT);
-  return START_SPEED + (MAX_SPEED - START_SPEED) * (t * Math.sqrt(t));
-};
+const METRES_PER_SPEED_INCREMENT = 55;
+export const FULL_SPEED_AT = (MAX_SPEED - START_SPEED) * METRES_PER_SPEED_INCREMENT;
+export const speedAt = (dist: number) => Math.min(MAX_SPEED, START_SPEED + dist / METRES_PER_SPEED_INCREMENT);
 /** distance between neighbouring coins in a trail */
 const COIN_GAP = 1.7;
 /** fumes drift this fast (lanes per second); a load locks on this many seconds of running before it lands; the arc's on/off half-cycle in ticks */
@@ -76,13 +70,13 @@ export interface Power { k: 'power'; t: PowerType; l: number; z: number; gone?: 
 export type GameObject = Obstacle | Pickup | Coin | Power;
 
 /**
- * Scoring, tuned so that a good run of about 20 minutes ends around 20 000 points: the distance run adds 1 point per
+ * Scoring: the distance run adds 1 point per
  * METRES_PER_POINT metres, a coin and a PPE item add a fixed amount, the Safety Officer's praise adds OFFICER_SCORE.
  */
-export const METRES_PER_POINT = 2;
+export const METRES_PER_POINT = 1;
 export const COIN_SCORE = 1;
-export const PPE_SCORE = 4;
-export const OFFICER_SCORE = 60;
+export const PPE_SCORE = 10;
+export const OFFICER_SCORE = 150;
 
 export interface Surprise {
   k: 'officer' | 'rain' | 'star' | 'double' | 'toolbox';
@@ -177,7 +171,9 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   const quiz: Quiz = { prompt, options: options.map(option => option.text) };
   const correct = options.findIndex(option => option.index === 0);
 
-  let dist = opts.startDist ?? 0, speed = START_SPEED, lane = 0, px = 0, py = 0, vy = 0, slide = 0, next = 14;
+  const hasOpening = (opts.startDist ?? 0) === 0;
+  let openingPending = hasOpening, openingDoublePending = hasOpening, openingComboPending = hasOpening;
+  let dist = opts.startDist ?? 0, speed = START_SPEED, lane = 0, px = 0, py = 0, vy = 0, slide = 0, next = hasOpening ? 5 : 14;
   let objs: GameObject[] = [];
   const got = new Set<PpeType>();
   let shield = 0, inv = 1.2, revives = 0, coins = 0, bonus = 0, toast = '', toastT = 0, flash = 0;
@@ -201,7 +197,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   };
 
   /** the hazards of one pattern, row by row, and the lane a coin trail should follow in each row (null = none) */
-  function pattern(id: PatternId, zone: Zone): { rows: Row[]; free: (number | null)[] } {
+  function pattern(id: PatternId, zone: Zone, firstRowZ: number): { rows: Row[]; free: (number | null)[] } {
     const kind = () => weighted(zone.kinds as Record<HazardKind, number>, random());
     if (id === 'double') {
       // a drifting cloud can cover two lanes at once, so it never shares a row: that would leave no way through
@@ -220,17 +216,28 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     if (id === 'highwall') return { rows: [{ z: ZMAX, hz: high() }], free: [null] };
     if (id === 'jumpslide') return { rows: [{ z: ZMAX, hz: low() }, { z: ZMAX + rowGap(12) * 1.2, hz: high() }], free: [null, null] };
     const lanes = shuffle([-1, 0, 1], random);                                   // single
-    return { rows: [{ z: ZMAX, hz: [{ k: kind(), l: lanes[0]! }] }], free: [lanes[1]!] };
+    if (openingPending) {
+      const center = lanes.indexOf(0);
+      [lanes[center], lanes[0]] = [lanes[0]!, lanes[center]!];
+    }
+    return { rows: [{ z: firstRowZ, hz: [{ k: kind(), l: lanes[0]! }] }], free: [lanes[1]!] };
   }
 
   function spawn() {
     const zone = zoneAt(dist).zone;
     let id = weighted(zone.patterns, random());
-    // the set pieces wait until the player has had a little time to learn the basics
-    if (dist < 150 && id !== 'single') id = 'single';
-    else if (dist < 300 && id !== 'single' && id !== 'double') id = 'double';
-    const { rows, free } = pattern(id, zone);
-    const length = rows[rows.length - 1]!.z - ZMAX;
+    if (openingComboPending && dist >= 200) {
+      id = 'jumpslide';
+      openingComboPending = false;
+    } else if (openingDoublePending && dist >= 75) {
+      id = 'double';
+      openingDoublePending = false;
+    } else if (dist < 75) {
+      id = 'single';
+    }
+    const firstRowZ = openingPending ? 45 : ZMAX;
+    const { rows, free } = pattern(id, zone, firstRowZ);
+    const length = rows[rows.length - 1]!.z - firstRowZ;
 
     const fresh: GameObject[] = [];
     for (const r of rows) for (const h of r.hz) fresh.push(hazard(h.k, h.l, r.z));
@@ -238,7 +245,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     // coins: a trail down the free lane (single, double), a few per row (slalom), a short run before a wall (jump coins sit over a low wall)
     const trail: { l: number; z: number }[] = [];
     if (id === 'single' || id === 'double') {
-      if (random() < 0.85) for (let i = 0, c = 6 + ((random() * 4) | 0); i < c; i++) trail.push({ l: free[0]!, z: ZMAX - 3 + i * COIN_GAP });
+      if (random() < 0.85 || openingPending) for (let i = 0, c = 6 + ((random() * 4) | 0); i < c; i++) trail.push({ l: free[0]!, z: firstRowZ - 3 + i * COIN_GAP });
     } else if (id === 'slalom') {
       rows.forEach((r, i) => { for (const d of [-1, 0, 1]) trail.push({ l: free[i]!, z: r.z + d * COIN_GAP }); });
     } else {
@@ -270,6 +277,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       else if (i === at) objs.push({ k: 'ppe', p: ppePick, l: c.l, z: c.z });
       else objs.push({ k: 'coin', l: c.l, z: c.z });
     });
+    openingPending = false;
     return length;
   }
 
