@@ -43,6 +43,8 @@ const REALTIME_TTL_MS = 60 * 60 * 1000;
 /**
  * An Ably token for one seat in one room: the host may only hear `up` and speak `down`, a player the other way round. It is signed
  * here with ABLY_API_KEY, which never leaves the server.
+ * Ably bills by monthly active users, counted by client ID, and refuses a browser's connection without one. A player's is their
+ * employee id hashed with the key (the same person every race, and their id never reaches Ably); the big screen's is its room.
  */
 async function realtimeToken(room: TourRoom, host: boolean, b: Json): Promise<Reply> {
   const key = process.env.ABLY_API_KEY;
@@ -51,8 +53,9 @@ async function realtimeToken(room: TourRoom, host: boolean, b: Json): Promise<Re
   if (!host && !(me && me.tokenHash === sha(b.token))) return reply(403, { error: 'token' });
   const up = tourTopic(room.code, 'up'), down = tourTopic(room.code, 'down');
   const capability = host ? { [up]: ['subscribe' as const], [down]: ['publish' as const] } : { [up]: ['publish' as const], [down]: ['subscribe' as const] };
-  const { Rest } = await import('ably');
-  return reply(200, { tokenRequest: await new Rest({ key }).auth.createTokenRequest({ capability, ttl: REALTIME_TTL_MS }) });
+  const clientId = host ? `host-${room.code}` : `emp-${sha(`${key}:${me!.empId}`).slice(0, 16)}`;
+  const { createHttpClient } = await import('@ably/pubsub-server');
+  return reply(200, { tokenRequest: await createHttpClient({ key }).auth.createTokenRequest({ capability, clientId, ttl: REALTIME_TTL_MS }) });
 }
 
 /**

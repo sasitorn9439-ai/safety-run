@@ -123,6 +123,19 @@ describe('realtime tokens', () => {
     expect(await caps({ slot, token })).toEqual({ [up]: ['publish'], [down]: ['subscribe'] });
   });
 
+  it('gives a player the same client id in every room, without their employee id', async () => {
+    process.env.ABLY_API_KEY = 'appId.keyId:secret';
+    const clientIdIn = async () => {
+      const { code } = await room();
+      const { slot, token } = (await call({ action: 'join', code, id: 'E001' })).body;
+      return (await call({ action: 'realtime', code, slot, token })).body.tokenRequest.clientId as string;
+    };
+    const first = await clientIdIn();
+    expect(first).toMatch(/^emp-[0-9a-f]{16}$/);
+    expect(first).not.toContain('E001');
+    expect(await clientIdIn()).toBe(first);
+  });
+
   it('refuses anyone without a seat, and says so when realtime is not set up', async () => {
     const { code } = await room();
     const { slot } = (await call({ action: 'join', code, id: 'E001' })).body;

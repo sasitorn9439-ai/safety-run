@@ -1,5 +1,5 @@
 import type { InputEntry, StageId } from '../../shared/sim.js';
-import type { TokenRequest } from 'ably';
+import type { TokenRequest } from '@ably/pubsub-device';
 import { tourTopic } from '../../shared/tour-channels.js';
 import { api, type ApiResult } from '../lib/api.js';
 
@@ -77,8 +77,8 @@ export async function openChannel(code: string, role: Role, auth: SeatAuth, onMs
   const failed = (e: unknown) => { console.error('realtime send', e); if (++failing === 3) trouble('realtime_send'); };
 
   if (import.meta.env.VITE_REALTIME === 'ably') {
-    const Ably = await import('ably');
-    const client = new Ably.Realtime({
+    const { createClient } = await import('@ably/pubsub-device');
+    const client = createClient({
       authCallback: (_params, done) => void tourApi<{ tokenRequest: TokenRequest }>('realtime', { code, ...auth })
         .then(r => (r.ok ? done(null, r.tokenRequest!) : done(errText(r.error), null))),
     });

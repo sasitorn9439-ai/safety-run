@@ -100,7 +100,9 @@ Under `npm run dev` the realtime channel goes through the dev server (`/api/rela
 For production, use **Ably**: set `ABLY_API_KEY` and `VITE_REALTIME=ably`. The key stays on the server: `api/tournament` (action
 `realtime`) signs each seat a token that may only hear or speak its own way on its own room, and each side attaches in `PUBLISH` or
 `SUBSCRIBE` mode only. Restrict the key to `safety-run-tour:*` with Publish and Subscribe (Ably reads a wildcard only after a namespace's
-colon). To run the same thing locally: `ABLY_API_KEY=… VITE_REALTIME=ably npm run dev`.
+colon). Ably bills new accounts by monthly active users, which needs its `@ably/pubsub-device` package in the browser and
+`@ably/pubsub-server` on the server (the `ably` package is refused), and a client ID on every phone: a player's is their employee id hashed
+with the key, so each person counts once a month. To run the same thing locally: `ABLY_API_KEY=… VITE_REALTIME=ably npm run dev`.
 Supabase Realtime still works without `VITE_REALTIME`: set the two `VITE_SUPABASE_*` variables and allow public Realtime channels in the
 Supabase project; there every send is an HTTPS broadcast. Either way the channel only carries what the big screen shows: the scores that
 count are always the server's own replay.
