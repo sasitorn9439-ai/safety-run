@@ -52,6 +52,7 @@ export class Game {
   get score() { return this.run?.score() ?? 0; }
   get dist() { return Math.floor(this.run?.view().dist ?? 0); }
   get revives() { return this.run?.view().revives ?? 0; }
+  get coins() { return this.run?.view().coins ?? 0; }
 
   invalidate() { this.dirty = true; }
 
