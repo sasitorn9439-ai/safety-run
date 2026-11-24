@@ -1,17 +1,34 @@
 import type { Plugin } from 'vite';
 import { admin, finish, leaderboard, start, type Reply } from './handlers.js';
+import type { ServerResponse } from 'node:http';
 import { createMemoryStore } from './memory-store.js';
+import { createMemoryTourStore } from './tour-store.js';
+import { tournament } from './tournament.js';
 
-/** Serves /api/* from memory while `vite` is running, so the game works without Postgres. */
+/**
+ * Serves /api/* from memory while `vite` is running, so the game works without Postgres. Also stands in for Supabase Realtime
+ * in the tournament (GET /api/relay is a server-sent event stream per room, POST /api/relay sends to it) and maps /tournament to its page.
+ */
 export function devApi(): Plugin {
   return {
     name: 'safety-run-dev-api',
     apply: 'serve',
     configureServer(server) {
       process.env.ADMIN_KEY ||= 'dev';
-      const store = createMemoryStore();
+      const store = createMemoryStore(), tours = createMemoryTourStore();
+      const relay = new Map<string, Set<ServerResponse>>();
       server.middlewares.use(async (req, res, next) => {
         const url = new URL(req.url || '/', 'http://localhost');
+        if (url.pathname === '/tournament') { req.url = '/tournament.html' + url.search; return next(); }
+        if (url.pathname === '/api/relay' && req.method === 'GET') {
+          const room = url.searchParams.get('room') || '';
+          res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
+          res.write(':ok\n\n');
+          const set = relay.get(room) ?? new Set();
+          relay.set(room, set.add(res));
+          req.on('close', () => set.delete(res));
+          return;
+        }
         if (!url.pathname.startsWith('/api/')) return next();
         const send = (r: Reply) => {
           res.statusCode = r.status;
@@ -32,6 +49,11 @@ export function devApi(): Plugin {
           if (route === 'start' && post) return send(await start(store, body, ua));
           if (route === 'finish' && post) return send(await finish(store, body));
           if (route === 'admin' && post) return send(await admin(store, body));
+          if (route === 'tournament' && post) return send(await tournament(store, tours, body));
+          if (route === 'relay' && post) {
+            for (const r of relay.get(String(body.room)) ?? []) r.write(`data: ${JSON.stringify(body.msg)}\n\n`);
+            return send({ status: 200, body: {} });
+          }
           if (route === 'leaderboard' && req.method === 'GET') return send(await leaderboard(store, url.searchParams.get('id')));
           send({ status: 404, body: { error: 'not_found' } });
         } catch (e) {

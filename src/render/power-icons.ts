@@ -55,7 +55,76 @@ const toolbox: IconLayer[] = [
   L('dot', ell(50, 82, 2.6, 2.6), '#ffffff'),
 ];
 
-export const POWER_ICONS: Record<PowerType, readonly IconLayer[]> = { estop, broom, lift, toolbox, firstaid: PPE_ICONS.firstaid };
+/* ---------- tournament items ---------- */
+
+const quiz: IconLayer[] = [
+  L('card', rr(18, 8, 64, 84, 10), '#ffd400', INK, 3),
+  L('card-shade', 'M18 78H82V82Q82 92 72 92H28Q18 92 18 82Z', '#e8b400'),
+  L('mark-outline', 'M37 38Q37 22 50 22Q63 22 63 35Q63 45 50 50V60', undefined, INK, 13, 'round'),
+  L('mark', 'M37 38Q37 22 50 22Q63 22 63 35Q63 45 50 50V60', undefined, '#e8323a', 7, 'round'),
+  L('dot', ell(50, 75, 6, 6), '#e8323a', INK, 2.6),
+];
+
+const loto: IconLayer[] = [
+  L('shackle-outline', 'M30 46V30Q30 12 50 12Q70 12 70 30V46', undefined, INK, 13, 'round'),
+  L('shackle', 'M30 46V30Q30 12 50 12Q70 12 70 30V46', undefined, '#cfd6de', 6.5, 'round'),
+  L('body', rr(16, 42, 68, 50, 9), '#e8323a', INK, 3),
+  L('body-shade', 'M16 80H84V83Q84 92 75 92H25Q16 92 16 83Z', '#c4222b'),
+  L('keyhole', 'M50 56A6 6 0 1 1 49.9 56ZM47 64H53L55 78H45Z', INK),
+];
+
+const foam: IconLayer[] = [
+  L('hose', 'M40 22Q20 22 18 46', undefined, INK, 6, 'round'),
+  L('nozzle', rr(10, 44, 14, 10, 3), '#3a3a3a', INK, 2.4),
+  L('cylinder', rr(34, 26, 34, 66, 12), '#e8323a', INK, 3),
+  L('cylinder-shade', 'M34 80H68V82Q68 92 58 92H44Q34 92 34 82Z', '#c4222b'),
+  L('label', rr(39, 48, 24, 20, 3), '#ffffff', INK, 2),
+  L('valve', rr(42, 12, 18, 16, 3), '#3a3a3a', INK, 2.6),
+  L('handle', 'M58 14L76 8', undefined, INK, 5, 'round'),
+  L('spray', 'M80 30Q90 34 92 44M78 40Q86 44 88 52', undefined, '#7fe3ff', 3.2, 'round'),
+];
+
+const buddy: IconLayer[] = [
+  L('body-l', 'M8 92Q8 62 32 62Q56 62 56 92Z', '#ff7a1a', INK, 3),
+  L('body-r', 'M44 92Q44 62 68 62Q92 62 92 92Z', '#3ccf7a', INK, 3),
+  L('head-l', ell(32, 48, 14, 14), '#f7c9a0', INK, 3),
+  L('head-r', ell(68, 48, 14, 14), '#f7c9a0', INK, 3),
+  L('hat-l', 'M16 42Q16 24 32 24Q48 24 48 42Z', '#ffd400', INK, 3),
+  L('hat-r', 'M52 42Q52 24 68 24Q84 24 84 42Z', '#ffd400', INK, 3),
+  L('hands', 'M40 80H60', undefined, INK, 8, 'round'),
+];
+
+const streak: IconLayer[] = [
+  L('ribbon-l', 'M30 8L44 8L52 40L38 40Z', '#2f80ed', INK, 2.6),
+  L('ribbon-r', 'M70 8L56 8L48 40L62 40Z', '#e8323a', INK, 2.6),
+  L('medal', ell(50, 64, 28, 28), '#ffd400', INK, 3),
+  L('medal-ring', ell(50, 64, 20, 20), undefined, '#e8b400', 3),
+  L('zero', ell(50, 64, 8, 11), undefined, INK, 5),
+];
+
+const audit: IconLayer[] = [
+  L('board', rr(16, 14, 68, 80, 8), '#b98149', INK, 3),
+  L('paper', rr(24, 24, 52, 62, 3), '#ffffff', INK, 2),
+  L('clip', rr(36, 8, 28, 14, 4), '#cfd6de', INK, 2.6),
+  L('ticks', 'M30 40L35 45L43 36M30 58L35 63L43 54', undefined, '#3ccf7a', 4, 'round'),
+  L('lines', 'M50 41H68M50 59H68M30 76H68', undefined, '#9aa3ad', 3.2, 'round'),
+];
+
+/** the answer gates: a sign on two posts, A / B / C in the colour the HUD gives that choice */
+export const GATE_COLORS = ['#2f80ed', '#ff7a1a', '#9b5de5'] as const;
+const LETTERS = ['M38 66L50 30L62 66M42 54H58', 'M40 30V66H54Q63 66 63 57Q63 48 54 48H40M40 48H52Q60 48 60 39Q60 30 52 30H40', 'M62 36Q57 30 50 30Q38 30 38 48Q38 66 50 66Q57 66 62 60'];
+const gate = (i: number): IconLayer[] => [
+  L('post-l', rr(10, 20, 8, 76, 3), '#3a3a3a', INK, 2.4),
+  L('post-r', rr(82, 20, 8, 76, 3), '#3a3a3a', INK, 2.4),
+  L('sign', rr(6, 10, 88, 66, 10), GATE_COLORS[i], INK, 3.4),
+  L('sign-shade', 'M6 64H94V66Q94 76 84 76H16Q6 76 6 66Z', 'rgba(0,0,0,.18)'),
+  L('letter', LETTERS[i]!, undefined, '#ffffff', 8, 'round'),
+];
+
+export const POWER_ICONS: Record<PowerType, readonly IconLayer[]> = {
+  estop, broom, lift, toolbox, firstaid: PPE_ICONS.firstaid,
+  quiz, loto, foam, buddy, streak, audit, gate0: gate(0), gate1: gate(1), gate2: gate(2),
+};
 export const POWER_TYPES = Object.keys(POWER_ICONS) as PowerType[];
 
 /** Draws a power-up icon centred on the origin, `size` px across. */

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#121418">
+<title>Safety Run Tournament</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23ffd400%27/%3E%3Cpath d=%27M7 20a9 9 0 0 1 18 0z%27 fill=%27%23111%27/%3E%3Crect x=%275%27 y=%2720%27 width=%2722%27 height=%274%27 rx=%272%27 fill=%27%23111%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="shell" id="shell">
+<canvas id="c"></canvas>
+<div class="zone-tint" id="zoneTint" aria-hidden="true"></div>
+<div class="hud" id="hud">
+<div class="hud-bar">
+<img id="hudAv" class="av hud-av" alt="" width="40" height="40">
+<div class="hud-score"><small>คะแนน</small><strong id="hudScore">0</strong></div>
+<span class="hud-x2" id="hudX2"></span>
+<div class="hud-ppe" id="hudPpe"></div>
+</div>
+<div class="hud-row"><div class="hud-coins" id="hudCoinsBox"><img id="hudCoinImg" alt="" width="22" height="22"><b id="hudCoins">0</b></div><div class="hud-pb" id="hudPb"><span id="hudPbText"></span><i><u id="hudPbBar"></u></i></div></div>
+<div class="hud-chips" id="hudChips"></div>
+<div class="zone" id="zoneBanner"><small id="zoneNo"></small><strong id="zoneTh"></strong><span id="zoneTip"></span></div>
+<div class="hud-shield" id="hudShield"><i id="hudShieldBar"></i></div>
+<div class="toast" id="toast"></div>
+<div class="banner" id="banner"><b id="bnMsg"></b><span id="bnSub"></span></div>
+<div class="officer" id="officer">
+<div class="bubble"><small>Safety Officer ทักทาย</small><p id="ofMsg"></p><em>+60 คำชม</em></div>
+<div class="of"><img id="ofA" class="of-a" alt=""><img id="ofB" class="of-b" alt=""></div>
+</div>
+</div>
+<div class="count" id="count" aria-hidden="true"></div>
+<div class="tut" id="tut"><small id="tutHead"></small><strong id="tutTh"></strong><span id="tutEn"></span></div>
+<div class="tut-ok" id="tutOk">ผ่านแล้ว</div>
+<div class="tut-arrow" id="tutArrow"></div>
+
+<!-- the race, on top of the usual HUD: time left, standings, effects, and the question when its gates are coming -->
+<div class="t-race" id="tRace">
+<div class="t-top"><b class="t-clock" id="tClock">0:00</b><ol class="t-rank" id="tRank"></ol></div>
+<div class="t-fx" id="tFx"></div>
+<div class="t-gate" id="tGate"><p class="t-gate-head" id="tGateHead"></p><p class="t-q" id="tGateQ"></p><div class="t-opts" id="tGateOpts"></div><i class="t-gate-bar"><u id="tGateBar"></u></i></div>
+</div>
+
+<!-- player screens -->
+<div class="ov on" id="tMenu"><div class="card scroll">
+<header class="menu-hero"><div><p class="event">EHS Day 2026 · MCAM</p><h1>SAFETY RUN<br><span class="t-sub">TOURNAMENT</span></h1></div>
+<img src="/assets/mascot-2d/menu-runner.png" alt="" width="112" height="112"></header>
+<p class="sub">แข่งสด 3 คนพร้อมกันบนจอกลาง เก็บการ์ด <b>Safety Check</b> แล้ววิ่งเข้าประตูคำตอบที่ถูกเพื่อพุ่งแซงคู่แข่ง<br>ระวังตัวเลือกหลอก!</p>
+<form id="joinForm" autocomplete="off">
+<label class="field">รหัสห้อง · Room code<input id="roomCode" maxlength="8" required autocapitalize="characters"></label>
+<label class="field">รหัสพนักงาน · Employee ID<input id="tEmpId" maxlength="15" required autocapitalize="characters"></label>
+<p class="msg" id="joinMsg"></p>
+<button class="btn" type="submit">เข้าห้องแข่ง · Join</button>
+</form>
+<button class="btn alt" id="howBtn" type="button">ไอเทมในทัวร์นาเมนต์</button>
+<button class="btn alt" id="hostBtn" type="button">เป็น Host (จอกลาง)</button>
+<p class="small"><a href="/">กลับเกมหลัก</a></p>
+</div></div>
+
+<div class="ov" id="tLobby"><div class="card">
+<p class="hit">ห้อง <b id="lobbyCode"></b></p>
+<div class="youav"><div id="lobbyAv"></div><b id="lobbyName"></b></div>
+<p class="sub" id="lobbyInfo"></p>
+<ol class="t-seats" id="lobbySeats"></ol>
+<p class="small">รอ Host กดเริ่ม · ปัดซ้าย/ขวาเลือกเลน ปัดขึ้นกระโดด ปัดลงสไลด์</p>
+</div></div>
+
+<div class="ov" id="tResult"><div class="card scroll">
+<p class="hit" id="resHead">หมดเวลา!</p>
+<h2 id="resScore"></h2>
+<p class="sub" id="resInfo"></p>
+<ol class="board" id="resBoard"></ol>
+<p class="msg" id="resMsg"></p>
+<button class="btn" id="resRetry" style="display:none">ส่งผลอีกครั้ง</button>
+</div></div>
+
+<div class="ov how" id="howOv" role="dialog" aria-modal="true"><div class="card scroll">
+<h2>ไอเทมในทัวร์นาเมนต์</h2>
+<ul class="t-items" id="itemList"></ul>
+<p class="sub">ชนแล้วไม่ตกรอบ แค่เซและช้าลงครู่หนึ่ง · ทุกคนเจอสนามและคำถามชุดเดียวกัน</p>
+<button class="btn" id="howClose" type="button">เข้าใจแล้ว</button>
+</div></div>
+
+<!-- host screens -->
+<div class="ov" id="hLogin"><div class="card">
+<h2>Host · จอกลาง</h2>
+<form id="hostForm" autocomplete="off">
+<label class="field">รหัส Host (Admin key)<input id="hostKey" type="password" required></label>
+<p class="msg" id="hostMsg"></p>
+<button class="btn" type="submit">สร้างห้องแข่ง</button>
+</form>
+<button class="btn alt" id="hostBack" type="button">กลับ</button>
+</div></div>
+
+<div class="h-lobby" id="hLobby">
+<section class="h-join">
+<p class="event">สแกนเพื่อเข้าห้อง</p>
+<div class="h-qr" id="hQr"></div>
+<p class="h-code">รหัสห้อง <b id="hCode"></b></p>
+<p class="small" id="hUrl"></p>
+</section>
+<section class="h-setup">
+<h2>ผู้เล่น <span id="hCount">0</span>/3</h2>
+<ol class="t-seats big" id="hSeats"></ol>
+<h3>ด่าน</h3>
+<div class="h-pick" id="hStages"></div>
+<h3>เวลาแข่ง</h3>
+<div class="h-pick" id="hDurations"></div>
+<p class="msg" id="hMsg"></p>
+<button class="btn" id="hStart" type="button">เริ่มแข่ง</button>
+</section>
+</div>
+
+<aside class="h-side" id="hSide">
+<div class="h-clock"><b id="hClock">0:00</b><span id="hStage"></span></div>
+<ol class="h-cards" id="hCards"></ol>
+<button class="btn alt" id="hAuto" type="button" aria-pressed="true">กล้องอัตโนมัติ: เปิด</button>
+</aside>
+<div class="h-gate" id="hGate"><p class="t-gate-head" id="hGateHead"></p><p class="t-q" id="hGateQ"></p><div class="t-opts" id="hGateOpts"></div></div>
+<div class="h-cam" id="hCam"></div>
+
+<div class="ov" id="hPodium"><div class="card scroll">
+<p class="hit">ผลการแข่งขัน</p>
+<ol class="h-podium" id="hPodiumList"></ol>
+<p class="small">คะแนนตรวจสอบจากการเล่นซ้ำบนเซิร์ฟเวอร์ · เสมอกันวัดที่จำนวนคำถามที่ตอบถูก</p>
+<button class="btn" id="hAgain" type="button">แข่งอีกรอบ (ผู้เล่นชุดเดิม)</button>
+<button class="btn alt" id="hNew" type="button">เปิดห้องใหม่</button>
+</div></div>
+</div>
+<script type="module" src="/src/tournament/main.ts"></script>
+</body>
+</html>

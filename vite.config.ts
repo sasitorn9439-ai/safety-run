@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [devApi()],
   build: {
     target: 'es2022',
-    rollupOptions: { input: { main: resolve(import.meta.dirname, 'index.html'), admin: resolve(import.meta.dirname, 'admin.html') } },
+    rollupOptions: { input: { main: resolve(import.meta.dirname, 'index.html'), admin: resolve(import.meta.dirname, 'admin.html'), tournament: resolve(import.meta.dirname, 'tournament.html') } },
   },
   test: { include: ['tests/**/*.test.ts'] },
 });

@@ -5,9 +5,10 @@
  * Changing the order or number of `random()` calls changes every seed's run: update tests/golden.json
  * deliberately if you ever do.
  */
-import { HZ, PPE, type HazardKind, type PpeType } from './hazards.js';
+import { DYNAMIC_KINDS, HZ, PPE, type HazardKind, type PpeType } from './hazards.js';
 import { QB } from './questions.js';
-import { TIPS, zoneAt, type PatternId, type Zone } from './zones.js';
+import { TRICK } from './trick-questions.js';
+import { TIPS, ZONES, zoneAt, type PatternId, type Zone } from './zones.js';
 
 export { HZ, PPE } from './hazards.js';
 export type { HazardKind, PpeType } from './hazards.js';
@@ -33,13 +34,42 @@ export const SPARK_HALF_CYCLE = 48;
 /** a pattern's rows are at least this many seconds apart, so there is always time to react */
 export const ROW_SECONDS = 0.9;
 
-export type Action = 'left' | 'right' | 'up' | 'down';
+/** `audit` only exists in a tournament: another player's Spot Audit reached this player */
+export type Action = 'left' | 'right' | 'up' | 'down' | 'audit';
 /** [tick, action] or [tick, answer index] */
 export type InputEntry = readonly [tick: number, action: Action | number];
 export type Beep = (freq: number, dur?: number, type?: OscillatorType, vol?: number) => void;
 
 /** Power-ups, each a piece of everyday Safety: they work for a few seconds the moment they are picked up */
-export type PowerType = 'estop' | 'broom' | 'lift' | 'firstaid' | 'toolbox';
+export type PowerType = 'estop' | 'broom' | 'lift' | 'firstaid' | 'toolbox' | TourItem | GateType;
+/** Tournament-only items (see TOUR_ITEMS) */
+export type TourItem = 'quiz' | 'loto' | 'foam' | 'buddy' | 'streak' | 'audit';
+/** the three answer gates of a tournament question, left to right */
+export type GateType = 'gate0' | 'gate1' | 'gate2';
+export const GATES: readonly GateType[] = ['gate0', 'gate1', 'gate2'];
+
+/**
+ * Tournament: a timed race, every player on the same seed (so the same track). A crash costs time instead of ending the run,
+ * the usual power-ups and bonus coins give way to the tournament items, and a question card puts three answer gates across
+ * the lanes: run through the right one for a Safety Sprint.
+ */
+export type StageId = Zone['id'] | 'tour';
+export interface TourOptions { stage: StageId; durationTicks: number }
+export const TOUR_DURATIONS = [60, 120, 180, 300] as const;
+/** metres before the first question card, and between two */
+export const QUIZ_FIRST = 220, QUIZ_GAP = 650;
+/** metres between the end of a pattern and the row of question cards after it */
+const QUIZ_ROW_GAP = 9;
+/** metres between two other tournament items at the least */
+export const ITEM_GAP = 300;
+/** the gates come up this many seconds after the card, with the world slowed to GATE_FACTOR meanwhile */
+export const GATE_SECONDS = 4.5, GATE_FACTOR = 0.5;
+export const TOUR_SECONDS = { sprint: 3, think: 1.5, auditThink: 2.5, stun: 1.2, loto: 8, buddy: 5, streak: 15 } as const;
+/** speed multipliers: Safety Sprint, Stop & Think, the stumble after a crash */
+export const SPRINT_FACTOR = 2, THINK_FACTOR = 0.5, STUN_FACTOR = 0.35;
+/** points the sender of a Spot Audit gets */
+export const AUDIT_SCORE = 30;
+const ITEM_WEIGHTS: Record<Exclude<TourItem, 'quiz'>, number> = { loto: 24, foam: 26, buddy: 18, streak: 18, audit: 14 };
 export const POWER_SECONDS = { estop: 5, broom: 8, lift: 5 } as const;
 /** E-Stop (stop work authority) slows the world to this fraction */
 export const ESTOP_FACTOR = 0.6;
@@ -109,6 +139,18 @@ export interface RunView {
   slow: number; magnet: number; lift: number; hearts: number;
   /** a bonus coin was just touched: answer it (same `answer` call as a revive) for the points, or let it time out */
   pendingBonus: BonusQuiz | null;
+  /** tournament only */
+  tour: TourView | null;
+}
+
+/** a question whose answer gates are on their way: options[i] is the gate in lane i - 1 */
+export interface Gate { prompt: string; options: string[]; correct: number; audit: boolean; z: number }
+export interface TourView {
+  ticksLeft: number;
+  gate: Gate | null;
+  /** seconds left on each effect */
+  sprint: number; think: number; stun: number; loto: number; buddy: number; streak: number;
+  correct: number; wrong: number; crashes: number;
 }
 
 export interface Quiz { prompt: string; options: string[] }
@@ -170,7 +212,12 @@ const OFFICER = [
 const BOX_REWARDS = [['coins', 35, '+10 เหรียญ'], ['shield', 20, 'โล่ PPE'], ['double', 20, 'คะแนน x2'], ['broom', 15, 'ไม้กวาด 5ส'], ['estop', 10, 'E-Stop']] as const;
 
 /** `startDist` starts the run part-way down the corridor (tests and tools only: a real run, and the server's replay, always start at 0) */
-export interface RunOptions { startDist?: number; movementOnly?: boolean }
+export interface RunOptions { startDist?: number; movementOnly?: boolean; tour?: TourOptions }
+
+/** the deck of tournament questions in the order this seed deals them (the same for every player on the seed) */
+function deck(random: () => number) {
+  return shuffle(TRICK.map((_, i) => i), random);
+}
 
 export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () => {}, opts: RunOptions = {}): Run {
   const random = seededRandom(seed);
@@ -196,6 +243,15 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   let slow = 0, magnet = 0, lift = 0, hearts = 0, lastPower = dist;
   let combo = 0, comboT = 0, leftLane = 0, leftT = 9;
   let nextBonusCheck = (Math.floor(dist / BONUS_GAP) + 1) * BONUS_GAP, bonusArmed = false, pendingBonus: BonusQuiz | null = null, bonusTimer = 0;
+
+  // tournament: its own random streams, so the track (main stream) stays the same for every player whatever they answer
+  const tour = opts.tour ?? null;
+  const tourZone = tour && tour.stage !== 'tour' ? ZONES.findIndex(z => z.id === tour.stage) : -1;
+  const zoneOf = (d: number) => (tourZone >= 0 ? { index: tourZone, zone: ZONES[tourZone]!, n: 1 } : zoneAt(d));
+  const itemRandom = seededRandom(seed ^ 0x165667b1), gateRandom = seededRandom(seed ^ 0xd3a2646c);
+  const quizDeck = tour ? deck(seededRandom(seed ^ 0x2545f491)) : [], auditDeck = tour ? deck(seededRandom(seed ^ 0x61c88647)) : [];
+  let quizN = 0, auditN = 0, nextQuiz = QUIZ_FIRST, lastItem = 0, gate: Gate | null = null;
+  let sprint = 0, think = 0, stun = 0, loto = 0, buddy = 0, streak = 0, correctN = 0, wrongN = 0, crashes = 0;
 
   const mult = () => 1 + Math.min(MULT_MAX - 1, Math.floor(combo / 3));
   const say = (text: string, seconds: number) => { toast = text; toastT = seconds; };
@@ -239,7 +295,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   }
 
   function spawn() {
-    const zone = zoneAt(dist).zone;
+    const zone = zoneOf(dist).zone;
     let id = weighted(zone.patterns, random());
     if (openingComboPending && dist >= 200) {
       id = 'jumpslide';
@@ -275,8 +331,18 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
 
     // power-up: its own stream, three numbers every spawn whether or not they are used
     const pa = powerRandom(), pb = powerRandom(), pc = powerRandom();
-    let powerAt = -1, power: PowerType | null = null;
-    if (trail.length >= 3 && dist - lastPower >= POWER_GAP && pa < 0.5) {
+    let powerAt = -1, power: PowerType | null = null, quizRow = false;
+    if (tour) {
+      // tournament items: two numbers every spawn; a question card once its distance comes up, otherwise now and then an item
+      const ia = itemRandom(), ib = itemRandom();
+      if (!gate && dist >= nextQuiz) { quizRow = true; nextQuiz = dist + QUIZ_GAP; }
+      else if (trail.length >= 3 && dist - lastItem >= ITEM_GAP && ia < 0.6) power = weighted(ITEM_WEIGHTS, ib);
+      if (power) {
+        lastItem = dist;
+        powerAt = Math.floor(trail.length / 2);
+        if (powerAt === at) powerAt = (powerAt + 1) % trail.length;
+      }
+    } else if (trail.length >= 3 && dist - lastPower >= POWER_GAP && pa < 0.5) {
       const ok = (k: PowerType) => k === 'toolbox' || (k === 'broom' && magnet <= 0) || (k === 'estop' && dist > 600 && slow <= 0) ||
         (k === 'lift' && dist > 400 && lift <= 0) || (k === 'firstaid' && hearts < 1 && dist > 800);
       power = weighted({ toolbox: 30, broom: 22, estop: 18, lift: 12, firstaid: 10 } as Record<PowerType, number>, pb, ok);
@@ -304,6 +370,11 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       else objs.push({ k: 'coin', l: c.l, z: c.z });
     });
     openingPending = false;
+    // a question card fills all three lanes just past the pattern: nobody misses a question
+    if (quizRow) {
+      for (const l of [-1, 0, 1]) objs.push({ k: 'power', t: 'quiz', l, z: firstRowZ + length + QUIZ_ROW_GAP });
+      return length + QUIZ_ROW_GAP;
+    }
     return length;
   }
 
@@ -340,10 +411,95 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     sur = { k: 'toolbox', t: 0, dur: 3.6, msg: `Toolbox Talk · ${reward[2]}`, sub: tip };
   }
 
+  /* ---------- tournament ---------- */
+
+  /** a question card (or someone's Spot Audit): the three gates are placed GATE_SECONDS of slowed running ahead */
+  function startGate(audit: boolean) {
+    const n = audit ? auditDeck[auditN++ % auditDeck.length]! : quizDeck[quizN++ % quizDeck.length]!;
+    const [prompt, choices] = TRICK[n]!;
+    const order = shuffle([0, 1, 2], gateRandom);
+    // the right answer rarely sits in the lane you are already in: you have to move for it
+    const here = lane + 1, right = order.indexOf(0), swapR = gateRandom();
+    if (right === here && swapR < 0.75) {
+      const other = (here + 1 + (swapR < 0.375 ? 0 : 1)) % 3;
+      [order[here], order[other]] = [order[other]!, order[here]!];
+    }
+    const z = speed * GATE_FACTOR * GATE_SECONDS;
+    gate = { prompt, options: order.map(i => choices[i]!), correct: order.indexOf(0), audit, z };
+    // nothing in the way of the gates, and nothing new until they have gone by
+    objs = objs.filter(o => o.k === 'coin' || o.k === 'ppe' || o.z < 6 || o.z > z + 8);
+    GATES.forEach((t, i) => objs.push({ k: 'power', t, l: i - 1, z }));
+    next = Math.max(next, z + 10);
+    say(audit ? 'Spot Audit! มีคนส่งผู้ตรวจมาหาคุณ' : 'Safety Check! วิ่งเข้าประตูคำตอบที่ถูก', 2);
+    beep(1400, 0.1, 'triangle'); beep(1800, 0.12, 'triangle');
+  }
+
+  /** `lane` the gate run through, or null if the gates went by untouched */
+  function resolveGate(at: number | null) {
+    const g = gate!;
+    gate = null;
+    for (const o of objs) if (o.k === 'power' && GATES.includes(o.t as GateType)) o.gone = true;
+    if (at === g.correct) {
+      correctN++;
+      if (g.audit) { say('ผ่าน Audit! ไปต่อ', 1.6); }
+      else { sprint = TOUR_SECONDS.sprint; inv = Math.max(inv, TOUR_SECONDS.sprint + 0.5); say('ถูกต้อง! Safety Sprint 🚀', 1.8); }
+      beep(1200, 0.16, 'triangle'); beep(1600, 0.18, 'triangle');
+    } else {
+      wrongN++;
+      think = g.audit ? TOUR_SECONDS.auditThink : TOUR_SECONDS.think;
+      say(`ยังไม่ถูก · คำตอบคือ "${g.options[g.correct]}"`, 2.2);
+      beep(160, 0.16, 'sawtooth');
+    }
+  }
+
+  /** Fire extinguisher: clears the hazards in your lane for the next few seconds of running */
+  function foam() {
+    const reach = speed * 3;
+    for (const o of objs) if (o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power' && o.k !== 'bonus' && Math.abs(o.l - lane) < 0.5 && o.z > -1 && o.z < reach) o.gone = true;
+  }
+
+  /** a crash in a tournament: stumble and lose a little time, keep running */
+  function stumble(o: Obstacle) {
+    o.gone = true;
+    crashes++;
+    stun = TOUR_SECONDS.stun; inv = TOUR_SECONDS.stun + 1; flash = 0.35; combo = 0;
+    if (streak > 0) { streak = 0; dbl = 0; }
+    say(`ชน! ${HZ[o.k].th}`, 1.4);
+    beep(110, 0.25, 'sawtooth', 0.08);
+    emit({ type: 'saved' });
+  }
+
+  /** Buddy System: your buddy calls out what's ahead (jump, slide, or the free lane) */
+  function buddyStep() {
+    const ahead = speed * 0.45;
+    for (const o of objs) {
+      if (o.gone || o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus' || o.z < 0 || o.z > ahead || Math.abs(o.l - lane) > 0.5) continue;
+      const t = HZ[o.k].t;
+      if (t === 'low' && py === 0 && vy === 0) { vy = 9.2; slide = 0; }
+      else if (t === 'high') slide = SLIDE_SECONDS;
+      else if (t === 'block') {
+        const blocked = (l: number) => objs.some(b => !b.gone && b.k !== 'coin' && b.k !== 'ppe' && b.k !== 'power' && b.k !== 'bonus' && b.z > -1 && b.z < ahead * 2 && Math.abs(b.l - l) < 0.6);
+        const free = [lane - 1, lane + 1].find(l => l >= -1 && l <= 1 && !blocked(l));
+        if (free != null) { leftLane = lane; leftT = 0; lane = free; }
+      }
+      return;
+    }
+  }
+
   function takePower(t: PowerType) {
+    if (GATES.includes(t as GateType)) { if (gate) resolveGate(GATES.indexOf(t as GateType)); return; }
     emit({ type: 'power', t });
     beep(1040, 0.08, 'triangle'); beep(1560, 0.1, 'triangle');
-    if (t === 'toolbox') toolbox();
+    if (t === 'quiz') {
+      for (const o of objs) if (o.k === 'power' && o.t === 'quiz') o.gone = true;
+      if (!gate) startGate(false);
+    }
+    else if (t === 'loto') { loto = TOUR_SECONDS.loto; say('LOTO! ตัดพลังงาน อันตรายที่เคลื่อนที่หยุดหมด', 2); }
+    else if (t === 'foam') { foam(); say('ถังดับเพลิง! เคลียร์เลนข้างหน้า', 2); }
+    else if (t === 'buddy') { buddy = TOUR_SECONDS.buddy; say('Buddy System! เพื่อนช่วยนำทาง', 2); }
+    else if (t === 'streak') { streak = dbl = TOUR_SECONDS.streak; say('Zero Accident x2! อย่าชนนะ', 2); }
+    else if (t === 'audit') { bonus += AUDIT_SCORE; say(`Spot Audit! ส่งผู้ตรวจไปหาคนที่นำอยู่ +${AUDIT_SCORE}`, 2); }
+    else if (t === 'toolbox') toolbox();
     else if (t === 'estop') { slow = POWER_SECONDS.estop; say('E-Stop! หยุดงานเพื่อความปลอดภัย · เกมช้าลง', 2); }
     else if (t === 'broom') { magnet = POWER_SECONDS.broom; say('5ส! ไม้กวาดดูดเหรียญ', 2); }
     else if (t === 'firstaid') { hearts = 1; say('ชุดปฐมพยาบาล! กันชนได้อีก 1 ครั้ง', 2); }
@@ -393,6 +549,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     const lockZ = Math.max(8, speed * DROP_LOCK_SECONDS);
     for (const o of objs) {
       if (o.gone) continue;
+      if (loto > 0) { if (o.k === 'sparks') o.on = false; continue; }   // locked out: nothing moves, the arc is dead
       if (o.k === 'fumes') {
         o.l += (o.v ?? 0) * dt;
         if (o.l > 1) { o.l = 1; o.v = -(o.v ?? 0); } else if (o.l < -1) { o.l = -1; o.v = -(o.v ?? 0); }
@@ -411,7 +568,14 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     speed = speedAt(dist);
     // E-Stop eases the world down to ESTOP_FACTOR and back
     const ease = slow > 0 ? Math.max(0, Math.min(1, slow / 0.3, (POWER_SECONDS.estop - slow) / 0.3)) : 0;
-    const dz = speed * (1 - (1 - ESTOP_FACTOR) * ease) * dt;
+    let dz = speed * (1 - (1 - ESTOP_FACTOR) * ease) * dt;
+    if (tour) {
+      dz *= (sprint > 0 ? SPRINT_FACTOR : stun > 0 ? STUN_FACTOR : think > 0 ? THINK_FACTOR : 1) * (gate ? GATE_FACTOR : 1);
+      sprint = Math.max(0, sprint - dt); think = Math.max(0, think - dt); stun = Math.max(0, stun - dt);
+      loto = Math.max(0, loto - dt); buddy = Math.max(0, buddy - dt); streak = Math.max(0, streak - dt);
+      if (gate && (gate.z -= dz) < -1) resolveGate(null);
+      if (buddy > 0) buddyStep();
+    }
     dist += dz;
     slow = Math.max(0, slow - dt); magnet = Math.max(0, magnet - dt); leftT += dt;
     if (comboT > 0 && (comboT -= dt) <= 0) combo = 0;
@@ -447,6 +611,12 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       if (lift > 0) continue;                                // up on the lift: nothing on the floor can touch you
       const t = HZ[o.k].t, hit = (o.k !== 'sparks' || !!o.on) && (t === 'block' || (t === 'low' && py < 0.45) || (t === 'high' && slide <= 0));
       if (!hit || inv > 0) continue;
+      if (tour) {
+        if (buddy > 0 || (loto > 0 && DYNAMIC_KINDS.includes(o.k))) continue;
+        if (shield > 0) { shield = 0; inv = 1; o.gone = true; flash = 0.3; combo = 0; say('PPE ช่วยไว้! · Saved by PPE', 1.6); beep(300, 0.2, 'triangle'); emit({ type: 'saved' }); continue; }
+        stumble(o);
+        continue;
+      }
       if (shield > 0) { shield = 0; inv = 1; o.gone = true; flash = 0.3; combo = 0; say('PPE ช่วยไว้! · Saved by PPE', 1.6); beep(300, 0.2, 'triangle'); emit({ type: 'saved' }); continue; }
       if (hearts > 0) { hearts = 0; inv = 1.4; o.gone = true; flash = 0.3; combo = 0; say('ชุดปฐมพยาบาลช่วยไว้!', 1.8); beep(300, 0.2, 'triangle'); emit({ type: 'saved' }); continue; }
       hitKind = o.k;
@@ -466,10 +636,10 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     }
     objs = objs.filter(o => o.z > -3 && !(o.gone && (o.k === 'ppe' || o.k === 'coin' || o.k === 'power' || o.k === 'bonus')));
     if (!opts.movementOnly && dist >= nextSur) { nextSur += 1500; surprise(); }
-    if (!opts.movementOnly && dist >= nextBonusCheck) { nextBonusCheck += BONUS_GAP; if (bonusRandom() < BONUS_CHANCE) bonusArmed = true; }
+    if (!tour && !opts.movementOnly && dist >= nextBonusCheck) { nextBonusCheck += BONUS_GAP; if (bonusRandom() < BONUS_CHANCE) bonusArmed = true; }
   }
 
-  const isFinished = () => !!hitKind || (!opts.movementOnly && tick === MAX_TICKS);
+  const isFinished = () => tour ? tick >= tour.durationTicks : !!hitKind || (!opts.movementOnly && tick === MAX_TICKS);
 
   return {
     quiz, correct,
@@ -477,6 +647,11 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     get finished() { return isFinished(); },
     input(action) {
       if (isFinished() || pendingBonus) return false;
+      if (action === 'audit') {
+        if (!tour || gate) return false;
+        startGate(true);
+        return true;
+      }
       if (action === 'left' || action === 'right') {
         const nextLane = Math.max(-1, Math.min(1, lane + (action === 'left' ? -1 : 1)));
         if (lane === nextLane) return false;
@@ -499,7 +674,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     },
     answer(index) {
       if (pendingBonus) { resolveBonus(index); return true; }
-      if (!hitKind || revives || tick === MAX_TICKS || index !== correct) return false;
+      if (tour || !hitKind || revives || tick === MAX_TICKS || index !== correct) return false;
       revives++;
       objs = objs.filter(o => o.z > 14);
       inv = 2;
@@ -516,28 +691,42 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     },
     view: () => ({
       dist, lane, px, py, vy, slide, objs, got, shield, inv, revives, coins, bonus, toast, toastT, flash, sur, dbl, hitKind,
-      zone: zoneAt(dist).index, zoneN: zoneAt(dist).n, combo, mult: mult(), comboT, slow, magnet, lift, hearts, pendingBonus,
+      zone: zoneOf(dist).index, zoneN: zoneOf(dist).n, combo, mult: mult(), comboT, slow, magnet, lift, hearts, pendingBonus,
+      tour: tour && {
+        ticksLeft: Math.max(0, tour.durationTicks - tick), gate,
+        sprint, think, stun, loto, buddy, streak, correct: correctN, wrong: wrongN, crashes,
+      },
     }),
     score: () => Math.floor(dist / METRES_PER_POINT) + bonus,
   };
 }
 
+/** Re-plays a tournament run to its end. Null if the replay is malformed. */
+export function replayTour(seed: number, tour: TourOptions, inputs: unknown): { score: number; correct: number } | null {
+  const game = createRun(seed, undefined, undefined, { tour });
+  return replayInto(game, tour.durationTicks, inputs) ? { score: game.score(), correct: game.view().tour!.correct } : null;
+}
+
 /** Re-plays a submitted run. Returns the score, or null if the replay is malformed. */
 export function replayScore(seed: number, ticks: unknown, inputs: unknown): number | null {
+  const game = createRun(seed);
+  return replayInto(game, ticks, inputs) ? game.score() : null;
+}
+
+function replayInto(game: Run, ticks: unknown, inputs: unknown): boolean {
   if (!Number.isInteger(ticks) || (ticks as number) < 1 || (ticks as number) > MAX_TICKS ||
-      !Array.isArray(inputs) || inputs.length > MAX_INPUTS) return null;
+      !Array.isArray(inputs) || inputs.length > MAX_INPUTS) return false;
   const total = ticks as number;
 
-  const game = createRun(seed);
   for (const entry of inputs) {
-    if (!Array.isArray(entry) || entry.length !== 2) return null;
+    if (!Array.isArray(entry) || entry.length !== 2) return false;
     const [at, action] = entry as [unknown, unknown];
-    if (!Number.isInteger(at) || (at as number) < game.tick || (at as number) >= total) return null;
+    if (!Number.isInteger(at) || (at as number) < game.tick || (at as number) >= total) return false;
     while (game.tick < (at as number) && !game.finished) game.step();
-    if (game.tick !== at) return null;
+    if (game.tick !== at) return false;
     const accepted = Number.isInteger(action) ? game.answer(action as number) : game.input(action as Action);
-    if (!accepted) return null;
+    if (!accepted) return false;
   }
   while (game.tick < total && !game.finished) game.step();
-  return game.tick === total && game.finished ? game.score() : null;
+  return game.tick === total && game.finished;
 }

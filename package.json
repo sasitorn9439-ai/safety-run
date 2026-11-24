@@ -20,8 +20,10 @@
     "ppe:svg": "vite --config tools/ppe-svg/vite.config.ts --open"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.2",
     "pixi.js": "^8.23.0",
-    "postgres": "^3.4.5"
+    "postgres": "^3.4.5",
+    "uqr": "^0.1.3"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

@@ -1,10 +1,14 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createPostgresStore } from './postgres-store.js';
+import { createPostgresTourStore } from './postgres-tour-store.js';
 import type { Reply } from './handlers.js';
 import type { Store } from './store.js';
+import type { TourStore } from './tour-store.js';
 
-let store: Store | undefined;
-export const productionStore = () => (store ||= createPostgresStore(process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING || ''));
+const postgresUrl = () => process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING || '';
+let store: Store | undefined, tours: TourStore | undefined;
+export const productionStore = () => (store ||= createPostgresStore(postgresUrl()));
+export const productionTourStore = () => (tours ||= createPostgresTourStore(postgresUrl()));
 
 export function send(res: ServerResponse, r: Reply) {
   res.statusCode = r.status;
