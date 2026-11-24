@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRun, replayScore, speedAt, COIN_SCORE, FULL_SPEED_AT, MAX_INPUTS, MAX_SPEED, METRES_PER_POINT, PPE_SCORE, START_SPEED, type Action, type GameObject } from '../shared/sim.js';
+import { createRun, replayScore, speedAt, COIN_SCORE, DYNAMIC_FROM, STEP_EASE, STEP_EVERY, STEP_GAIN, TOP_SPEED, FULL_SPEED_AT, MAX_INPUTS, MAX_SPEED, METRES_PER_POINT, PPE_SCORE, START_SPEED, type Action, type GameObject } from '../shared/sim.js';
 import golden from './golden.json';
 
 // golden.json holds bot-played runs recorded against the current sim (tests/make-golden.test.ts): if one of these fails,
@@ -111,6 +111,23 @@ describe('speed curve', () => {
     expect(speedAt(55)).toBe(15);
     expect(speedAt(550)).toBe(24);
     expect(FULL_SPEED_AT).toBe(1100);
+  });
+  it('holds MAX_SPEED until DYNAMIC_FROM, then steps up STEP_GAIN every STEP_EVERY metres to TOP_SPEED', () => {
+    for (let d = FULL_SPEED_AT; d < DYNAMIC_FROM; d += 500) expect(speedAt(d)).toBe(MAX_SPEED);
+    expect(speedAt(DYNAMIC_FROM)).toBe(MAX_SPEED);
+    expect(speedAt(DYNAMIC_FROM + STEP_EASE)).toBe(MAX_SPEED + STEP_GAIN);                    // 150 km: 36 m/s
+    expect(speedAt(DYNAMIC_FROM + STEP_EVERY - 1)).toBe(MAX_SPEED + STEP_GAIN);
+    expect(speedAt(DYNAMIC_FROM + STEP_EVERY + STEP_EASE)).toBe(MAX_SPEED + 2 * STEP_GAIN);   // 170 km: 38 m/s
+    expect(speedAt(DYNAMIC_FROM + 4 * STEP_EVERY + STEP_EASE)).toBe(TOP_SPEED);               // 230 km: 44 m/s
+    expect(speedAt(DYNAMIC_FROM + 50 * STEP_EVERY)).toBe(TOP_SPEED);
+    let prev = MAX_SPEED;
+    for (let d = DYNAMIC_FROM; d < DYNAMIC_FROM + 10 * STEP_EVERY; d += 5) {
+      const v = speedAt(d);
+      expect(v).toBeGreaterThanOrEqual(prev);                      // only ever speeds up
+      expect(v - prev).toBeLessThan(0.2);                          // eased in: no jumps between neighbouring metres
+      prev = v;
+    }
+    expect(TOP_SPEED / 60).toBeLessThan(1.4);                      // never skips over the 1.4 m touch window in one step
   });
   it('the sim follows it', () => {
     const r = createRun(5); let last = r.view().dist;

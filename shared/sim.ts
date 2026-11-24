@@ -23,7 +23,19 @@ export const START_SPEED = 14;
 export const MAX_SPEED = 34;
 const METRES_PER_SPEED_INCREMENT = 55;
 export const FULL_SPEED_AT = (MAX_SPEED - START_SPEED) * METRES_PER_SPEED_INCREMENT;
-export const speedAt = (dist: number) => Math.min(MAX_SPEED, START_SPEED + dist / METRES_PER_SPEED_INCREMENT);
+/**
+ * Past DYNAMIC_FROM metres the speed stops holding at MAX_SPEED and steps up again: at DYNAMIC_FROM, and every STEP_EVERY metres
+ * after it, it gains STEP_GAIN m/s, eased in over STEP_EASE metres so a step never jolts. It stops at TOP_SPEED, which still moves
+ * under a metre per step, well within the 1.4 m that a pickup or a hazard can be touched in, so nothing can be skipped between two steps.
+ */
+export const DYNAMIC_FROM = 150000;
+export const STEP_EVERY = 20000, STEP_GAIN = 2, STEP_EASE = 300, TOP_SPEED = 44;
+export const speedAt = (dist: number) => {
+  if (dist < DYNAMIC_FROM) return Math.min(MAX_SPEED, START_SPEED + dist / METRES_PER_SPEED_INCREMENT);
+  const past = dist - DYNAMIC_FROM, done = Math.floor(past / STEP_EVERY);
+  const t = Math.min(1, (past - done * STEP_EVERY) / STEP_EASE), ease = t * t * (3 - 2 * t);
+  return Math.min(TOP_SPEED, MAX_SPEED + (done + ease) * STEP_GAIN);
+};
 /** distance between neighbouring coins in a trail */
 const COIN_GAP = 1.7;
 const MAGNET_RANGE = 3 * COIN_GAP;
