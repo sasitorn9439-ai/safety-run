@@ -3,9 +3,9 @@ import { HAZARD_KINDS, PPE, type HazardKind, type PpeType } from '../../shared/h
 import type { PowerType, SimEvent } from '../../shared/sim.js';
 import { BACKDROP_MARGIN, FOG_HEIGHT, makeBackdrop, makeFog } from './backdrop.js';
 import { Camera, type Pt } from './camera.js';
-import { DrawList, Fx, RUN_FRAMES, SLIDE_FRAMES, envItems, interp, pose, type EnvItem } from './fx.js';
+import { DrawList, Fx, RUN_FRAMES, SLIDE_FRAMES, envItems, interp, pose, strideFrame, type EnvItem } from './fx.js';
 import { FLOOR_FRAGMENT, FLOOR_VERTEX, floorShaderCompiles } from './floor-shader.js';
-import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
+import { pixelFrame, runFrame, snap, type PixelAnim } from './pixel-frames.js';
 import type { MascotSet } from './pixel-mascot.js';
 import { PAD, ON_KINDS, POWERS, bonusArt, coinArt, crateArt, dotArt, liftArt, powerArt, haloArt, hazardArt, lightArt, pillarArt, ppeArt, rasterize, runArt, shadowArt, shieldArt, slideArt, type Art } from './sprites.js';
 import type { Frame, GameRenderer } from './types.js';
@@ -23,6 +23,9 @@ function makeTex(art: Art, unit: number, nearest = false): Tex {
 function canvasTex(canvas: HTMLCanvasElement): Texture {
   return new Texture({ source: new CanvasSource({ resource: canvas, scaleMode: 'linear', autoGarbageCollect: false }) });
 }
+
+/** ghosts are washed toward a pale blue, so they never read as the player's own mascot */
+const GHOST_TINT = 0x9fd8ff;
 
 /** Re-uses Sprite objects frame to frame instead of creating and destroying them. */
 class Pool {
@@ -259,6 +262,13 @@ export class PixiRenderer implements GameRenderer {
     for (let i = 0; i < this.list.n; i++) {
       const it = this.list.items[i]!;
       if (it.kind === 'player') { this.placePlayer(f, I, now); continue; }
+      if (it.kind === 'ghost') {
+        place(sh.get(), tx.shadow, it.x, it.y, it.u * .5, it.fade);
+        const s = ac.get();
+        place(s, tx.mascot ? tx.mascot.run[runFrame(it.gd, this.pixel!.cfg)]! : tx.run[strideFrame(it.gd)]!, it.x, it.y, it.u, it.fade, -it.z);
+        s.tint = GHOST_TINT;
+        continue;
+      }
       if (it.kind === 'power') {
         place(sh.get(), tx.halo, it.x, it.y, it.u * 1.9, it.fade * it.halo);
         place(sh.get(), tx.shadow, it.x, it.gy, it.u * .6, it.fade * .5);

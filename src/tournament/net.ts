@@ -9,8 +9,10 @@ export interface Room {
   startAt: number | null; now: number; seed: number | null; players: RoomPlayer[];
 }
 
-/** live standings the host sends the players: [slot, score] */
-export type Board = [Slot, number][];
+/** one runner as the host last simulated them: score, and where they were (metres run, lane) at race tick `tick` */
+export type BoardRow = [slot: Slot, score: number, tick: number, dist: number, lane: number];
+/** live standings and positions the host sends the players */
+export type Board = BoardRow[];
 /**
  * What goes over the realtime channel. Players send their inputs (`n` = how many they have recorded in all, `e` the entries
  * from index `from`, `tick` how far their race has run). The host sends standings, and passes Spot Audits on.

@@ -6,6 +6,7 @@ import { LS } from '../lib/storage.js';
 import type { GameRenderer } from '../render/index.js';
 import { Hud } from '../ui/hud.js';
 import { Clock, errText, fmtTime, openChannel, tourApi, type Board, type Channel, type Msg, type Room, type Slot } from './net.js';
+import { Ghosts } from './ghosts.js';
 import { Race } from './race.js';
 import { GatePanel, fxHtml, itemListHtml } from './ui.js';
 
@@ -23,7 +24,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
   const clock = new Clock(), hud = new Hud();
   const gatePanel = new GatePanel({ root: $('tGate'), head: $('tGateHead'), q: $('tGateQ'), opts: $('tGateOpts'), bar: $('tGateBar') });
   let seat = LS.get<Seat>('srTourSeat'), room: Room | null = null, race: Race | null = null, channel: Channel | null = null;
-  let board: Board = [], audits = 0, submitted = false, finishing = false, poll = 0;
+  let board: Board = [], ghosts = new Ghosts(), audits = 0, submitted = false, finishing = false, poll = 0;
 
   const q = new URLSearchParams(location.search);
   $<HTMLInputElement>('roomCode').value = q.get('room') ?? seat?.code ?? '';
@@ -87,7 +88,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
     showScreen(null);
     hud.reset(); hud.setAvatar(seat!.avatar); hud.show(true);
     $('tRace').classList.add('on');
-    audits = 0; board = []; finishing = false;
+    audits = 0; board = []; ghosts = new Ghosts(); finishing = false;
     race = new Race({ seed: r.seed!, stage: r.stage, duration: r.duration, startAt: r.startAt! }, sfx.beep, e => {
       renderer.onEvent(e, race?.run.view().px ?? 0);
       // only a pickup that happens live (not while catching up after a reload) sends an audit
@@ -100,7 +101,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
   }
 
   function onMsg(m: Msg) {
-    if (m.t === 'board') board = m.board;
+    if (m.t === 'board') { board = m.board; if (race) ghosts.see(m.board, race.elapsed(clock.now())); }
     else if (m.t === 'audited' && m.to === seat?.slot) audits++;
   }
 
@@ -167,8 +168,10 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
   });
 
   /* ---------- every frame ---------- */
-  let lastCount = 0;
+  let lastCount = 0, lastNow = 0;
   function frame(now: number) {
+    const dt = lastNow ? Math.min(.1, (now - lastNow) / 1000) : 0;
+    lastNow = now;
     if (race) {
       const el = race.elapsed(clock.now());
       const count = el < 0 ? Math.ceil(-el * STEP) : 0;
@@ -178,7 +181,8 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
         race.advance(el);
       }
       const v = race.run.view(), t = v.tour!;
-      renderer.render(race.frame(), now);
+      const others = ghosts.place(seat!.slot, Math.max(0, el), dt);
+      renderer.render({ ...race.frame(), ghosts: others }, now);
       hud.update({
         score: race.run.score(), coins: v.coins, dbl: v.dbl, got: v.got, shield: v.shield, toast: v.toast, toastT: v.toastT, sur: v.sur,
         zone: { index: v.zone, n: v.zoneN }, combo: v.combo, mult: v.mult, dist: v.dist, pb: 0,
@@ -187,7 +191,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
       $('tClock').classList.toggle('hurry', t.ticksLeft * STEP <= 10);
       $('tFx').innerHTML = fxHtml(t);
       gatePanel.update(t.gate);
-      rank(race.run.score());
+      rank(race.run.score(), v.dist, others);
       if (race.run.finished && !finishing) {
         finishing = true;
         hud.show(false); $('tRace').classList.remove('on'); showScreen('tResult'); $('resHead').textContent = 'หมดเวลา!'; void submit(); }
@@ -196,13 +200,19 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
   }
   requestAnimationFrame(frame);
 
-  /** the standings strip: my own score is live, the others are what the host last sent */
+  /** the standings strip: my own score is live, the others are what the host last sent, with how far ahead or behind they run */
   let lastRank = '';
-  function rank(mine: number) {
+  function rank(mine: number, myDist: number, others: { slot: Slot; dist: number }[]) {
     if (!room || !seat) return;
     const rows = room.players.map(p => ({ p, score: p.slot === seat!.slot ? mine : board.find(b => b[0] === p.slot)?.[1] ?? 0 }))
       .sort((a, b) => b.score - a.score);
-    const html = rows.map((r, i) => `<li class="${r.p.slot === seat!.slot ? 'me' : ''}"><i>${i + 1}</i>${avImg(r.p.avatar, 22)}<b>${r.score}</b></li>`).join('');
+    const gap = (slot: Slot) => {
+      const g = others.find(o => o.slot === slot);
+      if (!g) return '';
+      const m = Math.round(g.dist - myDist);
+      return `<small>${m > 0 ? `+${m}` : m} ม.</small>`;
+    };
+    const html = rows.map((r, i) => `<li class="${r.p.slot === seat!.slot ? 'me' : ''}"><i>${i + 1}</i>${avImg(r.p.avatar, 22)}<b>${r.score}</b>${gap(r.p.slot)}</li>`).join('');
     if (html !== lastRank) { lastRank = html; $('tRank').innerHTML = html; }
   }
 

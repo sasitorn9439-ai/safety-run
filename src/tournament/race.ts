@@ -1,5 +1,5 @@
 import { STEP, createRun, type Action, type Beep, type Emit, type InputEntry, type Run, type StageId } from '../../shared/sim.js';
-import type { Frame, PrevState } from '../render/types.js';
+import type { Frame, Ghost, PrevState } from '../render/types.js';
 
 export interface RaceSpec { seed: number; stage: StageId; duration: number; startAt: number }
 
@@ -59,6 +59,12 @@ export class Race {
       const [at, action] = this.inputs[this.applied++]!;
       if (at === this.run.tick) this.run.input(action as Action);
     }
+  }
+
+  /** host: this runner as a ghost on someone else's screen, blended like the frame */
+  ghost(): Ghost {
+    const v = this.run.view(), p = this.prev, a = this.alpha;
+    return { dist: p.dist + (v.dist - p.dist) * a, px: p.px + (v.px - p.px) * a };
   }
 
   frame(): Frame {

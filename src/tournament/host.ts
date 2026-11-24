@@ -12,6 +12,11 @@ import { GatePanel, fxHtml } from './ui.js';
 const DELAY_TICKS = 36;
 /** auto camera: stay at least this long on someone, and move on after ROTATE_MS when nothing is happening */
 const DWELL_MS = 2500, ROTATE_MS = 8000;
+/**
+ * standings and positions go down to the phones this often. Each send is delivered to every phone, and Supabase counts each
+ * delivery against the plan's messages per second, so this stays at 2 a second; the phones carry the ghosts forward in between.
+ */
+const BOARD_MS = 500;
 const hostKey = (code: string) => `srHost:${code}`;
 
 /** Host login: the admin key opens a room, which then lives at /tournament?host=CODE (the token stays in this tab). */
@@ -126,8 +131,12 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
   }
 
   setInterval(() => {
-    if (channel && races.size) channel.send({ t: 'board', board: [...races.keys()].map(s => [s, scoreOf(s)]) });
-  }, 1000);
+    if (!channel || !races.size) return;
+    channel.send({ t: 'board', board: [...races].map(([s, r]) => {
+      const v = r.run.view();
+      return [s, r.run.score(), r.run.tick, Math.round(v.dist * 100) / 100, v.lane];
+    }) });
+  }, BOARD_MS);
 
   /** auto camera: a question beats a new leader, which beats taking turns */
   function camera(now: number) {
@@ -168,7 +177,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
       const seen = races.get(focus) ?? races.values().next().value!;
       const el = seen.elapsed(serverNow);
       count(el < 0 ? Math.ceil(-el * STEP) : 0);
-      renderer.render(seen.frame(), now);
+      renderer.render({ ...seen.frame(), ghosts: [...races.values()].filter(r => r !== seen).map(r => r.ghost()) }, now);
       gatePanel.update(seen.run.view().tour!.gate);
       $('hClock').textContent = fmtTime(el < 0 ? room.duration : left);
       const p = room.players.find(x => x.slot === focus);

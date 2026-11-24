@@ -2,8 +2,8 @@ import { ZMAX } from '../../shared/sim.js';
 import type { SimEvent } from '../../shared/sim.js';
 import { BACKDROP_MARGIN, FOG_HEIGHT, makeBackdrop } from './backdrop.js';
 import { Camera, type Pt } from './camera.js';
-import { DrawList, Fx, TAU, envItems, interp, pose, type EnvItem, type Interp } from './fx.js';
-import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
+import { DrawList, Fx, TAU, envItems, interp, pose, strideFrame, type EnvItem, type Interp } from './fx.js';
+import { pixelFrame, runFrame, snap, type PixelAnim } from './pixel-frames.js';
 import type { MascotSet } from './pixel-mascot.js';
 import { Sprite, SpriteSet } from './sprites.js';
 import type { Frame, GameRenderer } from './types.js';
@@ -160,6 +160,13 @@ export class Canvas2DRenderer implements GameRenderer {
       const it = list.items[i]!;
       if (it.kind === 'player') { this.drawPlayer(f, I, now); continue; }
       ctx.globalAlpha = it.fade;
+      if (it.kind === 'ghost') {
+        sprites.shadow.draw(ctx, it.x, it.y, it.u * .5, dpr);
+        if (this.pxSprites) this.pxSprites.run[runFrame(it.gd, this.pixel!.cfg)]!.draw(ctx, it.x, it.y, it.u, dpr);
+        else sprites.run[strideFrame(it.gd)]!.draw(ctx, it.x, it.y, it.u, dpr);
+        ctx.globalAlpha = 1;
+        continue;
+      }
       if (it.kind === 'power') {
         ctx.globalAlpha = it.fade * it.halo; sprites.halo.draw(ctx, it.x, it.y, it.u * 1.9, dpr);
         ctx.globalAlpha = it.fade * .5; sprites.shadow.draw(ctx, it.x, it.gy, it.u * .6, dpr);

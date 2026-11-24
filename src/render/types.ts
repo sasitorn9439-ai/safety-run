@@ -9,8 +9,12 @@ export interface SceneState {
 }
 /** The state one simulation tick earlier; renderers blend prev → s by `alpha` so motion stays smooth at any refresh rate. */
 export interface PrevState { dist: number; px: number; py: number; slide: number }
+/** another runner on the same track, drawn see-through: metres run and lateral position */
+export interface Ghost { dist: number; px: number }
 export interface Frame {
   s: SceneState; prev: PrevState; alpha: number; playing: boolean; flash: number;
+  /** tournament: the other runners */
+  ghosts?: readonly Ghost[];
   /** the world is standing still while the mascot is on the ground (tutorial waiting for the player): show the idle breathing, not a frozen stride */
   still?: boolean;
 }
