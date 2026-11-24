@@ -182,12 +182,14 @@ describe('power-ups', () => {
     expect(slowed.view().slow).toBe(0);
   });
 
-  it('the 5S broom pulls coins from the next lane into the path', () => {
+  it('the 5S broom pulls coins from the next lane only as they approach', () => {
     const r = take('broom');
     expect(r.view().magnet).toBeGreaterThan(0);
     const coin: GameObject = { k: 'coin', l: 1, z: 10 }; put(r, coin);
     const before = r.view().coins;
-    steps(r, 90);
+    steps(r, 10);
+    expect(coin.l).toBe(1);
+    steps(r, 80);
     expect(r.view().coins).toBeGreaterThan(before);
   });
 

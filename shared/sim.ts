@@ -25,6 +25,7 @@ export const FULL_SPEED_AT = (MAX_SPEED - START_SPEED) * METRES_PER_SPEED_INCREM
 export const speedAt = (dist: number) => Math.min(MAX_SPEED, START_SPEED + dist / METRES_PER_SPEED_INCREMENT);
 /** distance between neighbouring coins in a trail */
 const COIN_GAP = 1.7;
+const MAGNET_RANGE = 3 * COIN_GAP;
 /** fumes drift this fast (lanes per second); a load locks on this many seconds of running before it lands; the arc's on/off half-cycle in ticks */
 export const FUME_DRIFT = 0.55;
 export const DROP_LOCK_SECONDS = 0.8;
@@ -169,7 +170,7 @@ const OFFICER = [
 const BOX_REWARDS = [['coins', 35, '+10 เหรียญ'], ['shield', 20, 'โล่ PPE'], ['double', 20, 'คะแนน x2'], ['broom', 15, 'ไม้กวาด 5ส'], ['estop', 10, 'E-Stop']] as const;
 
 /** `startDist` starts the run part-way down the corridor (tests and tools only: a real run, and the server's replay, always start at 0) */
-export interface RunOptions { startDist?: number }
+export interface RunOptions { startDist?: number; movementOnly?: boolean }
 
 export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () => {}, opts: RunOptions = {}): Run {
   const random = seededRandom(seed);
@@ -418,7 +419,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     if (sur && (sur.t += dt) > sur.dur) sur = null;
     for (const o of objs) o.z -= dz;
     moveHazards(dt);
-    if ((next -= dz) <= 0) {
+    if (!opts.movementOnly && (next -= dz) <= 0) {
       const length = spawn();
       // at least ROW_SECONDS'-worth of running between two patterns, more when the zone is calm
       next = length + Math.max(13 + random() * 9 - Math.min(3, dist / 800), speed * 0.6 + random() * 3);
@@ -431,7 +432,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     } else if (py > 0 || vy > 0) { vy -= 24 * dt; py += vy * dt; if (py <= 0) { py = 0; vy = 0; } }
     slide = Math.max(0, slide - dt); inv = Math.max(0, inv - dt); shield = Math.max(0, shield - dt);
     toastT = Math.max(0, toastT - dt); flash = Math.max(0, flash - dt);
-    if (magnet > 0) for (const o of objs) if (o.k === 'coin' && o.z < 14 && o.z > -0.5) o.l += (px - o.l) * Math.min(1, dt * 6);
+    if (magnet > 0) for (const o of objs) if (o.k === 'coin' && o.z < MAGNET_RANGE && o.z > -0.5) o.l += (px - o.l) * Math.min(1, dt * 6);
     const m = mult();
     for (const o of objs) {
       if (o.gone || Math.abs(o.z) > 0.7 || Math.abs(o.l - px) > 0.5) continue;
@@ -464,11 +465,11 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       if (near) nearMiss();
     }
     objs = objs.filter(o => o.z > -3 && !(o.gone && (o.k === 'ppe' || o.k === 'coin' || o.k === 'power' || o.k === 'bonus')));
-    if (dist >= nextSur) { nextSur += 1500; surprise(); }
-    if (dist >= nextBonusCheck) { nextBonusCheck += BONUS_GAP; if (bonusRandom() < BONUS_CHANCE) bonusArmed = true; }
+    if (!opts.movementOnly && dist >= nextSur) { nextSur += 1500; surprise(); }
+    if (!opts.movementOnly && dist >= nextBonusCheck) { nextBonusCheck += BONUS_GAP; if (bonusRandom() < BONUS_CHANCE) bonusArmed = true; }
   }
 
-  const isFinished = () => !!hitKind || tick === MAX_TICKS;
+  const isFinished = () => !!hitKind || (!opts.movementOnly && tick === MAX_TICKS);
 
   return {
     quiz, correct,

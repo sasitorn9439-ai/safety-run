@@ -24,6 +24,22 @@ describe('interp', () => {
 
 describe('DrawList', () => {
   const obj = (z: number, k = 'spill' as const): GameObject => ({ k, l: 0, z });
+  it('raises the pickup trail into an arc over a low obstacle in its lane', () => {
+    const coins: GameObject[] = [15, 18, 20, 22, 25].map(z => ({ k: 'coin', l: 0, z }));
+    const heights = (hazards: GameObject[]) => {
+      const f = frame(scene({ objs: [...coins, ...hazards] }));
+      const dl = new DrawList();
+      dl.build(f, cam(), interp(f), 0);
+      return dl.items.slice(0, dl.n).filter(i => i.kind === 'coin').map(i => i.y);
+    };
+    const flat = heights([]);
+    const lift = heights([obj(20)]).map((y, i) => flat[i]! - y);
+    expect(lift[2]).toBeGreaterThan(lift[1]!);
+    expect(lift[2]).toBeGreaterThan(lift[3]!);
+    expect(lift[1]).toBeGreaterThan(lift[0]!);
+    expect(lift[3]).toBeGreaterThan(lift[4]!);
+    expect(heights([{ ...obj(20), l: 1 }, { k: 'pipe', l: 0, z: 20 }])).toEqual(flat);
+  });
   it('draws far to near with the mascot between objects ahead and behind', () => {
     const f = frame(scene({ objs: [obj(-1), obj(30), obj(5), obj(60)] }));
     const dl = new DrawList(); dl.build(f, cam(), interp(f), 0);
