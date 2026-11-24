@@ -335,17 +335,18 @@ export class PixiRenderer implements GameRenderer {
       place(sh, tx.shield, P.x, P.feetY + P.bob - u * .52, u * P.shieldPulse, P.alpha, -0.0002);
       sh.visible = true;
     }
-    if ((f.s.lift ?? 0) > 0 && P.groundY > P.feetY + 2) {
-      // the man-lift: its scissor stack reaches from the floor up to the mascot's feet
+    if ((f.s.lift ?? 0) > 0 && P.groundY > P.deckY + 2) {
+      // the man-lift: its scissor stack reaches from the floor up to the deck the mascot bounces on
       const ls = this.liftSprite;
-      place(ls, tx.lift, P.x, P.feetY, u, P.alpha, -0.0003);
-      ls.scale.y *= (P.groundY - P.feetY) / (1.4 * u);
+      place(ls, tx.lift, P.x, P.deckY, u, P.alpha, -0.0003);
+      ls.scale.y *= (P.groundY - P.deckY) / (1.4 * u);
       ls.visible = true;
     }
     if (tx.mascot) {
       const pick = pixelFrame(f, I, this.fx, now, this.pixel!.cfg), dpr = this.dpr;
       place(ps, tx.mascot[pick.anim][pick.frame]!, snap(P.x, dpr), snap(P.feetY + P.bob, dpr), u, P.alpha, -0.0001);
-      ps.rotation = 0; ps.visible = true;       // no squash or lean: the frames carry them
+      ps.rotation = 0; ps.visible = true;       // no lean: the frames carry it
+      if (f.s.lift) ps.scale.set(ps.scale.x * P.xs, ps.scale.y * P.ys);   // except the springy squash on the man-lift
       return;
     }
     const t = P.sliding ? tx.slide[P.frame]! : tx.run[P.frame]!;

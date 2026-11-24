@@ -4,7 +4,7 @@
  * Both renderers (WebGL and Canvas2D) read from here, so they move identically.
  */
 import { HZ, type HazardKind, type PpeType } from '../../shared/hazards.js';
-import { SLIDE_SECONDS, ZMAX, type GameObject, type PowerType, type SimEvent } from '../../shared/sim.js';
+import { LIFT_HEIGHT, POWER_SECONDS, SLIDE_SECONDS, START_SPEED, STEP, ZMAX, type GameObject, type PowerType, type SimEvent } from '../../shared/sim.js';
 import { Camera, type Pt } from './camera.js';
 import type { Frame, Ghost, SceneState } from './types.js';
 
@@ -14,6 +14,8 @@ const JUMP_GUIDE_HEIGHT = 1.25;
 const GHOST_BEHIND = -3;
 /** how solid a ghost is at its clearest */
 const GHOST_ALPHA = .5;
+/** past where the man-lift ride ends, its coin trail slopes back down to the floor over this many metres */
+const LIFT_RAMP = 6;
 
 export const TAU = Math.PI * 2;
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -135,6 +137,16 @@ export class DrawList {
   private scratch: GameObject[] = [];
   private ghosts: { z: number; g: Ghost }[] = [];
   private pt: Pt = { x: 0, y: 0, s: 1 };
+  /** metres per second, from the last moving step; where (in run metres) the current or last man-lift ride ends */
+  private speed = START_SPEED;
+  private liftEnd = -Infinity;
+  private lastDist = 0;
+
+  /** how far up (0..1 of the lift's height) a pickup at run metre `at` floats: level with the mascot on the ride, sloping down past its end */
+  private liftRaise(at: number) {
+    const t = clamp(1 - (at - this.liftEnd) / LIFT_RAMP, 0, 1);
+    return t * t * (3 - 2 * t);
+  }
 
   private next(): DrawItem {
     if (this.n === this.items.length) this.items.push({ kind: 'hazard', z: 0, x: 0, y: 0, u: 0, fade: 1, k: 'spill', p: 'helmet', pw: 'toolbox', blink: false, sx: 1, halo: 0, gy: 0, fall: -1, gf: null });
@@ -146,6 +158,11 @@ export class DrawList {
     const list = this.scratch;
     list.length = 0;
     for (const o of f.s.objs) if (!o.gone) list.push(o);
+    // on the man-lift every pickup is in reach whatever its height, so they are drawn up where the mascot rides
+    if (f.s.dist > f.prev.dist) this.speed = (f.s.dist - f.prev.dist) / STEP;
+    if (f.s.dist < this.lastDist - 1) this.liftEnd = -Infinity;           // a new run
+    this.lastDist = f.s.dist;
+    if ((f.s.lift ?? 0) > 0) this.liftEnd = f.s.dist + f.s.lift! * this.speed;
     const lowHazards = list.filter(o =>
       o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power' && o.k !== 'bonus' && HZ[o.k].t === 'low',
     );
@@ -217,8 +234,8 @@ export class DrawList {
         for (const hazard of lowHazards) {
           if (Math.abs(hazard.l - o.l) < .5) distance = Math.min(distance, Math.abs(hazard.z - o.z));
         }
-        const offset = distance / JUMP_GUIDE_RADIUS;
-        it.y -= JUMP_GUIDE_HEIGHT * (1 - offset * offset) * u;
+        const offset = distance / JUMP_GUIDE_RADIUS, up = this.liftRaise(I.dist + z);
+        it.y -= (JUMP_GUIDE_HEIGHT * (1 - offset * offset) * (1 - up) + LIFT_HEIGHT * .9 * up) * u;
       }
     }
     upTo(-Infinity);
@@ -229,6 +246,7 @@ export class DrawList {
 
 export interface Pose {
   x: number; groundY: number; feetY: number; u: number;
+  /** top of the man-lift's deck (it springs under the mascot's hops) */ deckY: number;
   sliding: boolean; frame: number;
   bob: number; xs: number; ys: number; lean: number;
   alpha: number; shadowU: number; shadowAlpha: number;
@@ -243,6 +261,24 @@ export function ghostFrame(g: Ghost): Frame {
 /** a ghost has no landing squash or shake of its own */
 export const GHOST_FX = new Fx();
 
+/** how long one hop on the man-lift takes (ms) */
+const LIFT_HOP_MS = 380;
+export interface LiftBounce { /** mascot's feet above the deck, in lane widths */ hop: number; /** the deck's own spring, in lane widths (+ = up) */ deck: number; /** 0..1, how hard the mascot is pressing on the deck right now */ contact: number }
+/**
+ * Up on the man-lift the mascot bounces on the deck like a spring: the deck shoots up with an overshoot as it climbs on,
+ * then it hops in place and the deck dips each time it lands. Purely cosmetic: the sim's height is unchanged.
+ */
+export function liftBounce(f: Frame, now: number): LiftBounce | null {
+  const left = f.s.lift ?? 0;
+  if (left <= 0 || f.s.slide > 0) return null;
+  const t = POWER_SECONDS.lift - left;
+  const on = clamp((t - .15) / .3, 0, 1) * clamp(left / .35, 0, 1);    // start once the deck is up, settle before stepping off
+  const up = Math.abs(Math.sin(now / LIFT_HOP_MS * Math.PI));            // 0 on the deck, 1 at the top of a hop
+  const contact = on * (1 - up) ** 3;
+  const boing = Math.exp(-t * 4.5) * Math.sin(t * 20);                    // the climb-on overshoot
+  return { hop: up * .2 * on, deck: boing * .14 - contact * .06, contact };
+}
+
 export function pose(f: Frame, cam: Camera, I: Interp, fx: Fx, now: number, pt: Pt): Pose {
   const p = cam.project(I.px, 0, 0, pt), u = cam.lw;
   const sliding = I.slide > 0, airborne = I.py > .02 || f.s.vy > 0;
@@ -255,10 +291,13 @@ export function pose(f: Frame, cam: Camera, I: Interp, fx: Fx, now: number, pt: 
   }
   // squash & stretch and a lean into lane changes: cheap 2.5D weight
   const ys0 = sliding ? 1 : 1 + clamp(f.s.vy, -16, 10) * .011;
+  const lb = liftBounce(f, now), deckY = p.y - I.py * u * .9 - (lb ? lb.deck * u : bob);
+  // on the lift: squash flat on each landing, stretch a little on the way up
+  const lsq = lb ? 1 - .22 * lb.contact + .3 * lb.hop : 1;
   return {
-    x: p.x, groundY: p.y, feetY: p.y - I.py * u * .9 - bob, u,
+    x: p.x, groundY: p.y, feetY: deckY - (lb ? lb.hop * u : 0), deckY, u,
     sliding, frame, bob,
-    ys: ys0 * (1 - .18 * fx.landT), xs: (1 / ys0) * (1 + .12 * fx.landT),
+    ys: ys0 * lsq * (1 - .18 * fx.landT), xs: (1 / (ys0 * lsq)) * (1 + .12 * fx.landT),
     lean: sliding ? 0 : clamp((f.s.lane - I.px) * .22, -.3, .3),
     alpha: f.playing && f.s.inv > 0 && Math.floor(f.s.inv * 10) % 2 ? .45 : 1,
     shadowU: u * .5 / (1 + I.py * .3), shadowAlpha: 1 / (1 + I.py),

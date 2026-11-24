@@ -209,9 +209,9 @@ export class Canvas2DRenderer implements GameRenderer {
       ctx.fillStyle = 'rgba(90,210,255,.18)'; ctx.strokeStyle = 'rgba(120,225,255,.8)'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.ellipse(P.x, P.feetY + P.bob - u * .52, u * .42 * P.shieldPulse, u * .66 * P.shieldPulse, 0, 0, 7); ctx.fill(); ctx.stroke();
     }
-    if ((f.s.lift ?? 0) > 0 && P.groundY > P.feetY + 2) {
-      // the man-lift: its scissor stack reaches from the floor up to the mascot's feet
-      ctx.save(); ctx.translate(P.x, P.feetY); ctx.scale(1, (P.groundY - P.feetY) / (1.4 * u));
+    if ((f.s.lift ?? 0) > 0 && P.groundY > P.deckY + 2) {
+      // the man-lift: its scissor stack reaches from the floor up to the deck the mascot bounces on
+      ctx.save(); ctx.translate(P.x, P.deckY); ctx.scale(1, (P.groundY - P.deckY) / (1.4 * u));
       sprites.lift.draw(ctx, 0, 0, u, dpr); ctx.restore();
     }
     if (this.pxSprites) { this.drawPixel(f, I, now, P); ctx.globalAlpha = 1; return; }
@@ -231,7 +231,9 @@ export class Canvas2DRenderer implements GameRenderer {
     const pick = pixelFrame(f, I, this.fx, now, this.pixel!.cfg);
     const crisp = this.pixel!.crisp;          // pixel art must not be smoothed; the smooth style is drawn 1:1
     if (crisp) ctx.imageSmoothingEnabled = false;
-    this.pxSprites![pick.anim][pick.frame]!.draw(ctx, snap(P.x, dpr), snap(P.feetY + P.bob, dpr), P.u, dpr);
+    const sprite = this.pxSprites![pick.anim][pick.frame]!, x = snap(P.x, dpr), y = snap(P.feetY + P.bob, dpr);
+    if (f.s.lift) { ctx.save(); ctx.translate(x, y); ctx.scale(P.xs, P.ys); sprite.draw(ctx, 0, 0, P.u, dpr); ctx.restore(); }   // springy squash on the man-lift
+    else sprite.draw(ctx, x, y, P.u, dpr);
     if (crisp) ctx.imageSmoothingEnabled = true;
   }
 
