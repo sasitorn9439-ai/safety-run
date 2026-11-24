@@ -133,7 +133,8 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
   }
 
   setInterval(() => {
-    if (!channel || !races.size) return;
+    // the standings stop once every race is over: the podium comes from the server
+    if (!channel || !races.size || [...races.values()].every(r => r.run.finished)) return;
     // positions are the phones' own latest reports: the replay here runs DELAY_TICKS behind them
     channel.send({ t: 'board', board: [...races].map(([s, r]) => [s, r.run.score(), r.live.tick, r.live.dist, r.live.lane, r.live.jumps, r.live.slides]) });
   }, BOARD_MS);

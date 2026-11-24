@@ -70,6 +70,8 @@ raises a multiplier on coins, PPE and near misses (x2, x3, x4). The combo runs o
 are missing to the next rank on the leaderboard.
 
 **Scoring:** 1 point per metre, coin +1, PPE +10, Safety Officer praise +150. With no bonuses or E-Stop, 10 minutes of running earns about 19 840 points.
+The crash screen counts the score up by source: the distance, then the coins flying into the score, then PPE, near misses and the
+extras (officer, bonus questions, Safety Week x2), each on its own row. The sim keeps that split in `view().earned`; it never changes the score.
 
 ## Tournament (`/tournament`)
 

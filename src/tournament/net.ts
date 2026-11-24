@@ -81,9 +81,10 @@ export async function openChannel(code: string, role: Role, auth: SeatAuth, onMs
     if (banner && key) banner.textContent = errText(key);
   };
   const down = role === 'host' ? 'realtime_down' : 'realtime_board';
-  let failing = 0;
+  // a send still queued when the channel closes is refused afterwards ("connection closed"): that is not a network problem
+  let failing = 0, closed = false;
   const sent = () => { if (failing >= 3) trouble(null); failing = 0; };
-  const failed = (e: unknown) => { console.error('realtime send', e); if (++failing === 3) trouble('realtime_send'); };
+  const failed = (e: unknown) => { if (closed) return; console.error('realtime send', e); if (++failing === 3) trouble('realtime_send'); };
 
   if (ABLY) {
     const { createClient } = await import('@ably/pubsub-device');
@@ -102,7 +103,7 @@ export async function openChannel(code: string, role: Role, auth: SeatAuth, onMs
       if (change.current === 'connected') trouble(null);
       else if (change.current === 'disconnected' || change.current === 'suspended' || change.current === 'failed') trouble(down);
     });
-    return { send: m => void out.publish('m', m).then(sent, failed), close: () => { client.close(); trouble(null); } };
+    return { send: m => void out.publish('m', m).then(sent, failed), close: () => { closed = true; client.close(); trouble(null); } };
   }
 
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined, key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -120,7 +121,7 @@ export async function openChannel(code: string, role: Role, auth: SeatAuth, onMs
     // every send goes over HTTPS, so a phone is seen by the big screen even when its websocket can't connect
     return {
       send: m => void out.httpSend('m', m).then(sent, failed),
-      close: () => { void client.removeAllChannels(); trouble(null); },
+      close: () => { closed = true; void client.removeAllChannels(); trouble(null); },
     };
   }
   if (!import.meta.env.DEV) { trouble('realtime'); return { send() {}, close() {} }; }

@@ -371,17 +371,6 @@ export function drawMascotSlide(c: Ctx, progress: number) {
   drawMascotHead(c);
 }
 
-/** Safety officer (the surprise character), `S` px tall-ish, origin = body centre. Shown as a DOM image. */
-export function drawOfficer(c: Ctx, S: number, wave = 0) {
-  rr(c, -S * .2, -S * .05, S * .42, S * .6, S * .08, '#2f6fb3'); rr(c, -S * .2, -S * .05, S * .42, S * .42, S * .08, '#c6f04a'); c.fillStyle = '#2f6fb3'; c.fillRect(-S * .04, -S * .05, S * .08, S * .42);
-  c.fillStyle = '#1b1b1b'; c.font = `800 ${S * .07}px Kanit`; c.textAlign = 'center'; c.fillText('SAFETY', S * .01, S * .2);
-  c.save(); c.translate(-S * .18, 0); c.rotate(-2.2 + wave * .5); rr(c, -S * .045, 0, S * .09, S * .34, S * .04, '#c6f04a'); c.fillStyle = '#c98d63'; c.beginPath(); c.arc(0, S * .36, S * .055, 0, 7); c.fill(); c.restore();
-  c.fillStyle = '#c98d63'; c.beginPath(); c.arc(0, -S * .17, S * .13, 0, 7); c.fill();
-  c.fillStyle = '#222'; c.beginPath(); c.arc(-S * .045, -S * .18, S * .016, 0, 7); c.arc(S * .045, -S * .18, S * .016, 0, 7); c.fill();
-  c.strokeStyle = '#222'; c.lineWidth = S * .014; c.beginPath(); c.arc(0, -S * .14, S * .05, .2, Math.PI - .2); c.stroke();
-  c.fillStyle = '#fff'; c.beginPath(); c.arc(0, -S * .22, S * .15, Math.PI, 0); c.fill(); rr(c, -S * .19, -S * .24, S * .38, S * .05, S * .02, '#e6e6e6');
-}
-
 /* ---------- scenery (art units; origin as noted) ---------- */
 
 /** Corridor pillar, origin = bottom centre. 0.38 wide, 7.2 tall, hazard stripes at the base. */

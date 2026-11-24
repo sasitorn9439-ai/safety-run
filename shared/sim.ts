@@ -140,10 +140,16 @@ export interface Surprise {
   sub?: string;
 }
 
+/** where the bonus came from, for the crash screen: coins (the mystery box's too), PPE, near misses, and the rest
+ * (Safety Officer, bonus questions, Safety Week x2 metres, the tournament's audit) */
+export type EarnKind = 'coin' | 'ppe' | 'near' | 'extra';
+
 export interface RunView {
   dist: number; lane: number; px: number; py: number; vy: number; slide: number;
   objs: GameObject[]; got: ReadonlySet<PpeType>;
   shield: number; inv: number; revives: number; coins: number; bonus: number;
+  /** the bonus split by where it came from; always sums to `bonus` */
+  earned: Readonly<Record<EarnKind, number>>;
   toast: string; toastT: number; flash: number;
   sur: Surprise | null; dbl: number; hitKind: HazardKind | null;
   /** which area we are in: index into ZONES, and how many areas have been entered (1-based) */
@@ -255,6 +261,8 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   let objs: GameObject[] = [];
   const got = new Set<PpeType>();
   let shield = 0, inv = 1.2, revives = 0, coins = 0, bonus = 0, toast = '', toastT = 0, flash = 0;
+  const earned: Record<EarnKind, number> = { coin: 0, ppe: 0, near: 0, extra: 0 };
+  const earn = (k: EarnKind, n: number) => { bonus += n; earned[k] += n; };
   let nextSur = (Math.floor(dist / 1500) + 1) * 1500, sur: Surprise | null = null, lastSur = '', dbl = 0, dblAcc = 0, tick = 0;
   let hitKind: HazardKind | null = null;
   let slow = 0, magnet = 0, lift = 0, hearts = 0, lastPower = dist;
@@ -402,7 +410,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     lastSur = k;
     beep(660, 0.1, 'triangle');
     beep(990, 0.15, 'triangle');
-    if (k === 'officer') { bonus += OFFICER_SCORE; sur = { k, t: 0, dur: 3.4, msg: OFFICER[(random() * OFFICER.length) | 0]! }; }
+    if (k === 'officer') { earn('extra', OFFICER_SCORE); sur = { k, t: 0, dur: 3.4, msg: OFFICER[(random() * OFFICER.length) | 0]! }; }
     if (k === 'rain') {
       objs = objs.filter(o => o.z < 12);
       next = Math.max(next, 58);
@@ -421,7 +429,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     let x = boxRandom() * 100, reward: (typeof BOX_REWARDS)[number] = BOX_REWARDS[0];
     for (const r of BOX_REWARDS) { x -= r[1]; if (x < 0) { reward = r; break; } }
     const tip = TIPS[Math.floor(boxRandom() * TIPS.length)]!;
-    if (reward[0] === 'coins') { coins += 10; bonus += 10 * COIN_SCORE * mult(); }
+    if (reward[0] === 'coins') { coins += 10; earn('coin', 10 * COIN_SCORE * mult()); }
     else if (reward[0] === 'shield') shield = 8;
     else if (reward[0] === 'double') dbl = 8;
     else if (reward[0] === 'broom') magnet = POWER_SECONDS.broom;
@@ -516,7 +524,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     else if (t === 'foam') { foam(); say('ถังดับเพลิง! เคลียร์เลนข้างหน้า', 2); }
     else if (t === 'buddy') { buddy = TOUR_SECONDS.buddy; say('Buddy System! เพื่อนช่วยนำทาง', 2); }
     else if (t === 'streak') { streak = dbl = TOUR_SECONDS.streak; say('Zero Accident x2! อย่าชนนะ', 2); }
-    else if (t === 'audit') { bonus += AUDIT_SCORE; say(`Spot Audit! ส่งผู้ตรวจไปหาคนที่นำอยู่ +${AUDIT_SCORE}`, 2); }
+    else if (t === 'audit') { earn('extra', AUDIT_SCORE); say(`Spot Audit! ส่งผู้ตรวจไปหาคนที่นำอยู่ +${AUDIT_SCORE}`, 2); }
     else if (t === 'toolbox') toolbox();
     else if (t === 'estop') { slow = POWER_SECONDS.estop; say('E-Stop! หยุดงานเพื่อความปลอดภัย · เกมช้าลง', 2); }
     else if (t === 'broom') { magnet = POWER_SECONDS.broom; say('5ส! ไม้กวาดดูดเหรียญ', 2); }
@@ -547,7 +555,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   /** `index` null = gave up waiting (the server's replay can never hang on an unanswered bonus) */
   function resolveBonus(index: number | null) {
     const q = pendingBonus!;
-    if (index != null && index === q.correct) { bonus += q.reward * mult(); say(`ตอบถูก! +${q.reward} คะแนน · Bonus +${q.reward}`, 1.8); beep(1200, 0.16, 'triangle'); beep(1600, 0.18, 'triangle'); }
+    if (index != null && index === q.correct) { earn('extra', q.reward * mult()); say(`ตอบถูก! +${q.reward} คะแนน · Bonus +${q.reward}`, 1.8); beep(1200, 0.16, 'triangle'); beep(1600, 0.18, 'triangle'); }
     else if (index != null) { say('ยังไม่ถูก ไปต่อ! · Not quite, keep running', 1.4); beep(160, 0.16, 'sawtooth'); }
     else { say('หมดเวลา ไปต่อ! · Time up, keep running', 1.4); beep(160, 0.16, 'sawtooth'); }
     pendingBonus = null;
@@ -556,7 +564,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   function nearMiss() {
     combo++; comboT = COMBO_SECONDS;
     const m = mult();
-    bonus += NEAR_SCORE * m;
+    earn('near', NEAR_SCORE * m);
     say(`NEAR MISS! x${m}`, 0.9);
     beep(1500, 0.05, 'square', 0.04);
     emit({ type: 'near' });
@@ -597,7 +605,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     dist += dz;
     slow = Math.max(0, slow - dt); magnet = Math.max(0, magnet - dt); leftT += dt;
     if (comboT > 0 && (comboT -= dt) <= 0) combo = 0;
-    if (dbl > 0) { dbl -= dt; dblAcc += dz; while (dblAcc >= METRES_PER_POINT) { bonus++; dblAcc -= METRES_PER_POINT; } }
+    if (dbl > 0) { dbl -= dt; dblAcc += dz; while (dblAcc >= METRES_PER_POINT) { earn('extra', 1); dblAcc -= METRES_PER_POINT; } }
     if (sur && (sur.t += dt) > sur.dur) sur = null;
     for (const o of objs) o.z -= dz;
     moveHazards(dt);
@@ -618,9 +626,9 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     const m = mult();
     for (const o of objs) {
       if (o.gone || Math.abs(o.z) > 0.7 || Math.abs(o.l - px) > 0.5) continue;
-      if (o.k === 'coin') { o.gone = true; coins++; bonus += COIN_SCORE * m; beep(1180, 0.04, 'triangle', 0.05); emit({ type: 'coin' }); continue; }
+      if (o.k === 'coin') { o.gone = true; coins++; earn('coin', COIN_SCORE * m); beep(1180, 0.04, 'triangle', 0.05); emit({ type: 'coin' }); continue; }
       if (o.k === 'ppe') {
-        o.gone = true; got.add(o.p); bonus += PPE_SCORE * m; beep(880, 0.07, 'triangle'); emit({ type: 'pickup' });
+        o.gone = true; got.add(o.p); earn('ppe', PPE_SCORE * m); beep(880, 0.07, 'triangle'); emit({ type: 'pickup' });
         if (got.size === 5) { got.clear(); shield = 8; say('FULL PPE! โล่กันชน 1 ครั้ง', 2); beep(1320, 0.2, 'triangle'); }
         continue;
       }
@@ -708,7 +716,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       update(STEP);
     },
     view: () => ({
-      dist, lane, px, py, vy, slide, objs, got, shield, inv, revives, coins, bonus, toast, toastT, flash, sur, dbl, hitKind,
+      dist, lane, px, py, vy, slide, objs, got, shield, inv, revives, coins, bonus, earned, toast, toastT, flash, sur, dbl, hitKind,
       zone: zoneOf(dist).index, zoneN: zoneOf(dist).n, stageZone: tourZone, combo, mult: mult(), comboT, slow, magnet, lift, hearts, pendingBonus,
       tour: tour && {
         ticksLeft: Math.max(0, tour.durationTicks - tick), gate,
