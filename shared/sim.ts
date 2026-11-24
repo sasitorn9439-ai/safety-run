@@ -15,8 +15,8 @@ export type { HazardKind, PpeType } from './hazards.js';
 
 export const STEP = 1 / 60;
 export const SLIDE_SECONDS = 0.7;
-export const MAX_TICKS = 30 * 60 * 60;
-export const MAX_INPUTS = 12000;
+/** caps the replay the server runs; about 10 hours of hard play, still well inside the function's time limit */
+export const MAX_INPUTS = 60000;
 export const ZMAX = 72;
 /** Running speed in metres per second. The original ramp adds 1 m/s every 55 m. */
 export const START_SPEED = 14;
@@ -639,7 +639,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     if (!tour && !opts.movementOnly && dist >= nextBonusCheck) { nextBonusCheck += BONUS_GAP; if (bonusRandom() < BONUS_CHANCE) bonusArmed = true; }
   }
 
-  const isFinished = () => tour ? tick >= tour.durationTicks : !!hitKind || (!opts.movementOnly && tick === MAX_TICKS);
+  const isFinished = () => tour ? tick >= tour.durationTicks : !!hitKind;
 
   return {
     quiz, correct,
@@ -674,7 +674,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     },
     answer(index) {
       if (pendingBonus) { resolveBonus(index); return true; }
-      if (tour || !hitKind || revives || tick === MAX_TICKS || index !== correct) return false;
+      if (tour || !hitKind || revives || index !== correct) return false;
       revives++;
       objs = objs.filter(o => o.z > 14);
       inv = 2;
@@ -714,7 +714,7 @@ export function replayScore(seed: number, ticks: unknown, inputs: unknown): numb
 }
 
 function replayInto(game: Run, ticks: unknown, inputs: unknown): boolean {
-  if (!Number.isInteger(ticks) || (ticks as number) < 1 || (ticks as number) > MAX_TICKS ||
+  if (!Number.isInteger(ticks) || (ticks as number) < 1 ||
       !Array.isArray(inputs) || inputs.length > MAX_INPUTS) return false;
   const total = ticks as number;
 

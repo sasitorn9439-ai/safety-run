@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRun, replayScore, speedAt, COIN_SCORE, FULL_SPEED_AT, MAX_SPEED, MAX_TICKS, METRES_PER_POINT, PPE_SCORE, START_SPEED, type Action, type GameObject } from '../shared/sim.js';
+import { createRun, replayScore, speedAt, COIN_SCORE, FULL_SPEED_AT, MAX_INPUTS, MAX_SPEED, METRES_PER_POINT, PPE_SCORE, START_SPEED, type Action, type GameObject } from '../shared/sim.js';
 import golden from './golden.json';
 
 // golden.json holds bot-played runs recorded against the current sim (tests/make-golden.test.ts): if one of these fails,
@@ -24,7 +24,7 @@ describe('replayScore validation', () => {
   it('rejects garbage', () => {
     expect(replayScore(1, 'x', [])).toBeNull();
     expect(replayScore(1, 10, 'nope')).toBeNull();
-    expect(replayScore(1, MAX_TICKS + 1, [])).toBeNull();
+    expect(replayScore(1, 100, Array.from({ length: MAX_INPUTS + 1 }, (_, i) => [i, 'left']))).toBeNull();
     expect(replayScore(1, 100, [[1]])).toBeNull();
   });
   it('a different seed gives a different run', () => {
