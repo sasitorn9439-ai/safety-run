@@ -3,7 +3,7 @@ import { DEFAULT_SLIDE, SLIDE_IDS, type SlideId } from './flat/ids.js';
 import { loadMascot, type MascotSet, type MascotStyle } from './pixel-mascot.js';
 import type { GameRenderer } from './types.js';
 
-export type { Frame, GameRenderer, PrevState, SceneState } from './types.js';
+export type { Frame, GameRenderer, Ghost, PrevState, SceneState } from './types.js';
 
 const hasWebGL2 = () => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; } };
 

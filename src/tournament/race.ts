@@ -1,5 +1,5 @@
 import { STEP, createRun, type Action, type Beep, type Emit, type InputEntry, type Run, type StageId } from '../../shared/sim.js';
-import type { Frame, PrevState } from '../render/types.js';
+import type { Frame, Ghost, PrevState } from '../render/types.js';
 
 export interface RaceSpec { seed: number; stage: StageId; duration: number; startAt: number }
 
@@ -16,6 +16,13 @@ export class Race {
   private alpha = 1;
   /** host only: the phone has run this far */
   reported = 0;
+  /** host only: where the phone said it was at `reported`, fresher than this replay, which runs behind it */
+  live = { tick: 0, dist: 0, lane: 0, jumps: 0, slides: 0 };
+  /** jumps and slides so far: other phones play each new one on this runner's ghost */
+  jumps = 0;
+  slides = 0;
+  private air = false;
+  private lastSlide = 0;
 
   constructor(readonly spec: RaceSpec, beep?: Beep, emit?: Emit) {
     this.run = createRun(spec.seed, beep, emit, { tour: { stage: spec.stage, durationTicks: Math.round(spec.duration / STEP) } });
@@ -49,9 +56,17 @@ export class Race {
       const v = run.view();
       this.prev = { dist: v.dist, px: v.px, py: v.py, slide: v.slide };
       run.step();
+      this.count();
     }
     this.applyDue();
     this.alpha = run.tick >= goal && goal === Math.floor(target) ? Math.min(1, target - Math.floor(target)) : 1;
+  }
+
+  private count() {
+    const v = this.run.view(), air = (v.py > 0 || v.vy > 0) && v.lift <= 0;
+    if (air && !this.air) this.jumps++;
+    if (v.slide > this.lastSlide) this.slides++;
+    this.air = air; this.lastSlide = v.slide;
   }
 
   private applyDue() {
@@ -59,6 +74,13 @@ export class Race {
       const [at, action] = this.inputs[this.applied++]!;
       if (at === this.run.tick) this.run.input(action as Action);
     }
+  }
+
+  /** host: this runner as a ghost on someone else's screen, blended like the frame */
+  ghost(): Ghost {
+    const v = this.run.view(), p = this.prev, a = this.alpha;
+    const mix = (from: number, to: number) => from + (to - from) * a;
+    return { dist: mix(p.dist, v.dist), px: mix(p.px, v.px), py: mix(p.py, v.py), vy: v.vy, slide: mix(p.slide, v.slide) };
   }
 
   frame(): Frame {

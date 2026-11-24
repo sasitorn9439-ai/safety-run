@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { STEP, TOUR_DURATION, replayTour, type StageId } from '../shared/sim.js';
+import { tourTopic } from '../shared/tour-channels.js';
 import { ZONES } from '../shared/zones.js';
 import { idOk, normId, sha, timingSafeKey, type Reply } from './handlers.js';
 import type { Store } from './store.js';
@@ -35,6 +36,28 @@ function view(room: TourRoom, now: number) {
   };
 }
 export type RoomView = ReturnType<typeof view>;
+
+/** a realtime token lasts this long; the Ably client asks for a new one by itself before it runs out */
+const REALTIME_TTL_MS = 60 * 60 * 1000;
+
+/**
+ * An Ably token for one seat in one room: the host may only hear `up` and speak `down`; a player speaks and hears `up` and hears `down`. It is signed
+ * here with ABLY_API_KEY, which never leaves the server.
+ * Ably bills by monthly active users, counted by client ID, and refuses a browser's connection without one. A player's is their
+ * employee id hashed with the key (the same person every race, and their id never reaches Ably); the big screen's is its room.
+ */
+async function realtimeToken(room: TourRoom, host: boolean, b: Json): Promise<Reply> {
+  const key = process.env.ABLY_API_KEY;
+  if (!key) return reply(503, { error: 'realtime' });
+  const slot = asSlot(b.slot), me = room.players.find(p => p.slot === slot);
+  if (!host && !(me && me.tokenHash === sha(b.token))) return reply(403, { error: 'token' });
+  const up = tourTopic(room.code, 'up'), down = tourTopic(room.code, 'down');
+  // a player also hears `up`: the other phones' reports, for their ghosts
+  const capability = host ? { [up]: ['subscribe' as const], [down]: ['publish' as const] } : { [up]: ['publish' as const, 'subscribe' as const], [down]: ['subscribe' as const] };
+  const clientId = host ? `host-${room.code}` : `emp-${sha(`${key}:${me!.empId}`).slice(0, 16)}`;
+  const { createHttpClient } = await import('@ably/pubsub-server');
+  return reply(200, { tokenRequest: await createHttpClient({ key }).auth.createTokenRequest({ capability, clientId, ttl: REALTIME_TTL_MS }) });
+}
 
 /**
  * Tournament rooms: the host creates one (admin key), up to three players join by employee id and the host starts it. Every
@@ -86,6 +109,8 @@ export async function tournament(store: Store, tours: TourStore, b: Json, now = 
     }
     return reply(200, view((await tours.get(code))!, now));
   }
+
+  if (action === 'realtime') return realtimeToken(room, host, b);
 
   // everything below is the host's
   if (!host) return reply(403, { error: 'host' });

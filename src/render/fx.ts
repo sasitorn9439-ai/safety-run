@@ -6,10 +6,14 @@
 import { HZ, type HazardKind, type PpeType } from '../../shared/hazards.js';
 import { SLIDE_SECONDS, ZMAX, type GameObject, type PowerType, type SimEvent } from '../../shared/sim.js';
 import { Camera, type Pt } from './camera.js';
-import type { Frame } from './types.js';
+import type { Frame, Ghost, SceneState } from './types.js';
 
 const JUMP_GUIDE_RADIUS = 5.1;
 const JUMP_GUIDE_HEIGHT = 1.25;
+/** a ghost this far behind the mascot (metres) has left the bottom of the screen */
+const GHOST_BEHIND = -3;
+/** how solid a ghost is at its clearest */
+const GHOST_ALPHA = .5;
 
 export const TAU = Math.PI * 2;
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -99,7 +103,7 @@ export class Fx {
 /* ---------- what to draw, far to near ---------- */
 
 export interface DrawItem {
-  kind: 'hazard' | 'ppe' | 'coin' | 'power' | 'bonus' | 'player';
+  kind: 'hazard' | 'ppe' | 'coin' | 'power' | 'bonus' | 'player' | 'ghost';
   z: number;
   /** art origin on screen (feet for hazards, centre for PPE) */
   x: number; y: number;
@@ -115,6 +119,8 @@ export interface DrawItem {
   sx: number; halo: number; gy: number;
   /** drop: height of the falling crate above its mark in units (-1 = the mark has not locked yet) */
   fall: number;
+  /** ghost: its own scene, for picking its pose with the player's rules */
+  gf: Frame | null;
 }
 
 /** how much bigger a pickup is drawn at the far end of the corridor (0 = true perspective size) */
@@ -127,10 +133,11 @@ export class DrawList {
   items: DrawItem[] = [];
   n = 0;
   private scratch: GameObject[] = [];
+  private ghosts: { z: number; g: Ghost }[] = [];
   private pt: Pt = { x: 0, y: 0, s: 1 };
 
   private next(): DrawItem {
-    if (this.n === this.items.length) this.items.push({ kind: 'hazard', z: 0, x: 0, y: 0, u: 0, fade: 1, k: 'spill', p: 'helmet', pw: 'toolbox', blink: false, sx: 1, halo: 0, gy: 0, fall: -1 });
+    if (this.n === this.items.length) this.items.push({ kind: 'hazard', z: 0, x: 0, y: 0, u: 0, fade: 1, k: 'spill', p: 'helmet', pw: 'toolbox', blink: false, sx: 1, halo: 0, gy: 0, fall: -1, gf: null });
     return this.items[this.n++]!;
   }
 
@@ -143,11 +150,29 @@ export class DrawList {
       o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power' && o.k !== 'bonus' && HZ[o.k].t === 'low',
     );
     list.sort((a, b) => b.z - a.z);
-    let player = false;
+    const ghosts = this.ghosts;
+    ghosts.length = 0;
+    for (const g of f.ghosts ?? []) { const z = g.dist - I.dist; if (z > GHOST_BEHIND && z < ZMAX) ghosts.push({ z, g }); }
+    ghosts.sort((a, b) => b.z - a.z);
+    let player = false, gi = 0;
     const addPlayer = () => { const it = this.next(); it.kind = 'player'; it.z = 0; player = true; };
+    const addGhost = (z: number, g: Ghost) => {
+      const p = cam.project(g.px, z, 0, this.pt), it = this.next();
+      it.kind = 'ghost'; it.z = z; it.x = p.x; it.y = p.y; it.u = cam.lw * p.s; it.gf = ghostFrame(g);
+      it.fade = GHOST_ALPHA * clamp((ZMAX - z) / 22, 0, 1) * clamp((z - GHOST_BEHIND) / 1.5, 0, 1);
+    };
+    /** everything nearer than the objects so far, down to depth `z`, in back-to-front order */
+    const upTo = (z: number) => {
+      while (gi < ghosts.length && ghosts[gi]!.z > z) {
+        const { z: gz, g } = ghosts[gi++]!;
+        if (!player && gz < 0) addPlayer();
+        addGhost(gz, g);
+      }
+      if (!player && z < 0) addPlayer();
+    };
     for (const o of list) {
       const z = o.z + I.lead;
-      if (!player && z < 0) addPlayer();
+      upTo(z);
       if (z > ZMAX) continue;
       const p = cam.project(o.l, z, 0, this.pt), u = cam.lw * p.s;
       const it = this.next();
@@ -196,7 +221,7 @@ export class DrawList {
         it.y -= JUMP_GUIDE_HEIGHT * (1 - offset * offset) * u;
       }
     }
-    if (!player) addPlayer();
+    upTo(-Infinity);
   }
 }
 
@@ -209,6 +234,14 @@ export interface Pose {
   alpha: number; shadowU: number; shadowAlpha: number;
   shield: boolean; shieldPulse: number;
 }
+
+/** a ghost as a one-runner scene, so the player's pose rules pick its frame too */
+export function ghostFrame(g: Ghost): Frame {
+  const s: SceneState = { dist: g.dist, lane: g.px, px: g.px, py: g.py, vy: g.vy, slide: g.slide, inv: 0, shield: 0, objs: [] };
+  return { s, prev: { dist: g.dist, px: g.px, py: g.py, slide: g.slide }, alpha: 1, playing: true, flash: 0 };
+}
+/** a ghost has no landing squash or shake of its own */
+export const GHOST_FX = new Fx();
 
 export function pose(f: Frame, cam: Camera, I: Interp, fx: Fx, now: number, pt: Pt): Pose {
   const p = cam.project(I.px, 0, 0, pt), u = cam.lw;

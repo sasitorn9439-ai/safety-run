@@ -15,6 +15,8 @@ export type { HazardKind, PpeType } from './hazards.js';
 
 export const STEP = 1 / 60;
 export const SLIDE_SECONDS = 0.7;
+/** a jump leaves the floor at this speed (m/s) and falls back under this gravity (m/s²) */
+export const JUMP_VY = 9.2, GRAVITY = 24;
 /** caps the replay the server runs; about 10 hours of hard play, still well inside the function's time limit */
 export const MAX_INPUTS = 60000;
 export const ZMAX = 72;
@@ -488,7 +490,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     for (const o of objs) {
       if (o.gone || o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus' || o.z < 0 || o.z > ahead || Math.abs(o.l - lane) > 0.5) continue;
       const t = HZ[o.k].t;
-      if (t === 'low' && py === 0 && vy === 0) { vy = 9.2; slide = 0; }
+      if (t === 'low' && py === 0 && vy === 0) { vy = JUMP_VY; slide = 0; }
       else if (t === 'high') slide = SLIDE_SECONDS;
       else if (t === 'block') {
         const blocked = (l: number) => objs.some(b => !b.gone && b.k !== 'coin' && b.k !== 'ppe' && b.k !== 'power' && b.k !== 'bonus' && b.z > -1 && b.z < ahead * 2 && Math.abs(b.l - l) < 0.6);
@@ -606,7 +608,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       lift = Math.max(0, lift - dt);
       py += (LIFT_HEIGHT - py) * Math.min(1, dt * 8); vy = 0; slide = 0;
       if (lift === 0) inv = Math.max(inv, 1.2);              // a moment of grace to come down
-    } else if (py > 0 || vy > 0) { vy -= 24 * dt; py += vy * dt; if (py <= 0) { py = 0; vy = 0; } }
+    } else if (py > 0 || vy > 0) { vy -= GRAVITY * dt; py += vy * dt; if (py <= 0) { py = 0; vy = 0; } }
     slide = Math.max(0, slide - dt); inv = Math.max(0, inv - dt); shield = Math.max(0, shield - dt);
     toastT = Math.max(0, toastT - dt); flash = Math.max(0, flash - dt);
     if (magnet > 0) for (const o of objs) if (o.k === 'coin' && o.z < MAGNET_RANGE && o.z > -0.5) o.l += (px - o.l) * Math.min(1, dt * 6);
@@ -674,7 +676,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       } else if (lift > 0 && (action === 'up' || action === 'down')) {
         return false;                                         // the lift is carrying you
       } else if (action === 'up' && py === 0 && vy === 0) {
-        vy = 9.2; slide = 0;
+        vy = JUMP_VY; slide = 0;
         beep(520, 0.06);
       } else if (action === 'down') {
         if (py > 0) vy = -16;

@@ -20,6 +20,8 @@
     "ppe:svg": "vite --config tools/ppe-svg/vite.config.ts --open"
   },
   "dependencies": {
+    "@ably/pubsub-device": "3.1.0",
+    "@ably/pubsub-server": "3.1.0",
     "@supabase/supabase-js": "^2.119.2",
     "pixi.js": "^8.23.0",
     "postgres": "^3.4.5",
