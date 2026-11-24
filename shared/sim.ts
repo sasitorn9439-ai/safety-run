@@ -51,9 +51,15 @@ export const COMBO_SECONDS = 6;
 export const MULT_MAX = 4;
 export const NEAR_SCORE = 2;
 
+/** a mystery coin: touch it and answer a safety question for a random points bonus; metres between two at the least */
+export const BONUS_GAP = 380;
+export const BONUS_MIN = 50, BONUS_MAX = 300, BONUS_STEP = 10;
+/** seconds the run waits for an answer before giving up on its own (keeps a replay from ever waiting forever) */
+export const BONUS_SECONDS = 7;
+
 /** Things the renderer may want to react to (particles, shake). Purely cosmetic: never feeds back into the sim. */
 export type SimEvent =
-  | { type: 'pickup' } | { type: 'coin' } | { type: 'saved' } | { type: 'near' }
+  | { type: 'pickup' } | { type: 'coin' } | { type: 'saved' } | { type: 'near' } | { type: 'bonus' }
   | { type: 'power'; t: PowerType }
   | { type: 'crash'; kind: HazardKind };
 export type Emit = (event: SimEvent) => void;
@@ -67,7 +73,8 @@ export interface Obstacle { k: HazardKind; l: number; z: number; gone?: boolean;
 export interface Pickup { k: 'ppe'; p: PpeType; l: number; z: number; gone?: boolean }
 export interface Coin { k: 'coin'; l: number; z: number; gone?: boolean }
 export interface Power { k: 'power'; t: PowerType; l: number; z: number; gone?: boolean }
-export type GameObject = Obstacle | Pickup | Coin | Power;
+export interface BonusToken { k: 'bonus'; l: number; z: number; gone?: boolean }
+export type GameObject = Obstacle | Pickup | Coin | Power | BonusToken;
 
 /**
  * Scoring: the distance run adds 1 point per
@@ -98,9 +105,13 @@ export interface RunView {
   combo: number; mult: number; comboT: number;
   /** seconds left on the E-Stop, the 5S broom and the man-lift; first-aid hearts in stock (0 or 1) */
   slow: number; magnet: number; lift: number; hearts: number;
+  /** a bonus coin was just touched: answer it (same `answer` call as a revive) for the points, or let it time out */
+  pendingBonus: BonusQuiz | null;
 }
 
 export interface Quiz { prompt: string; options: string[] }
+/** the bonus-coin question: like Quiz but it names its own right answer and what it pays out */
+export interface BonusQuiz extends Quiz { correct: number; reward: number }
 
 export interface Run {
   readonly quiz: Quiz;
@@ -165,6 +176,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   // power-ups and the Toolbox Talk have their own random streams, so they never shift the hazards
   const powerRandom = seededRandom(seed ^ 0x9e3779b9);
   const boxRandom = seededRandom(seed ^ 0x85ebca6b);
+  const bonusRandom = seededRandom(seed ^ 0x27d4eb2f);
   const questions = QB.flat();
   const [prompt, choices] = questions[Math.floor(quizRandom() * questions.length)]!;
   const options = shuffle(choices.map((text, index) => ({ text, index })), quizRandom);
@@ -181,6 +193,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   let hitKind: HazardKind | null = null;
   let slow = 0, magnet = 0, lift = 0, hearts = 0, lastPower = dist;
   let combo = 0, comboT = 0, leftLane = 0, leftT = 9;
+  let lastBonus = dist, pendingBonus: BonusQuiz | null = null, bonusTimer = 0;
 
   const mult = () => 1 + Math.min(MULT_MAX - 1, Math.floor(combo / 3));
   const say = (text: string, seconds: number) => { toast = text; toastT = seconds; };
@@ -269,12 +282,23 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       if (powerAt === at) powerAt = (powerAt + 1) % trail.length;
       lastPower = dist;
     }
+    // bonus coin: its own stream too, three numbers every spawn whether or not it is used
+    const ba = bonusRandom(), bc = bonusRandom();
+    let bonusAt = -1;
+    if (trail.length >= 3 && dist - lastBonus >= BONUS_GAP && ba < 0.4) {
+      bonusAt = Math.floor(bc * trail.length);
+      if (bonusAt === at) bonusAt = (bonusAt + 1) % trail.length;
+      if (bonusAt === powerAt) bonusAt = (bonusAt + 1) % trail.length;
+      if (bonusAt === at) bonusAt = (bonusAt + 1) % trail.length;
+      lastBonus = dist;
+    }
     // a trail from the previous spawn may still be running into these hazards: clear the pickups right around them
     objs.push(...fresh);
-    for (const h of fresh) objs = objs.filter(o => !((o.k === 'coin' || o.k === 'ppe' || o.k === 'power') && o.l === (h as Obstacle).l && Math.abs(o.z - (h as Obstacle).z) < 1.6));
+    for (const h of fresh) objs = objs.filter(o => !((o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus') && o.l === (h as Obstacle).l && Math.abs(o.z - (h as Obstacle).z) < 1.6));
     trail.forEach((c, i) => {
       if (i === powerAt && power) objs.push({ k: 'power', t: power, l: c.l, z: c.z });
       else if (i === at) objs.push({ k: 'ppe', p: ppePick, l: c.l, z: c.z });
+      else if (i === bonusAt) objs.push({ k: 'bonus', l: c.l, z: c.z });
       else objs.push({ k: 'coin', l: c.l, z: c.z });
     });
     openingPending = false;
@@ -327,10 +351,30 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       // a zig-zag of coins for the whole ride
       const len = Math.min(110, Math.floor((speed * POWER_SECONDS.lift) / COIN_GAP));
       const path = [-1, 0, 1, 0];
-      objs = objs.filter(o => o.z < 12 || (o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power'));
+      objs = objs.filter(o => o.z < 12 || (o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power' && o.k !== 'bonus'));
       for (let i = 0; i < len; i++) objs.push({ k: 'coin', l: path[(i >> 2) % 4]!, z: 14 + i * COIN_GAP });
       next = Math.max(next, 14 + len * COIN_GAP);
     }
+  }
+
+  /** a mystery coin was touched: pull a fresh question off the bonus stream and freeze the run for an answer */
+  function startBonus() {
+    const [prompt, choices] = questions[Math.floor(bonusRandom() * questions.length)]!;
+    const opts = shuffle(choices.map((text, index) => ({ text, index })), bonusRandom);
+    const reward = BONUS_MIN + Math.round(bonusRandom() * (BONUS_MAX - BONUS_MIN) / BONUS_STEP) * BONUS_STEP;
+    pendingBonus = { prompt, options: opts.map(o => o.text), correct: opts.findIndex(o => o.index === 0), reward };
+    bonusTimer = BONUS_SECONDS;
+    beep(1400, 0.1, 'triangle'); beep(1800, 0.12, 'triangle');
+    emit({ type: 'bonus' });
+  }
+
+  /** `index` null = gave up waiting (the server's replay can never hang on an unanswered bonus) */
+  function resolveBonus(index: number | null) {
+    const q = pendingBonus!;
+    if (index != null && index === q.correct) { bonus += q.reward * mult(); say(`ตอบถูก! +${q.reward} คะแนน · Bonus +${q.reward}`, 1.8); beep(1200, 0.16, 'triangle'); beep(1600, 0.18, 'triangle'); }
+    else if (index != null) { say('ยังไม่ถูก ไปต่อ! · Not quite, keep running', 1.4); beep(160, 0.16, 'sawtooth'); }
+    else { say('หมดเวลา ไปต่อ! · Time up, keep running', 1.4); beep(160, 0.16, 'sawtooth'); }
+    pendingBonus = null;
   }
 
   function nearMiss() {
@@ -360,6 +404,8 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   /* ---------- one step ---------- */
 
   function update(dt: number) {
+    // the whole run holds still while a bonus question is up; a timeout keeps this from ever waiting forever
+    if (pendingBonus) { if ((bonusTimer -= dt) <= 0) resolveBonus(null); return; }
     speed = speedAt(dist);
     // E-Stop eases the world down to ESTOP_FACTOR and back
     const ease = slow > 0 ? Math.max(0, Math.min(1, slow / 0.3, (POWER_SECONDS.estop - slow) / 0.3)) : 0;
@@ -395,6 +441,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
         continue;
       }
       if (o.k === 'power') { o.gone = true; takePower(o.t); continue; }
+      if (o.k === 'bonus') { o.gone = true; startBonus(); continue; }
       if (lift > 0) continue;                                // up on the lift: nothing on the floor can touch you
       const t = HZ[o.k].t, hit = (o.k !== 'sparks' || !!o.on) && (t === 'block' || (t === 'low' && py < 0.45) || (t === 'high' && slide <= 0));
       if (!hit || inv > 0) continue;
@@ -406,7 +453,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     }
     // a hazard that has just gone past: was it a late dodge? (a lane change, a jump or a slide just in time)
     for (const o of objs) {
-      if (o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.gone || o.chk || o.z > 0) continue;
+      if (o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus' || o.gone || o.chk || o.z > 0) continue;
       o.chk = true;
       if (lift > 0 || inv > 0) continue;
       const t = HZ[o.k].t;
@@ -415,7 +462,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
         : Math.abs(o.l - px) <= 0.5 && (t === 'low' ? py < 1.1 : slide < 0.22);
       if (near) nearMiss();
     }
-    objs = objs.filter(o => o.z > -3 && !(o.gone && (o.k === 'ppe' || o.k === 'coin' || o.k === 'power')));
+    objs = objs.filter(o => o.z > -3 && !(o.gone && (o.k === 'ppe' || o.k === 'coin' || o.k === 'power' || o.k === 'bonus')));
     if (dist >= nextSur) { nextSur += 1500; surprise(); }
   }
 
@@ -426,7 +473,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     get tick() { return tick; },
     get finished() { return isFinished(); },
     input(action) {
-      if (isFinished()) return false;
+      if (isFinished() || pendingBonus) return false;
       if (action === 'left' || action === 'right') {
         const nextLane = Math.max(-1, Math.min(1, lane + (action === 'left' ? -1 : 1)));
         if (lane === nextLane) return false;
@@ -448,6 +495,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       return true;
     },
     answer(index) {
+      if (pendingBonus) { resolveBonus(index); return true; }
       if (!hitKind || revives || tick === MAX_TICKS || index !== correct) return false;
       revives++;
       objs = objs.filter(o => o.z > 14);
@@ -465,7 +513,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     },
     view: () => ({
       dist, lane, px, py, vy, slide, objs, got, shield, inv, revives, coins, bonus, toast, toastT, flash, sur, dbl, hitKind,
-      zone: zoneAt(dist).index, zoneN: zoneAt(dist).n, combo, mult: mult(), comboT, slow, magnet, lift, hearts,
+      zone: zoneAt(dist).index, zoneN: zoneAt(dist).n, combo, mult: mult(), comboT, slow, magnet, lift, hearts, pendingBonus,
     }),
     score: () => Math.floor(dist / METRES_PER_POINT) + bonus,
   };

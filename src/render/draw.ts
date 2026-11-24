@@ -33,6 +33,18 @@ export function drawPpeBadge(c: Ctx, t: PpeType, u: number) {
 /** Power-up pickup: the flat vector icon, a little bigger than a PPE item. Centred on the origin. */
 export function drawPowerBadge(c: Ctx, t: PowerType, u: number) { drawPowerIcon(c, t, u * .8); }
 
+/** Bonus-coin pickup: a bigger, violet coin with a question mark — touch it for a quiz worth extra points. */
+export function drawBonusBadge(c: Ctx, u: number) {
+  const R = u * .32;
+  c.fillStyle = INK; c.beginPath(); c.arc(0, R * .06, R * 1.08, 0, 7); c.fill();
+  c.fillStyle = '#9b5de5'; c.beginPath(); c.arc(0, 0, R, 0, 7); c.fill();
+  c.fillStyle = '#7b2fd1'; c.beginPath(); c.arc(0, 0, R * .74, 0, 7); c.fill();
+  c.fillStyle = '#b57aef'; c.beginPath(); c.arc(0, 0, R * .62, 0, 7); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.8)'; c.beginPath(); c.ellipse(-R * .48, -R * .5, R * .2, R * .09, -.7, 0, 7); c.fill();
+  c.fillStyle = '#fff'; c.font = `800 ${R * 1.1}px Kanit`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('?', 0, R * .06); c.textBaseline = 'alphabetic';
+}
+
 /** The man-lift under the mascot: a platform at the origin and a scissor stack going down 1.4 u (the renderer stretches it to the ground). */
 export function drawLiftPlatform(c: Ctx, u: number) {
   const g = '#8c949e';

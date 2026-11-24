@@ -7,7 +7,7 @@ import { DrawList, Fx, RUN_FRAMES, SLIDE_FRAMES, envItems, interp, pose, type En
 import { FLOOR_FRAGMENT, FLOOR_VERTEX, floorShaderCompiles } from './floor-shader.js';
 import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
 import type { MascotSet } from './pixel-mascot.js';
-import { PAD, ON_KINDS, POWERS, coinArt, crateArt, dotArt, liftArt, powerArt, haloArt, hazardArt, lightArt, pillarArt, ppeArt, rasterize, runArt, shadowArt, shieldArt, slideArt, type Art } from './sprites.js';
+import { PAD, ON_KINDS, POWERS, bonusArt, coinArt, crateArt, dotArt, liftArt, powerArt, haloArt, hazardArt, lightArt, pillarArt, ppeArt, rasterize, runArt, shadowArt, shieldArt, slideArt, type Art } from './sprites.js';
 import type { Frame, GameRenderer } from './types.js';
 
 /** A texture plus the numbers needed to place it: anchor (normalised) and how many texture pixels one art unit is. */
@@ -55,7 +55,7 @@ function place(s: Sprite, t: Tex, x: number, y: number, u: number, alpha = 1, z 
 interface Textures {
   hazards: Record<HazardKind, Tex>; on: Partial<Record<HazardKind, Tex>>; crate: Tex; ppe: Record<PpeType, Tex>;
   power: Record<PowerType, Tex>; lift: Tex;
-  shadow: Tex; halo: Tex; coin: Tex; pillar: Tex; light: Tex; shield: Tex; dot: Tex; run: Tex[]; slide: Tex[]; mascot: Record<PixelAnim, Tex[]> | null;
+  shadow: Tex; halo: Tex; coin: Tex; bonus: Tex; pillar: Tex; light: Tex; shield: Tex; dot: Tex; run: Tex[]; slide: Tex[]; mascot: Record<PixelAnim, Tex[]> | null;
   backdrop: Texture; fog: Texture;
 }
 
@@ -184,7 +184,7 @@ export class PixiRenderer implements GameRenderer {
     for (const t of PPE) ppe[t] = mk(ppeArt(t));
     this.tx = {
       hazards, ppe, power, lift: mk(liftArt), on: Object.fromEntries(ON_KINDS.map(k => [k, mk(hazardArt(k, true))])) as Partial<Record<HazardKind, Tex>>, crate: mk(crateArt),
-      shadow: mk(shadowArt), halo: mk(haloArt), coin: mk(coinArt), pillar: mk(pillarArt), light: mk(lightArt), shield: mk(shieldArt), dot: mk(dotArt),
+      shadow: mk(shadowArt), halo: mk(haloArt), coin: mk(coinArt), bonus: mk(bonusArt), pillar: mk(pillarArt), light: mk(lightArt), shield: mk(shieldArt), dot: mk(dotArt),
       run: Array.from({ length: RUN_FRAMES }, (_, i) => mk(runArt(i))),
       slide: Array.from({ length: SLIDE_FRAMES }, (_, i) => mk(slideArt(i))),
       mascot: this.pixel ? this.pixelTextures(base) : null,
@@ -280,6 +280,14 @@ export class PixiRenderer implements GameRenderer {
         place(sh.get(), tx.shadow, it.x, it.gy, it.u * .55, it.fade * .45);
         const s = ac.get();
         place(s, tx.ppe[it.p], it.x, it.y, it.u, it.fade, -it.z);
+        s.scale.x *= it.sx;
+        continue;
+      }
+      if (it.kind === 'bonus') {
+        place(sh.get(), tx.halo, it.x, it.y, it.u * 2, it.fade * it.halo);
+        place(sh.get(), tx.shadow, it.x, it.gy, it.u * .6, it.fade * .5);
+        const s = ac.get();
+        place(s, tx.bonus, it.x, it.y, it.u, it.fade, -it.z);
         s.scale.x *= it.sx;
         continue;
       }

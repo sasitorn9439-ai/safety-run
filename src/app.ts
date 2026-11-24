@@ -40,6 +40,8 @@ export async function startApp() {
       skipTut.style.display = s === 'tutor' ? 'block' : 'none';
     },
     onCrash,
+    onBonus: askBonusQuiz,
+    onBonusClosed: () => { if (game.state === 'play' && $('quiz').classList.contains('on')) show(null); },
   });
 
   /* ---------- run lifecycle ---------- */
@@ -262,6 +264,26 @@ export async function startApp() {
     show('quiz');
   }
   $('chanceBtn').onclick = () => { if (!game.revives && game.lastHit) askQuiz(); };
+
+  /* ---------- bonus-coin quiz: right or wrong, the run just continues ---------- */
+  function askBonusQuiz(quiz: { prompt: string; options: string[]; correct: number; reward: number }) {
+    $('qHead').textContent = `โบนัสพิเศษ! ตอบถูกรับ +${quiz.reward} คะแนน · Bonus question, +${quiz.reward} pts`;
+    $('qLv').style.display = 'none';
+    $('qText').textContent = quiz.prompt; $('qEn').textContent = ''; $('qNext').style.display = 'none';
+    $('qOpts').innerHTML = quiz.options.map((x, i) => `<button class="opt" data-i="${i}">${esc(x)}</button>`).join('');
+    $('qOpts').onclick = e => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>('.opt');
+      if (!b || $('qNext').style.display === 'block') return;
+      const i = +b.dataset.i!, ok = i === quiz.correct;
+      [...$('qOpts').children].forEach((c, j) => { if (j === quiz.correct) c.classList.add('ok'); else if (j === i) c.classList.add('no'); });
+      sfx.beep(ok ? 990 : 140, .2, ok ? 'triangle' : 'sawtooth');
+      const n = $('qNext');
+      n.style.display = 'block';
+      n.textContent = ok ? `ถูกต้อง! +${quiz.reward} คะแนน วิ่งต่อ` : 'ยังไม่ถูก ไม่เป็นไร วิ่งต่อ';
+      n.onclick = () => { game.answer(i); show(null); };
+    };
+    show('quiz');
+  }
 
   /* ---------- boot ---------- */
   // handy for poking at the game from the browser console while developing

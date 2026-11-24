@@ -1,7 +1,7 @@
 /** A simple dodging player for tests: it reads the hazards ahead and reacts, and answers the quiz once after a crash. */
 import { HZ, createRun, speedAt, type Action, type GameObject, type InputEntry, type Obstacle, type Run, type SimEvent } from '../shared/sim.js';
 
-export const isHazard = (o: GameObject): o is Obstacle => o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power';
+export const isHazard = (o: GameObject): o is Obstacle => o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power' && o.k !== 'bonus';
 
 /** one tick of the bot's decision; returns the action it pressed, if the run accepted one */
 export function think(run: Run): Action | null {
@@ -28,6 +28,12 @@ export function play(seed: number, opts: { startDist?: number; maxTicks?: number
     if (run.finished) {
       if (revived || !run.answer(run.correct)) break;
       inputs.push([run.tick, run.correct]); revived = true;
+      continue;
+    }
+    const pendingBonus = run.view().pendingBonus;
+    if (pendingBonus) {
+      run.answer(pendingBonus.correct);
+      inputs.push([run.tick, pendingBonus.correct]);
       continue;
     }
     const a = think(run);

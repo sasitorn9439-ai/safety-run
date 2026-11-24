@@ -45,6 +45,8 @@ export class Fx {
       for (let i = 0; i < 9; i++) this.burst(p.x, p.y - u * .55, 0xffd400, 70 + Math.random() * 60, -.2 - Math.random() * 3.2, u * .028);
     } else if (e.type === 'power') {
       for (let i = 0; i < 18; i++) this.burst(p.x, p.y - u * .6, i % 2 ? 0xffffff : 0x3ccf7a, 110 + Math.random() * 90, -.4 - Math.random() * 3.6, u * .03);
+    } else if (e.type === 'bonus') {
+      for (let i = 0; i < 20; i++) this.burst(p.x, p.y - u * .6, i % 2 ? 0xffffff : 0x9b5de5, 120 + Math.random() * 90, -.4 - Math.random() * 3.6, u * .03);
     } else if (e.type === 'near') {
       for (let i = 0; i < 6; i++) this.burst(p.x, p.y - u * .5, 0xfff6a8, 90 + Math.random() * 60, -.2, u * .022);
     } else if (e.type === 'saved') {
@@ -94,7 +96,7 @@ export class Fx {
 /* ---------- what to draw, far to near ---------- */
 
 export interface DrawItem {
-  kind: 'hazard' | 'ppe' | 'coin' | 'power' | 'player';
+  kind: 'hazard' | 'ppe' | 'coin' | 'power' | 'bonus' | 'player';
   z: number;
   /** art origin on screen (feet for hazards, centre for PPE) */
   x: number; y: number;
@@ -164,6 +166,12 @@ export class DrawList {
         it.kind = 'ppe'; it.p = o.p; it.x = p.x; it.y = p.y - (.6 + bob) * u * .9; it.u = u * pulse * boost; it.blink = false;
         it.sx = .8 + .2 * Math.cos(now * .0045 + (I.dist + o.z) * .8);          // a slow coin-like turn
         it.halo = .45 + .15 * Math.sin(phase * 1.3);
+      } else if (o.k === 'bonus') {
+        // a mystery coin: bigger than a plain coin and it pulses harder, so it reads as worth stopping for
+        const phase = (I.dist + o.z) * .8 + now * .005, boost = 1 + PPE_FAR_BOOST * (1 - p.s);
+        it.kind = 'bonus'; it.x = p.x; it.y = p.y - (.65 + Math.sin(phase) * .1) * u * .9; it.u = u * boost * (1 + Math.sin(phase * 1.3) * .08); it.blink = false;
+        it.sx = .85 + .15 * Math.cos(now * .005 + (I.dist + o.z) * .8);
+        it.halo = .7 + .25 * Math.sin(phase * 1.3);
       } else {
         it.kind = 'hazard'; it.k = o.k; it.x = p.x; it.y = p.y; it.u = u * HAZARD_SCALE[o.k];
         it.blink = o.k === 'forklift' && ((I.dist * 3) | 0) % 2 === 1;

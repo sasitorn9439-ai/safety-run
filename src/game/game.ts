@@ -1,5 +1,5 @@
 import { HZ, type HazardKind } from '../../shared/hazards.js';
-import { STEP, createRun, type Action, type InputEntry, type Run, type SimEvent } from '../../shared/sim.js';
+import { STEP, createRun, type Action, type BonusQuiz, type InputEntry, type Run, type SimEvent } from '../../shared/sim.js';
 import type { Sfx } from '../lib/audio.js';
 import type { Frame, GameRenderer, PrevState, SceneState } from '../render/types.js';
 import type { Hud } from '../ui/hud.js';
@@ -17,6 +17,10 @@ export interface GameHooks {
   /** the run ended: `kind` is the hazard that hit, or null if the time limit was reached */
   onCrash(kind: HazardKind | null): void;
   onState(state: GameState, previous: GameState): void;
+  /** a bonus coin was just touched: show its question (answer with `game.answer`, same as a revive) */
+  onBonus(quiz: BonusQuiz): void;
+  /** the bonus question closed on its own (answered or timed out): dismiss its popup if still shown */
+  onBonusClosed(): void;
 }
 
 /**
@@ -41,6 +45,7 @@ export class Game {
   private cd = 0;
   private lastT = 0;
   private dirty = true;
+  private bonusOpen = false;
 
   constructor(private sfx: Sfx, private renderer: GameRenderer, private hud: Hud, private hooks: GameHooks) {}
 
@@ -59,7 +64,7 @@ export class Game {
   }
 
   private clear() {
-    this.run = null; this.tutorial = null; this.acc = 0; this.alpha = 1;
+    this.run = null; this.tutorial = null; this.acc = 0; this.alpha = 1; this.bonusOpen = false;
     this.hud.reset();
   }
 
@@ -162,7 +167,12 @@ export class Game {
       this.alpha = 1;
       this.lastHit = run.view().hitKind;
       this.finishRun();
-    } else this.alpha = this.acc / STEP;
+      return;
+    }
+    this.alpha = this.acc / STEP;
+    const pb = run.view().pendingBonus;
+    if (pb && !this.bonusOpen) { this.bonusOpen = true; this.hooks.onBonus(pb); }
+    else if (!pb && this.bonusOpen) { this.bonusOpen = false; this.hooks.onBonusClosed(); }
   }
 
   private finishRun() {

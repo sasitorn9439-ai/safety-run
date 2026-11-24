@@ -175,6 +175,11 @@ export class Canvas2DRenderer implements GameRenderer {
         ctx.globalAlpha = it.fade * .45; sprites.shadow.draw(ctx, it.x, it.gy, it.u * .55, dpr);
         ctx.globalAlpha = it.fade;
         ctx.save(); ctx.translate(it.x, it.y); ctx.scale(it.sx, 1); sprites.ppe[it.p].draw(ctx, 0, 0, it.u, dpr); ctx.restore();
+      } else if (it.kind === 'bonus') {
+        ctx.globalAlpha = it.fade * it.halo; sprites.halo.draw(ctx, it.x, it.y, it.u * 2, dpr);
+        ctx.globalAlpha = it.fade * .5; sprites.shadow.draw(ctx, it.x, it.gy, it.u * .6, dpr);
+        ctx.globalAlpha = it.fade;
+        ctx.save(); ctx.translate(it.x, it.y); ctx.scale(it.sx, 1); sprites.bonus.draw(ctx, 0, 0, it.u, dpr); ctx.restore();
       } else {
         if (it.k !== 'drop') sprites.shadow.draw(ctx, it.x, it.y, it.u * .95, dpr);
         ((it.blink && sprites.on[it.k]) || sprites.hazards[it.k]).draw(ctx, it.x, it.y, it.u, dpr);
