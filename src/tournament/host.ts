@@ -1,5 +1,5 @@
 import { renderSVG } from 'uqr';
-import { STEP, TOUR_DURATIONS, type StageId } from '../../shared/sim.js';
+import { STEP } from '../../shared/sim.js';
 import { avName, avImg } from '../lib/avatar.js';
 import { $, esc } from '../lib/dom.js';
 import type { GameRenderer } from '../render/index.js';
@@ -52,10 +52,6 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
   $('hQr').innerHTML = renderSVG(joinUrl, { border: 1, pixelSize: 8, whiteColor: '#ffffff', blackColor: '#111111' });
   $('hCode').textContent = code;
   $('hUrl').textContent = joinUrl;
-  $('hStages').innerHTML = (Object.keys(STAGE_NAMES) as StageId[]).map(s => `<button type="button" data-stage="${s}">${esc(STAGE_NAMES[s])}</button>`).join('');
-  $('hDurations').innerHTML = TOUR_DURATIONS.map(d => `<button type="button" data-duration="${d}">${d / 60} นาที</button>`).join('');
-  $('hStages').onclick = e => { const b = (e.target as HTMLElement).closest<HTMLElement>('[data-stage]'); if (b && room) void call('config', { stage: b.dataset.stage, duration: room.duration }); };
-  $('hDurations').onclick = e => { const b = (e.target as HTMLElement).closest<HTMLElement>('[data-duration]'); if (b && room) void call('config', { stage: room.stage, duration: +b.dataset.duration! }); };
   $('hSeats').onclick = e => { const b = (e.target as HTMLElement).closest<HTMLElement>('[data-kick]'); if (b) void call('kick', { slot: +b.dataset.kick! }); };
   $('hStart').onclick = () => void call('start');
   $('hAgain').onclick = () => void call('reset');
@@ -93,8 +89,6 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
         const p = r.players.find(x => x.slot === s);
         return `<li>${p ? `${avImg(p.avatar, 48)}<span>${esc(avName(p.avatar))}</span><button type="button" class="kick" data-kick="${s}" aria-label="เอาออก">✕</button>` : '<span class="empty">รอผู้เล่นสแกน QR…</span>'}</li>`;
       }).join('');
-      for (const b of $('hStages').children) b.classList.toggle('on', (b as HTMLElement).dataset.stage === r.stage);
-      for (const b of $('hDurations').children) b.classList.toggle('on', +(b as HTMLElement).dataset.duration! === r.duration);
       $<HTMLButtonElement>('hStart').disabled = !r.players.length;
     }
     if ((running || finished) && r.seed != null && raceSeed !== r.seed) void beginRace(r);

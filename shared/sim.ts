@@ -55,7 +55,8 @@ export const GATES: readonly GateType[] = ['gate0', 'gate1', 'gate2'];
  */
 export type StageId = Zone['id'] | 'tour';
 export interface TourOptions { stage: StageId; durationTicks: number }
-export const TOUR_DURATIONS = [60, 120, 180, 300] as const;
+/** every tournament race runs this many seconds */
+export const TOUR_DURATION = 120;
 /** metres before the first question card, and between two */
 export const QUIZ_FIRST = 220, QUIZ_GAP = 650;
 /** metres between the end of a pattern and the row of question cards after it */

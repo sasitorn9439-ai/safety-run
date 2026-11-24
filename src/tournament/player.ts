@@ -5,7 +5,7 @@ import { $, esc } from '../lib/dom.js';
 import { LS } from '../lib/storage.js';
 import type { GameRenderer } from '../render/index.js';
 import { Hud } from '../ui/hud.js';
-import { Clock, STAGE_NAMES, errText, fmtTime, openChannel, tourApi, type Board, type Channel, type Msg, type Room, type Slot } from './net.js';
+import { Clock, errText, fmtTime, openChannel, tourApi, type Board, type Channel, type Msg, type Room, type Slot } from './net.js';
 import { Race } from './race.js';
 import { GatePanel, fxHtml, itemListHtml } from './ui.js';
 
@@ -76,7 +76,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
     $('lobbyCode').textContent = room!.code;
     $('lobbyAv').innerHTML = avImg(seat!.avatar, 72);
     $('lobbyName').textContent = `${avName(seat!.avatar)} · ช่อง ${seat!.slot + 1}`;
-    $('lobbyInfo').textContent = `ด่าน ${STAGE_NAMES[room!.stage]} · ${fmtTime(room!.duration)} นาที`;
+    $('lobbyInfo').textContent = `ด่านสุ่มตอนเริ่มแข่ง · ${fmtTime(room!.duration)} นาที`;
     $('lobbySeats').innerHTML = [0, 1, 2].map(s => {
       const p = room!.players.find(x => x.slot === s);
       return `<li class="${p?.slot === seat!.slot ? 'me' : ''}">${p ? `${avImg(p.avatar, 36)}<span>${esc(avName(p.avatar))}</span>` : '<span class="empty">ว่าง</span>'}</li>`;
