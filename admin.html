@@ -4,72 +4,71 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23ffd400%27/%3E%3Cpath d=%27M7 20a9 9 0 0 1 18 0z%27 fill=%27%23111%27/%3E%3Crect x=%275%27 y=%2720%27 width=%2722%27 height=%274%27 rx=%272%27 fill=%27%23111%27/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
 <style>
-:root{color-scheme:dark;--ink:#f4f5f7;--muted:#aab0bb;--accent:#ffd400;--line:#343942}*{box-sizing:border-box}
-body{margin:0;background:#121418;color:#f4f5f7;font:15px/1.5 Kanit,system-ui,sans-serif;padding:24px clamp(16px,4vw,48px)}
+:root{color-scheme:dark;--ink:#f4f5f7;--muted:#afb1b5;--accent:#ffd400;--line:#343638;--surface:#1c1e20}*{box-sizing:border-box}
+body{margin:0;background:#141516;color:#f4f5f7;font:15px/1.5 Kanit,system-ui,sans-serif;padding:24px clamp(16px,4vw,48px)}
 h1{margin:0 0 4px;font-size:28px;font-weight:600}
-h2{margin:32px 0 12px;font-size:20px;font-weight:600}
+h2{margin:0;font-size:20px;font-weight:600}
 h3{margin:0 0 8px;font-size:15px;font-weight:600}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}
-input,select{min-height:44px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:#1d2026;color:#fff;font:16px Kanit}
-button{min-height:44px;padding:8px 16px;border:0;border-radius:8px;background:var(--ink);color:#121418;font:600 15px Kanit;cursor:pointer}
-button.alt{background:#2e333b;color:#fff}
+input,select{min-height:44px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:#1c1e20;color:#fff;font:16px Kanit}
+button{min-height:44px;padding:8px 16px;border:0;border-radius:8px;background:var(--ink);color:#141516;font:600 15px Kanit;cursor:pointer}
+button.alt{background:#2b2d30;color:#fff}
 td button{min-height:36px;padding:4px 12px;font-size:14px;margin-right:4px}
 #runs tr.hid td:not(:last-child){opacity:.55}
-.msg{color:#ffb4a8;min-height:22px}
-#msg{color:#aab0bb}
+.msg{color:#ffb4a8;min-height:24px}
+#msg{color:var(--muted)}
 [hidden]{display:none!important}
 .gate{max-width:360px;margin:12vh auto 0;display:flex;flex-direction:column;gap:12px}
-.gate p{margin:0;color:#aab0bb}.gate .msg{color:#ffb4a8}
-.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:8px}
+.gate p{margin:0;color:var(--muted)}.gate .msg{color:#ffb4a8}
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px;padding-bottom:20px;border-bottom:1px solid var(--line)}
 .top .row{margin:0}
 #runs th button{padding:0;min-height:28px;background:transparent;color:inherit;font:inherit}
-#runs th button::after{content:" ↕";color:#aab0bb}
+#runs th button::after{content:" ↕";color:var(--muted)}
 #runs th[aria-sort=ascending] button::after{content:" ↑";color:#ffd400}
 #runs th[aria-sort=descending] button::after{content:" ↓";color:#ffd400}
-#filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,224px),1fr));gap:12px 16px;margin:0 0 16px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#1d2026}
+#filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,224px),1fr));gap:12px 16px;margin:0 0 16px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#1c1e20}
 #filters fieldset{min-width:0;margin:0;padding:0;border:0}
-#filters legend{margin-bottom:4px;color:#aab0bb}
+#filters legend{margin-bottom:4px;color:var(--muted)}
 #filters fieldset div{display:flex;flex-wrap:wrap;gap:4px}
-#filters input,#filters select{flex:1;min-width:0;width:0;min-height:36px;padding:4px 8px;font-size:14px;background:#121418}
+#filters input,#filters select{flex:1;min-width:0;width:0;min-height:36px;padding:4px 8px;font-size:14px;background:#141516}
 #filters .range{position:relative}
-#filters summary{min-height:36px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#121418;font-size:14px;cursor:pointer;overflow-wrap:anywhere}
+#filters summary{min-height:36px;padding:8px;border:1px solid var(--line);border-radius:8px;background:#141516;font-size:14px;cursor:pointer;overflow-wrap:anywhere}
 #filters details:not([open]) .range-fields{display:none}
-#filters .range-fields{position:absolute;z-index:1;inset-inline:0;top:100%;display:grid;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:8px;background:#1d2026;box-shadow:0 6px 16px #0008}
-#filters .range-fields label{display:grid;gap:4px;color:#aab0bb;font-size:13px}
+#filters .range-fields{position:absolute;z-index:1;inset-inline:0;top:100%;display:grid;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:8px;background:#1c1e20;box-shadow:0 6px 16px #0008}
+#filters .range-fields label{display:grid;gap:4px;color:var(--muted);font-size:13px}
 #filters .range-fields input{width:100%}
 #filters .on{border-color:#ffd400}
 .pager{justify-content:flex-end}
 .pager button{min-width:44px;padding:8px 12px}
 .pager button:disabled{opacity:.4;cursor:default}
-.pager label{display:flex;align-items:center;gap:6px;color:#aab0bb;font-size:14px}
+.pager label{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px}
 .scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;min-width:560px;background:#1d2026;border-radius:10px}
-th,td{padding:8px 12px;border-bottom:1px solid #2e333b;text-align:left;white-space:nowrap}
+table{border-collapse:collapse;width:100%;min-width:560px;background:#1c1e20;border-radius:8px}
+th,td{padding:8px 12px;border-bottom:1px solid #2b2d30;text-align:left;white-space:nowrap}
 td.n{text-align:right;font-variant-numeric:tabular-nums}
 .flag,.st-unfinished{color:#ff8a7a}
-.st-legacy{color:#aab0bb}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:8px}
-.card{padding:12px 16px;background:#1d2026;border-radius:12px}
+.st-legacy{color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px}
+.card{background:var(--surface);border-radius:12px}
 .card b{display:block;font-size:28px;font-weight:600;line-height:1.3;font-variant-numeric:tabular-nums}
-.card span{color:#aab0bb;font-size:13px}
-.charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
-.charts section{min-width:0;padding:16px;background:#1d2026;border-radius:12px}
-.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-bottom:8px;color:#aab0bb;font-size:13px}
+.card span{color:var(--muted);font-size:13px}
+.charts{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:12px;margin-top:12px}
+.charts section{min-width:0;background:var(--surface);border-radius:12px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px;margin-bottom:8px;color:var(--muted);font-size:13px}
 .sw{display:inline-block;width:12px;height:12px;margin-right:4px;border-radius:3px;vertical-align:-1px}
-.fin{background:#c98500}.unf{background:#3987e5}
-.bars{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px 10px;max-height:360px;overflow-y:auto;font-size:13px}
-.bars span{color:#aab0bb;white-space:nowrap}
+.fin{background:#a4a8ad}.unf{background:#555a60}
+.bars{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;max-height:360px;overflow-y:auto;font-size:13px}
+.bars span{color:var(--muted);white-space:nowrap}
 .bars b{font-weight:400;text-align:right;font-variant-numeric:tabular-nums}
 .bar{display:flex;gap:2px;height:16px}
 .bar i:last-child{border-radius:0 4px 4px 0}
-.empty{margin:24px 0;color:#aab0bb;text-align:center}
+.empty{margin:24px 0;color:var(--muted);text-align:center}
 .charts .wide{grid-column:1/-1}
-@media(max-width:760px){.charts{grid-template-columns:minmax(0,1fr)}}
-.ramp{display:inline-flex;align-items:center;gap:6px}
-.ramp i{display:inline-block;width:80px;height:10px;border-radius:3px;background:linear-gradient(90deg,#2a2e35,#ffd400)}
+.ramp{display:inline-flex;align-items:center;gap:8px}
+.ramp i{display:inline-block;width:80px;height:10px;border-radius:3px;background:linear-gradient(90deg,#504722,var(--accent))}
 .heat{overflow-x:auto}
 .heat table{min-width:0;width:auto;background:none;border-collapse:separate;border-spacing:2px;font-size:13px}
-.heat th,.heat td{padding:0;border:0;text-align:center;font-weight:400;color:#aab0bb}
+.heat th,.heat td{padding:0;border:0;text-align:center;font-weight:400;color:var(--muted)}
 .heat th{padding:0 6px;font-variant-numeric:tabular-nums}
 .heat tbody th{text-align:right;white-space:nowrap}
 .heat td{width:44px;min-width:44px;height:32px;border-radius:4px;color:#f4f5f7;font-variant-numeric:tabular-nums;cursor:default}
@@ -77,31 +76,60 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 .heat td:hover{outline:2px solid #f4f5f7;outline-offset:-1px}
 #app{max-width:1600px;margin-inline:auto}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-#runs thead{background:#242830}
-#runs tbody tr:hover,#runs tbody tr:focus-within{background:#242830}
-#runs th[aria-sort] button{color:var(--accent)}
+#runs thead{background:#252729}
+#runs tbody tr:hover,#runs tbody tr:focus-within{background:#252729}
 #runs-note{color:var(--muted);font-variant-numeric:tabular-nums}
+.event-name{display:block;color:var(--muted);font-size:14px}
+.top h1,.gate h1{margin:0}
+.section-heading{margin:28px 0 12px}
+.section-heading p{margin:4px 0 0;color:var(--muted)}
+#msg:empty,#gate-msg:empty{display:none}
+.gate{padding:24px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+#logout,#f-reset{background:transparent;color:var(--muted)}
+button:hover:not(:disabled){filter:brightness(1.16)}
+#logout:hover,#f-reset:hover{background:var(--surface);color:var(--ink)}
+input,select,button,summary{font-variant-numeric:tabular-nums}
+.card,.charts section{padding:16px;border:1px solid var(--line)}
+.card{display:flex;flex-direction:column-reverse;justify-content:flex-end;gap:4px}
+.charts .wide{padding:20px;border-top:2px solid var(--accent)}
+.wide h3{font-size:18px}
+.wide .legend{justify-content:space-between;gap:8px 16px;margin-bottom:12px}
+.runs-heading{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px;margin:28px 0 12px}
+.runs-heading .row{margin:0}
+.scroll{border:1px solid var(--line);border-radius:12px}
+#runs th button:focus-visible{outline-offset:0}
+#runs td{font-variant-numeric:tabular-nums}
+@media(max-width:760px){
+  .charts{grid-template-columns:minmax(0,1fr)}
+  .charts .wide{padding:16px}
+  .pager{justify-content:flex-start}
+}
 </style></head><body>
 <form id="gate" class="gate" autocomplete="off" hidden>
-  <h1>Safety Run · Admin</h1>
-  <p>EHS Day 2026 — ใส่รหัส admin เพื่อดูข้อมูล</p>
-  <input id="key" type="password" placeholder="Admin key" aria-label="Admin key" autocomplete="current-password" required>
+  <span class="event-name">EHS Day 2026</span>
+  <h1>Safety Run Admin</h1>
+  <p>เข้าสู่ระบบเพื่อดูผลการเล่น</p>
+  <input id="key" type="password" placeholder="รหัสแอดมิน" aria-label="รหัสแอดมิน" autocomplete="current-password" required>
   <button id="login">เข้าสู่ระบบ</button>
   <p id="gate-msg" class="msg" role="alert"></p>
 </form>
 <main id="app" hidden>
-<div class="top"><div><h1>Safety Run · Admin</h1><div>EHS Day 2026 · ตัวกรองมีผลกับทั้งภาพรวมและตารางรายรอบ</div></div>
-  <div class="row"><button type="button" class="alt" id="refresh">รีเฟรช</button><button type="button" class="alt" id="logout">ออกจากระบบ</button></div></div>
+<header class="top">
+  <div><span class="event-name">EHS Day 2026</span><h1>Safety Run Admin</h1></div>
+  <div class="row"><button type="button" class="alt" id="refresh">รีเฟรช</button><button type="button" class="alt" id="logout">ออกจากระบบ</button></div>
+</header>
 <p id="msg" class="msg"></p>
-<h2>ภาพรวม</h2>
+<div class="section-heading"><h2>ภาพรวมการเล่น</h2><p>ตัวกรองมีผลกับทั้งภาพรวมและผลรายรอบ</p></div>
 <div id="stats" class="cards"></div>
 <div class="charts">
-  <section><h3>เริ่มเล่นและส่งคะแนน รายชั่วโมง</h3><div class="legend"><span><i class="sw fin"></i>ส่งคะแนนแล้ว</span><span><i class="sw unf"></i>ไม่ได้ส่งคะแนน</span><span>ตัวเลข = ส่ง / เริ่ม</span></div><div id="by-hour"></div></section>
+  <section><h3>รอบที่เริ่มและส่งคะแนนรายชั่วโมง</h3><div class="legend"><span><i class="sw fin"></i>ส่งคะแนนแล้ว</span><span><i class="sw unf"></i>ไม่ได้ส่งคะแนน</span><span>ส่งคะแนน / เริ่มเล่น</span></div><div id="by-hour"></div></section>
   <section><h3>การกระจายคะแนน (ช่วงละ 500)</h3><div id="by-score"></div></section>
-  <section class="wide"><h3>ผู้เล่นเข้ามาเล่นช่วงไหน</h3><div class="legend"><span>จำนวนผู้เล่น (คน) ที่เริ่มเล่นในแต่ละชั่วโมง นับคนละครั้งต่อช่อง</span><span class="ramp">น้อย <i></i> มาก</span></div><div id="heat"></div></section>
+  <section class="wide"><h3>ผู้เล่นแยกตามวันและชั่วโมง</h3><div class="legend"><span>จำนวนคนที่เริ่มเล่น นับคนละครั้งต่อช่อง</span><span class="ramp">น้อย <i></i> มาก</span></div><div id="heat"></div></section>
 </div>
-<h2>รายรอบ</h2>
+<div class="runs-heading">
+<h2>ผลรายรอบ</h2>
 <div class="row"><span id="runs-note"></span><button type="button" class="alt" id="f-reset">ล้างตัวกรอง</button><button type="button" id="export">ส่งออก CSV</button></div>
+</div>
 <form id="filters" autocomplete="off" aria-label="ตัวกรองรายรอบ">
   <fieldset><legend>รหัสพนักงาน</legend><div><input id="f-id" type="search" placeholder="ค้นหา" aria-label="กรองรหัสพนักงาน"></div></fieldset>
   <fieldset><legend>ไอคอน</legend><div><input id="f-avatar" type="search" placeholder="ค้นหา" aria-label="กรองไอคอน"></div></fieldset>
