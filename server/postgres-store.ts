@@ -125,9 +125,12 @@ export function createPostgresStore(url: string): Store {
       return rows as never;
     },
 
-    async adminReset(id) {
-      const r = await sql`delete from safety_run_runs where emp_id = ${id} returning id`;
-      return r.length;
+    async adminRuns() {
+      const rows = await sql`select r.emp_id as id, p.avatar, r.run_no as "runNo", r.started_at as "startedAt",
+          r.finished_at as "finishedAt", r.secs, r.score, r.game_seed is null as legacy, coalesce(p.hidden, false) as hidden
+        from safety_run_runs r left join safety_run_players p using (emp_id)
+        order by r.started_at desc, r.id desc`;
+      return rows as never;
     },
 
     async adminHide(id, hidden) {
