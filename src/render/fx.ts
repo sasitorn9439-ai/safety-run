@@ -6,7 +6,7 @@
 import { HZ, type HazardKind, type PpeType } from '../../shared/hazards.js';
 import { SLIDE_SECONDS, ZMAX, type GameObject, type PowerType, type SimEvent } from '../../shared/sim.js';
 import { Camera, type Pt } from './camera.js';
-import type { Frame, Ghost } from './types.js';
+import type { Frame, Ghost, SceneState } from './types.js';
 
 const JUMP_GUIDE_RADIUS = 5.1;
 const JUMP_GUIDE_HEIGHT = 1.25;
@@ -119,8 +119,8 @@ export interface DrawItem {
   sx: number; halo: number; gy: number;
   /** drop: height of the falling crate above its mark in units (-1 = the mark has not locked yet) */
   fall: number;
-  /** ghost: metres it has run (picks its stride frame) */
-  gd: number;
+  /** ghost: its own scene, for picking its pose with the player's rules */
+  gf: Frame | null;
 }
 
 /** how much bigger a pickup is drawn at the far end of the corridor (0 = true perspective size) */
@@ -137,7 +137,7 @@ export class DrawList {
   private pt: Pt = { x: 0, y: 0, s: 1 };
 
   private next(): DrawItem {
-    if (this.n === this.items.length) this.items.push({ kind: 'hazard', z: 0, x: 0, y: 0, u: 0, fade: 1, k: 'spill', p: 'helmet', pw: 'toolbox', blink: false, sx: 1, halo: 0, gy: 0, fall: -1, gd: 0 });
+    if (this.n === this.items.length) this.items.push({ kind: 'hazard', z: 0, x: 0, y: 0, u: 0, fade: 1, k: 'spill', p: 'helmet', pw: 'toolbox', blink: false, sx: 1, halo: 0, gy: 0, fall: -1, gf: null });
     return this.items[this.n++]!;
   }
 
@@ -158,7 +158,7 @@ export class DrawList {
     const addPlayer = () => { const it = this.next(); it.kind = 'player'; it.z = 0; player = true; };
     const addGhost = (z: number, g: Ghost) => {
       const p = cam.project(g.px, z, 0, this.pt), it = this.next();
-      it.kind = 'ghost'; it.z = z; it.x = p.x; it.y = p.y; it.u = cam.lw * p.s; it.gd = g.dist;
+      it.kind = 'ghost'; it.z = z; it.x = p.x; it.y = p.y; it.u = cam.lw * p.s; it.gf = ghostFrame(g);
       it.fade = GHOST_ALPHA * clamp((ZMAX - z) / 22, 0, 1) * clamp((z - GHOST_BEHIND) / 1.5, 0, 1);
     };
     /** everything nearer than the objects so far, down to depth `z`, in back-to-front order */
@@ -235,8 +235,13 @@ export interface Pose {
   shield: boolean; shieldPulse: number;
 }
 
-/** the vector mascot's stride frame after running `dist` metres */
-export const strideFrame = (dist: number) => Math.floor(((dist % TAU + TAU) % TAU) / TAU * RUN_FRAMES) % RUN_FRAMES;
+/** a ghost as a one-runner scene, so the player's pose rules pick its frame too */
+export function ghostFrame(g: Ghost): Frame {
+  const s: SceneState = { dist: g.dist, lane: g.px, px: g.px, py: g.py, vy: g.vy, slide: g.slide, inv: 0, shield: 0, objs: [] };
+  return { s, prev: { dist: g.dist, px: g.px, py: g.py, slide: g.slide }, alpha: 1, playing: true, flash: 0 };
+}
+/** a ghost has no landing squash or shake of its own */
+export const GHOST_FX = new Fx();
 
 export function pose(f: Frame, cam: Camera, I: Interp, fx: Fx, now: number, pt: Pt): Pose {
   const p = cam.project(I.px, 0, 0, pt), u = cam.lw;
@@ -245,7 +250,7 @@ export function pose(f: Frame, cam: Camera, I: Interp, fx: Fx, now: number, pt: 
   if (sliding) frame = Math.round(clamp(1 - I.slide / SLIDE_SECONDS, 0, 1) * (SLIDE_FRAMES - 1));
   else {
     const ph = ((I.dist * 1.0) % TAU + TAU) % TAU;
-    frame = airborne ? Math.floor(RUN_FRAMES / 4) : strideFrame(I.dist);
+    frame = airborne ? Math.floor(RUN_FRAMES / 4) : Math.floor(ph / TAU * RUN_FRAMES) % RUN_FRAMES;
     if (!airborne) bob = Math.abs(Math.sin(ph)) * .025 * u;
   }
   // squash & stretch and a lean into lane changes: cheap 2.5D weight

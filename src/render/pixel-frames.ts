@@ -19,9 +19,6 @@ export interface FrameConfig {
 /** t in [0, 1] → a frame inside the range */
 const within = (r: Range, t: number) => r[0] + Math.min(r[1] - r[0], Math.floor(clamp(t, 0, .9999) * (r[1] - r[0] + 1)));
 
-/** the run loop's frame after running `dist` metres */
-export const runFrame = (dist: number, cfg: FrameConfig) => Math.floor(dist / cfg.metresPerLoop * cfg.run) % cfg.run;
-
 export function pixelFrame(f: Frame, I: Interp, fx: Fx, now: number, cfg: FrameConfig): PixelPick {
   // slide: drop, then hold (it slows down, dust fades), then recover
   if (I.slide > 0) {
@@ -42,7 +39,7 @@ export function pixelFrame(f: Frame, I: Interp, fx: Fx, now: number, cfg: FrameC
   if (fx.landT > .02) return { anim: 'jump', frame: within(j.land, 1 - fx.landT) };
   // standing still (menu): breathe
   if (f.still || (!f.playing && I.dist === 0)) return { anim: 'idle', frame: Math.floor(now / cfg.idleMs) % cfg.idle };
-  return { anim: 'run', frame: runFrame(I.dist, cfg) };
+  return { anim: 'run', frame: Math.floor(I.dist / cfg.metresPerLoop * cfg.run) % cfg.run };
 }
 
 /** Snap a CSS coordinate to the device pixel grid so the sprite doesn't shimmer as it moves. */

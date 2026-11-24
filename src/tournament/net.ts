@@ -10,15 +10,16 @@ export interface Room {
 }
 
 /** one runner as the host last simulated them: score, and where they were (metres run, lane) at race tick `tick` */
-export type BoardRow = [slot: Slot, score: number, tick: number, dist: number, lane: number];
+export type BoardRow = [slot: Slot, score: number, tick: number, dist: number, lane: number, jumps: number, slides: number];
 /** live standings and positions the host sends the players */
 export type Board = BoardRow[];
 /**
  * What goes over the realtime channel. Players send their inputs (`n` = how many they have recorded in all, `e` the entries
- * from index `from`, `tick` how far their race has run, `d` and `l` where they are at that tick: metres run and lane). The host sends standings, and passes Spot Audits on.
+ * from index `from`, `tick` how far their race has run, `d` and `l` where they are at that tick: metres run and lane, `j` and `s`
+ * how many times they have jumped and slid). The host sends standings, and passes Spot Audits on.
  */
 export type Msg =
-  | { t: 'in'; slot: Slot; from: number; n: number; e: InputEntry[]; tick: number; d: number; l: number }
+  | { t: 'in'; slot: Slot; from: number; n: number; e: InputEntry[]; tick: number; d: number; l: number; j: number; s: number }
   | { t: 'audit'; slot: Slot }
   | { t: 'board'; board: Board }
   | { t: 'audited'; to: Slot; by: Slot };

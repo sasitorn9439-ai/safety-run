@@ -3,9 +3,9 @@ import { HAZARD_KINDS, PPE, type HazardKind, type PpeType } from '../../shared/h
 import type { PowerType, SimEvent } from '../../shared/sim.js';
 import { BACKDROP_MARGIN, FOG_HEIGHT, makeBackdrop, makeFog } from './backdrop.js';
 import { Camera, type Pt } from './camera.js';
-import { DrawList, Fx, RUN_FRAMES, SLIDE_FRAMES, envItems, interp, pose, strideFrame, type EnvItem } from './fx.js';
+import { DrawList, Fx, GHOST_FX, RUN_FRAMES, SLIDE_FRAMES, envItems, interp, pose, type EnvItem } from './fx.js';
 import { FLOOR_FRAGMENT, FLOOR_VERTEX, floorShaderCompiles } from './floor-shader.js';
-import { pixelFrame, runFrame, snap, type PixelAnim } from './pixel-frames.js';
+import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
 import type { MascotSet } from './pixel-mascot.js';
 import { PAD, ON_KINDS, POWERS, bonusArt, coinArt, crateArt, dotArt, liftArt, powerArt, haloArt, hazardArt, lightArt, pillarArt, ppeArt, rasterize, runArt, shadowArt, shieldArt, slideArt, type Art } from './sprites.js';
 import type { Frame, GameRenderer } from './types.js';
@@ -263,9 +263,13 @@ export class PixiRenderer implements GameRenderer {
       const it = this.list.items[i]!;
       if (it.kind === 'player') { this.placePlayer(f, I, now); continue; }
       if (it.kind === 'ghost') {
-        place(sh.get(), tx.shadow, it.x, it.y, it.u * .5, it.fade);
+        const gf = it.gf!, gI = interp(gf), up = gI.py * it.u * .9;
+        place(sh.get(), tx.shadow, it.x, it.y, it.u * .5 / (1 + gI.py * .3), it.fade / (1 + gI.py));
+        let t: Tex;
+        if (tx.mascot) { const pick = pixelFrame(gf, gI, GHOST_FX, now, this.pixel!.cfg); t = tx.mascot[pick.anim][pick.frame]!; }
+        else { const P = pose(gf, cam, gI, GHOST_FX, now, this.pt); t = P.sliding ? tx.slide[P.frame]! : tx.run[P.frame]!; }
         const s = ac.get();
-        place(s, tx.mascot ? tx.mascot.run[runFrame(it.gd, this.pixel!.cfg)]! : tx.run[strideFrame(it.gd)]!, it.x, it.y, it.u, it.fade, -it.z);
+        place(s, t, it.x, it.y - up, it.u, it.fade, -it.z);
         s.tint = GHOST_TINT;
         continue;
       }

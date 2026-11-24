@@ -17,7 +17,12 @@ export class Race {
   /** host only: the phone has run this far */
   reported = 0;
   /** host only: where the phone said it was at `reported`, fresher than this replay, which runs behind it */
-  live = { tick: 0, dist: 0, lane: 0 };
+  live = { tick: 0, dist: 0, lane: 0, jumps: 0, slides: 0 };
+  /** jumps and slides so far: other phones play each new one on this runner's ghost */
+  jumps = 0;
+  slides = 0;
+  private air = false;
+  private lastSlide = 0;
 
   constructor(readonly spec: RaceSpec, beep?: Beep, emit?: Emit) {
     this.run = createRun(spec.seed, beep, emit, { tour: { stage: spec.stage, durationTicks: Math.round(spec.duration / STEP) } });
@@ -51,9 +56,17 @@ export class Race {
       const v = run.view();
       this.prev = { dist: v.dist, px: v.px, py: v.py, slide: v.slide };
       run.step();
+      this.count();
     }
     this.applyDue();
     this.alpha = run.tick >= goal && goal === Math.floor(target) ? Math.min(1, target - Math.floor(target)) : 1;
+  }
+
+  private count() {
+    const v = this.run.view(), air = (v.py > 0 || v.vy > 0) && v.lift <= 0;
+    if (air && !this.air) this.jumps++;
+    if (v.slide > this.lastSlide) this.slides++;
+    this.air = air; this.lastSlide = v.slide;
   }
 
   private applyDue() {
@@ -66,7 +79,8 @@ export class Race {
   /** host: this runner as a ghost on someone else's screen, blended like the frame */
   ghost(): Ghost {
     const v = this.run.view(), p = this.prev, a = this.alpha;
-    return { dist: p.dist + (v.dist - p.dist) * a, px: p.px + (v.px - p.px) * a };
+    const mix = (from: number, to: number) => from + (to - from) * a;
+    return { dist: mix(p.dist, v.dist), px: mix(p.px, v.px), py: mix(p.py, v.py), vy: v.vy, slide: mix(p.slide, v.slide) };
   }
 
   frame(): Frame {

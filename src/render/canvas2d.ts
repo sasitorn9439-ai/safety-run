@@ -2,8 +2,8 @@ import { ZMAX } from '../../shared/sim.js';
 import type { SimEvent } from '../../shared/sim.js';
 import { BACKDROP_MARGIN, FOG_HEIGHT, makeBackdrop } from './backdrop.js';
 import { Camera, type Pt } from './camera.js';
-import { DrawList, Fx, TAU, envItems, interp, pose, strideFrame, type EnvItem, type Interp } from './fx.js';
-import { pixelFrame, runFrame, snap, type PixelAnim } from './pixel-frames.js';
+import { DrawList, Fx, GHOST_FX, TAU, envItems, interp, pose, type EnvItem, type Interp } from './fx.js';
+import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
 import type { MascotSet } from './pixel-mascot.js';
 import { Sprite, SpriteSet } from './sprites.js';
 import type { Frame, GameRenderer } from './types.js';
@@ -161,9 +161,12 @@ export class Canvas2DRenderer implements GameRenderer {
       if (it.kind === 'player') { this.drawPlayer(f, I, now); continue; }
       ctx.globalAlpha = it.fade;
       if (it.kind === 'ghost') {
-        sprites.shadow.draw(ctx, it.x, it.y, it.u * .5, dpr);
-        if (this.pxSprites) this.pxSprites.run[runFrame(it.gd, this.pixel!.cfg)]!.draw(ctx, it.x, it.y, it.u, dpr);
-        else sprites.run[strideFrame(it.gd)]!.draw(ctx, it.x, it.y, it.u, dpr);
+        const gf = it.gf!, gI = interp(gf), up = gI.py * it.u * .9;
+        ctx.globalAlpha = it.fade / (1 + gI.py);
+        sprites.shadow.draw(ctx, it.x, it.y, it.u * .5 / (1 + gI.py * .3), dpr);
+        ctx.globalAlpha = it.fade;
+        if (this.pxSprites) { const pick = pixelFrame(gf, gI, GHOST_FX, now, this.pixel!.cfg); this.pxSprites[pick.anim][pick.frame]!.draw(ctx, it.x, it.y - up, it.u, dpr); }
+        else { const P = pose(gf, cam, gI, GHOST_FX, now, this.c); (P.sliding ? sprites.slide : sprites.run)[P.frame]!.draw(ctx, it.x, it.y - up, it.u, dpr); }
         ctx.globalAlpha = 1;
         continue;
       }

@@ -122,7 +122,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
     if (m.t === 'in') {
       const race = races.get(m.slot);
       race?.receive(m.from, m.e, m.tick);
-      if (race && m.tick > race.live.tick) race.live = { tick: m.tick, dist: m.d, lane: m.l };
+      if (race && m.tick > race.live.tick) race.live = { tick: m.tick, dist: m.d, lane: m.l, jumps: m.j, slides: m.s };
     }
     else if (m.t === 'audit') {
       // the audit goes to whoever leads among the others
@@ -137,7 +137,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
   setInterval(() => {
     if (!channel || !races.size) return;
     // positions are the phones' own latest reports: the replay here runs DELAY_TICKS behind them
-    channel.send({ t: 'board', board: [...races].map(([s, r]) => [s, r.run.score(), r.live.tick, r.live.dist, r.live.lane]) });
+    channel.send({ t: 'board', board: [...races].map(([s, r]) => [s, r.run.score(), r.live.tick, r.live.dist, r.live.lane, r.live.jumps, r.live.slides]) });
   }, BOARD_MS);
 
   /** auto camera: a question beats a new leader, which beats taking turns */
