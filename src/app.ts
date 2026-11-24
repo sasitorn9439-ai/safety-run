@@ -9,6 +9,8 @@ import { Game, type GameState, type Pending, type Session } from './game/game.js
 import { createRenderer, type GameRenderer } from './render/index.js';
 import { Hud } from './ui/hud.js';
 
+/** this many places on the board win a prize */
+const PRIZE_RANKS = 7;
 const OVERLAYS = ['menu', 'over', 'quiz', 'done', 'boardOv', 'avOv', 'pauseOv'] as const;
 type OverlayId = (typeof OVERLAYS)[number];
 const show = (id: OverlayId | null) => { for (const o of OVERLAYS) $(o).classList.toggle('on', o === id); };
@@ -94,7 +96,7 @@ export async function startApp() {
       let html = '';
       if (!t) html = r.top.length ? 'คะแนนรอบนี้สูงกว่าทุกคนบนอันดับ <b>เป็นที่ 1</b> แล้ว!' : '';
       else if (t.me) html = `อีก <b>${t.score - score}</b> คะแนน จะทำลายสถิติของคุณเอง (อันดับ ${t.rank})`;
-      else html = `เหลืออีก <b>${t.score - score}</b> คะแนน ถึงอันดับ <b>${t.rank}</b>${t.rank <= 5 ? ' ซึ่งได้รางวัล' : ''}`;
+      else html = `เหลืออีก <b>${t.score - score}</b> คะแนน ถึงอันดับ <b>${t.rank}</b>${t.rank <= PRIZE_RANKS ? ' ซึ่งได้รางวัล' : ''}`;
       if (html) { el.innerHTML = html; el.classList.add('on'); }
     } catch { /* the board is a nicety, never block the crash screen */ }
   }
@@ -197,7 +199,7 @@ export async function startApp() {
 
   /* ---------- leaderboard ---------- */
   const boardRow = (e: BoardResp['top'][number], i: number) =>
-    `<li${e.me ? ' style="outline:2px solid #ffd400"' : ''}><span class="n">${i < 5 ? `<span class="medal m${i + 1}">${i + 1}</span>` : i + 1}</span>${avImg(e.avatar, 36)}<span class="who">${esc(avName(e.avatar))}${e.me ? ' (คุณ)' : ''}</span><span class="sc">${e.score}</span></li>`;
+    `<li${e.me ? ' style="outline:2px solid #ffd400"' : ''}><span class="n">${i < PRIZE_RANKS ? `<span class="medal m${i + 1}">${i + 1}</span>` : i + 1}</span>${avImg(e.avatar, 36)}<span class="who">${esc(avName(e.avatar))}${e.me ? ' (คุณ)' : ''}</span><span class="sc">${e.score}</span></li>`;
   const boardHtml = (list: BoardResp['top']) => list.map(boardRow).join('') || '<li><span></span><span></span><span>ยังไม่มีคะแนน · No scores yet</span><span></span></li>';
   async function loadBoard(target: string, meId?: string): Promise<Partial<BoardResp>> {
     try {
@@ -234,7 +236,7 @@ export async function startApp() {
         const b = await loadBoard('doneBoard', p.id);
         if (b.rank) {
           $('doneRank').textContent = `${avName(p.avatar)} · คะแนนดีที่สุด ${r.best} · อันดับที่ ${b.rank} จาก ${b.total} คน`;
-          if (b.rank <= 5) $('doneMsg').innerHTML = `<div class="win">ตอนนี้คุณอยู่อันดับ ${b.rank} รักษาอันดับไว้จนประกาศผล</div>`;
+          if (b.rank <= PRIZE_RANKS) $('doneMsg').innerHTML = `<div class="win">ตอนนี้คุณอยู่อันดับ ${b.rank} รักษาอันดับไว้จนประกาศผล</div>`;
         }
       } else if (isFinalFinishError(r)) {
         LS.set('srPending', null); game.sess = null;
