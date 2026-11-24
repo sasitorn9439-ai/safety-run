@@ -8,6 +8,7 @@ import { LS } from './lib/storage.js';
 import { Game, type GameState, type Pending, type Session } from './game/game.js';
 import { createRenderer, type GameRenderer } from './render/index.js';
 import { Hud } from './ui/hud.js';
+import { Tally } from './ui/tally.js';
 
 /** this many places on the board win a prize */
 const PRIZE_RANKS = 7;
@@ -26,6 +27,15 @@ export async function startApp() {
   const sfx = new Sfx();
   const { renderer, canvas } = await createRenderer($<HTMLCanvasElement>('c'));
   const hud = new Hud();
+  const tally = new Tally({
+    card: $('over').querySelector<HTMLElement>('.card')!,
+    score: $('sScore'), scoreBox: $('sScoreBox'), dist: $('sDist'),
+    coins: $('sCoins'), coinImg: $<HTMLImageElement>('sCoinImg'),
+    rows: {
+      coin: { row: $('sCoinRow'), pts: $('sCoinPts') }, ppe: { row: $('sPpeRow'), pts: $('sPpePts') },
+      near: { row: $('sNearRow'), pts: $('sNearPts') }, extra: { row: $('sExtraRow'), pts: $('sExtraPts') },
+    },
+  }, sfx.beep);
   const pauseBtn = $('pauseBtn'), skipTut = $('skipTut');
 
   const tutorialSeen = new Set<string>();
@@ -56,14 +66,15 @@ export async function startApp() {
   function onCrash() {
     const h = game.hazardInfo(), s = game.score;
     $('hTitle').textContent = h.th; $('hTitleEn').textContent = h.en; $('hTip').textContent = h.tip; $('hTipEn').textContent = h.tipEn;
-    $('sScore').textContent = String(s); $('sDist').textContent = String(game.dist);
+    $('sScore').textContent = '0'; $('sDist').textContent = '0'; tally.stop();
     const best = Math.max(LS.get<number>('srPb') ?? 0, game.dist);
     LS.set('srPb', best);
     void showGap(s);
     $('chanceBtn').textContent = `ตอบคำถามให้ถูก รักษา ${s} คะแนนไว้ แล้ววิ่งต่อ (ได้ 1 ครั้ง)`;
     $('chanceBtn').style.display = game.revives || !game.lastHit ? 'none' : 'block';
     if (game.sess && game.run) LS.set('srPending', { ...game.sess, score: s, ticks: game.run.tick, inputs: game.inputs } satisfies Pending);
-    setTimeout(() => show('over'), 350);
+    const run = { score: s, dist: game.dist, coins: game.coins, earned: game.earned, coinSrc: $<HTMLImageElement>('hudCoinImg').src };
+    setTimeout(() => { show('over'); tally.play(run); }, 350);
   }
 
   /* ---------- how to play, prizes and what's new: modals over the menu ---------- */

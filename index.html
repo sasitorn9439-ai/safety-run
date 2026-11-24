@@ -28,7 +28,7 @@
 <div class="toast" id="toast"></div>
 <div class="banner" id="banner"><b id="bnMsg"></b><span id="bnSub"></span></div>
 <div class="officer" id="officer">
-<div class="bubble"><small>Safety Officer ทักทาย</small><p id="ofMsg"></p><em>+60 คำชม</em></div>
+<div class="bubble"><small>Safety Officer ทักทาย</small><p id="ofMsg"></p><em id="ofPts"></em></div>
 <div class="of"><img id="ofA" class="of-a" alt=""><img id="ofB" class="of-b" alt=""></div>
 </div>
 </div>
@@ -101,7 +101,13 @@
 <h2 id="hTitle"></h2>
 <div class="en" id="hTitleEn"></div>
 <div class="lesson"><p id="hTip"></p><p class="en" id="hTipEn"></p></div>
-<div class="stats"><div><strong id="sScore">0</strong><span>คะแนน · Score</span></div><div><strong id="sDist">0</strong><span>ระยะทาง (ม.) · Distance</span></div></div>
+<div class="stats"><div id="sScoreBox"><strong id="sScore">0</strong><span>คะแนน · Score</span></div><div><strong id="sDist">0</strong><span>ระยะทาง (ม.) · Distance</span></div></div>
+<div class="tally" id="sTally">
+<div class="tally-row" id="sCoinRow"><span class="tally-pile"><img id="sCoinImg" alt="เหรียญ · Coins" width="24" height="24"><b id="sCoins">0</b></span><em id="sCoinPts">+0</em></div>
+<div class="tally-row" id="sPpeRow"><span>PPE</span><em id="sPpePts">+0</em></div>
+<div class="tally-row" id="sNearRow"><span>Near miss</span><em id="sNearPts">+0</em></div>
+<div class="tally-row" id="sExtraRow"><span>โบนัสพิเศษ · Extra</span><em id="sExtraPts">+0</em></div>
+</div>
 <p class="gap" id="overGap"></p>
 <button class="btn" id="chanceBtn">ตอบคำถามความปลอดภัย เพื่อวิ่งต่อ</button>
 <button class="btn alt" id="endBtn">จบเกม ส่งคะแนน · Submit score</button>

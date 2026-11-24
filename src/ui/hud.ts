@@ -1,5 +1,5 @@
 import { PPE, type PpeType } from '../../shared/hazards.js';
-import type { PowerType, Surprise } from '../../shared/sim.js';
+import { OFFICER_SCORE, type PowerType, type Surprise } from '../../shared/sim.js';
 import { ZONES } from '../../shared/zones.js';
 import { $ } from '../lib/dom.js';
 import { avatarURL } from '../lib/avatar.js';
@@ -78,6 +78,7 @@ export class Hud {
       this.el.ppe.appendChild(s);
       this.slots.set(t, s);
     }
+    $('ofPts').textContent = `+${OFFICER_SCORE} คำชม`;   // from the sim, so the bubble always says what the praise pays
     this.addChip('mult', '#ffd400', null, 'NEAR');
     this.addChip('lift', '#ffd400', 'lift', '');
     this.addChip('estop', '#ff5a4a', 'estop', '');
