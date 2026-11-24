@@ -96,6 +96,15 @@ describe('coins and PPE', () => {
     }
     expect(PPE_SCORE).toBe(10);
   });
+
+  it('splits the bonus by where it came from, and the parts add up to it', () => {
+    for (const g of golden as unknown as G[]) {
+      const v = play(g).view(), e = v.earned;
+      expect(e.coin + e.ppe + e.near + e.extra).toBe(v.bonus);
+      expect(e.coin).toBeGreaterThanOrEqual(v.coins * COIN_SCORE);      // the combo only ever multiplies up
+      expect(e.near).toBeGreaterThan(0);                                 // the bot dodges late often enough
+    }
+  });
 });
 
 describe('speed curve', () => {

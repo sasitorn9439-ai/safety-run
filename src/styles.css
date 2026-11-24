@@ -164,11 +164,16 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 .news-link{display:block;margin:8px auto 0;padding:6px 10px;background:none;border:0;color:var(--muted);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}
 
 .stats strong,.board,.hud{font-variant-numeric:tabular-nums}
-.tally-coins{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:8px;padding:4px 0}
-.tally-coins[hidden]{display:none}
-.tally-coins b{min-width:2ch;font-size:20px;font-weight:600;color:var(--y);font-variant-numeric:tabular-nums}
-.tally-coins.empty{opacity:.45;transition:opacity .3s}
-.tally-coins.pop img,#sScoreBox.pop strong{animation:coin-pop .18s ease-out}
+.tally{margin-top:8px;padding:4px 12px;border-radius:10px;background:var(--surface)}
+.tally-row{display:flex;align-items:center;justify-content:space-between;min-height:30px;font-size:14px;color:var(--muted)}
+.tally-row[hidden]{display:none}
+.tally-row + .tally-row{border-top:1px solid var(--line)}
+.tally-row em{font-style:normal;font-weight:600;font-size:16px;color:var(--y);font-variant-numeric:tabular-nums}
+.tally-pile{display:flex;align-items:center;gap:6px}
+.tally-pile b{min-width:2ch;font-size:18px;font-weight:600;color:var(--y);font-variant-numeric:tabular-nums;transition:opacity .3s}
+.tally-row.empty .tally-pile{opacity:.45}
+.tally-row.pop img,#sScoreBox.pop strong{animation:coin-pop .18s ease-out}
+.tally:not(:has(.tally-row:not([hidden]))){display:none}
 .tally-coin{position:fixed;z-index:50;pointer-events:none;animation:tally-fly ease-in forwards}
 @keyframes tally-fly{
   0%{transform:translate(0,0) scale(1)}

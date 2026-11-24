@@ -53,6 +53,8 @@ export class Game {
   get dist() { return Math.floor(this.run?.view().dist ?? 0); }
   get revives() { return this.run?.view().revives ?? 0; }
   get coins() { return this.run?.view().coins ?? 0; }
+  /** the bonus split by source, copied so it stays as it was at this moment */
+  get earned() { return { ...(this.run?.view().earned ?? { coin: 0, ppe: 0, near: 0, extra: 0 }) }; }
 
   invalidate() { this.dirty = true; }
 
