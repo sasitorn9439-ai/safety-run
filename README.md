@@ -9,6 +9,7 @@ Prizes: 1st HUAWEI Band 11 Series (Polym Black), 2nd–5th fuel card, 6th–7th 
 ```sh
 npm install
 npm run dev        # http://localhost:5173 — /api/* is served from memory, no database needed (admin key: dev)
+                   # /?botsim: watch a bot (or play yourself) from any distance, to feel each speed step
 npm test           # sim parity + API tests
 npm run typecheck
 npm run build      # typecheck + production bundle into dist/
@@ -43,7 +44,7 @@ open during a deploy would be rejected. `tests/golden.json` holds bot-played run
 `npm test` fails there, the sim's behaviour changed. After a deliberate change, re-record them with
 `GOLDEN=1 npx vitest run tests/make-golden.test.ts`.
 
-**Speed:** 14 m/s at the start, gaining 1 m/s every 55 m until it reaches 34 m/s at 1 100 m. This takes about 49 seconds without E-Stop. The tutorial runs at 10 m/s.
+**Speed:** 14 m/s at the start, gaining 1 m/s every 55 m until it reaches 34 m/s at 1 100 m. This takes about 49 seconds without E-Stop. It holds there until 150 000 m (about 74 minutes in), then steps up 2 m/s every 20 000 m, each step eased in over 300 m: 36 m/s at 150 000 m, 38 at 170 000, 40 at 190 000, 42 at 210 000 and 44 m/s from 230 000 m on (`DYNAMIC_FROM`, `STEP_*`, `TOP_SPEED` in `shared/sim.ts`). The tutorial runs at 10 m/s.
 
 **Areas (zones).** The run is one long corridor split by distance into areas of the plant (`shared/zones.ts`): warehouse entrance (0–800 m),
 then forklift lane, chemical area, work at height, electrical room and evacuation drill, 1 000 m each, repeating. Each has a Safety point on a banner
