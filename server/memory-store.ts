@@ -2,7 +2,7 @@ import type { AdminRow, Store } from './store.js';
 
 interface Run {
   id: number; empId: string; runNo: number; name: string; tokenHash: string; startedAt: number;
-  score: number | null; seed: number; finishedAt: number | null;
+  score: number | null; seed: number; finishedAt: number | null; secs: number | null;
 }
 
 /** In-memory Store for local development. Same rules as the Postgres one, gone on restart. */
@@ -35,7 +35,7 @@ export function createMemoryStore(): Store {
     },
     async createRun(r) {
       if (runs.some(x => x.empId === r.id && x.runNo === r.runNo)) return null;
-      const run: Run = { id: nextId++, empId: r.id, runNo: r.runNo, name: r.name, tokenHash: r.tokenHash, startedAt: Date.now(), score: null, seed: r.seed, finishedAt: null };
+      const run: Run = { id: nextId++, empId: r.id, runNo: r.runNo, name: r.name, tokenHash: r.tokenHash, startedAt: Date.now(), score: null, seed: r.seed, finishedAt: null, secs: null };
       runs.push(run);
       return run.id;
     },
@@ -43,10 +43,10 @@ export function createMemoryStore(): Store {
       const r = runs.find(x => String(x.id) === runId && x.empId === id);
       return r ? { tokenHash: r.tokenHash, score: r.score, seed: r.seed, secs: (Date.now() - r.startedAt) / 1000 } : null;
     },
-    async finishRun(runId, score) {
+    async finishRun(runId, score, secs) {
       const r = runs.find(x => String(x.id) === runId);
       if (!r || r.score != null) return null;
-      r.score = score; r.finishedAt = Date.now();
+      r.score = score; r.secs = secs; r.finishedAt = Date.now();
       return score;
     },
     async runScore(runId) {
@@ -77,10 +77,15 @@ export function createMemoryStore(): Store {
       });
       return rows.sort((a, b) => (b.best ?? -1) - (a.best ?? -1));
     },
-    async adminReset(id) {
-      const n = runs.filter(r => r.empId === id).length;
-      for (let i = runs.length - 1; i >= 0; i--) if (runs[i]!.empId === id) runs.splice(i, 1);
-      return n;
+    async adminRuns() {
+      return [...runs].sort((a, b) => b.startedAt - a.startedAt || b.id - a.id).map(r => ({
+        id: r.empId, avatar: avatars.get(r.empId) ?? null, runNo: r.runNo,
+        startedAt: new Date(r.startedAt).toISOString(),
+        finishedAt: r.finishedAt == null ? null : new Date(r.finishedAt).toISOString(),
+        secs: r.secs, score: r.score,
+        // every run here has a seed: legacy runs exist only in databases older than replay verification
+        legacy: false, hidden: hidden.has(r.empId),
+      }));
     },
     async adminHide(id, hide) {
       if (!avatars.has(id) && !runs.some(r => r.empId === id)) return 0;

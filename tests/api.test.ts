@@ -94,14 +94,34 @@ describe('leaderboard', () => {
 });
 
 describe('admin', () => {
-  it('needs the key, exports and resets', async () => {
+  it('needs the key and exports', async () => {
     process.env.ADMIN_KEY = 'secret';
     expect((await admin(store, { key: 'wrong', action: 'export' })).status).toBe(401);
     expect((await admin(store, { action: 'export' })).status).toBe(401);
     await start(store, { id: 'EMP1' }, '');
     expect(((await admin(store, { key: 'secret', action: 'export' })).body as Body).rows).toHaveLength(1);
-    expect(((await admin(store, { key: 'secret', action: 'reset', id: 'emp1' })).body as Body).found).toBe(1);
-    expect(((await admin(store, { key: 'secret', action: 'export' })).body as Body).rows).toHaveLength(0);
+  });
+  it('has no way to delete results', async () => {
+    process.env.ADMIN_KEY = 'secret';
+    await start(store, { id: 'EMP1' }, '');
+    const r = await admin(store, { key: 'secret', action: 'reset', id: 'emp1' });
+    expect(r.status).toBe(400);
+    expect((r.body as Body).error).toBe('action');
+    expect(((await admin(store, { key: 'secret', action: 'export' })).body as Body).rows).toHaveLength(1);
+  });
+  it('lists every run, newest first, finished or not', async () => {
+    process.env.ADMIN_KEY = 'secret';
+    expect((await admin(store, { key: 'wrong', action: 'runs' })).status).toBe(401);
+    const { s, ticks, score } = await play('EMP1');
+    await finish(store, { id: 'EMP1', run: s.run, token: s.token, ticks, inputs: [] });
+    const later = (await start(store, { id: 'EMP2' }, '')).body as Body;
+    await admin(store, { key: 'secret', action: 'hide', id: 'EMP2', hidden: true });
+
+    const runs = ((await admin(store, { key: 'secret', action: 'runs' })).body as Body).runs as Body[];
+    expect(runs).toEqual([
+      { id: 'EMP2', avatar: later.avatar, runNo: 1, startedAt: new Date().toISOString(), finishedAt: null, secs: null, score: null, legacy: false, hidden: true },
+      { id: 'EMP1', avatar: s.avatar, runNo: 1, startedAt: '2026-12-01T09:00:00.000Z', finishedAt: new Date().toISOString(), secs: Math.round(ticks * STEP), score, legacy: false, hidden: false },
+    ]);
   });
   it('hides a player from the leaderboard without deleting anything, and shows them again', async () => {
     process.env.ADMIN_KEY = 'secret';

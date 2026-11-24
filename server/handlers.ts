@@ -80,16 +80,11 @@ export async function admin(store: Store, b: Json): Promise<Reply> {
   if (!timingSafeKey(b.key)) return reply(401, { error: 'key' });
   await store.init();
   if (b.action === 'export') return reply(200, { rows: await store.adminExport() });
+  if (b.action === 'runs') return reply(200, { runs: await store.adminRuns() });
   if (b.action === 'hide') {
     const id = normId(b.id);
     if (!id || typeof b.hidden !== 'boolean') return reply(400, { error: 'id' });
     return reply(200, { id, hidden: b.hidden, found: await store.adminHide(id, b.hidden) });
-  }
-  if (b.action === 'reset') {
-    const id = normId(b.id);
-    if (!id) return reply(400, { error: 'id' });
-    // the avatar stays with the employee, so a reset never hands their icon to someone else
-    return reply(200, { reset: id, found: await store.adminReset(id) });
   }
   return reply(400, { error: 'action' });
 }
