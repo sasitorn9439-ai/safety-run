@@ -3,7 +3,7 @@ import { OFFICER_SCORE, type PowerType, type Surprise } from '../../shared/sim.j
 import { ZONES } from '../../shared/zones.js';
 import { $ } from '../lib/dom.js';
 import { avatarURL } from '../lib/avatar.js';
-import { drawCoin, drawOfficer, ppeIcon } from '../render/draw.js';
+import { drawCoin, ppeIcon } from '../render/draw.js';
 import { drawPowerIcon } from '../render/power-icons.js';
 import { STEPS, type Tutorial } from '../game/tutorial.js';
 
@@ -41,19 +41,6 @@ function coinURL() {
   return cv.toDataURL();
 }
 
-function officerURLs() {
-  const S = 220, out: string[] = [];
-  for (const wave of [-1, 1]) {
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = Math.round(S * 1.1);
-    const c = cv.getContext('2d')!;
-    c.translate(S * .55, S * .42);
-    drawOfficer(c, S, wave);
-    out.push(cv.toDataURL());
-  }
-  return out;
-}
-
 const TUT_HEAD = { move: 'ฝึกหลบอันตราย', ppe: 'ฝึกเก็บ PPE', shield: 'ฝึกใช้เกราะ' } as const;
 const BANNER_COLOR = { rain: '#5ad1ff', star: '#ffd400', double: '#ff7a1a', toolbox: '#3ccf7a' } as const;
 
@@ -63,7 +50,7 @@ export class Hud {
     hud: $('hud'), av: $<HTMLImageElement>('hudAv'), score: $('hudScore'), coins: $('hudCoins'), coinBox: $('hudCoinsBox'), coinImg: $<HTMLImageElement>('hudCoinImg'), x2: $('hudX2'), ppe: $('hudPpe'),
     pb: $('hudPb'), pbText: $('hudPbText'), pbBar: $('hudPbBar'), chips: $('hudChips'), zone: $('zoneBanner'), zoneNo: $('zoneNo'), zoneTh: $('zoneTh'), zoneTip: $('zoneTip'), tint: $('zoneTint'),
     shield: $('hudShield'), shieldBar: $('hudShieldBar'), toast: $('toast'), banner: $('banner'), bnMsg: $('bnMsg'), bnSub: $('bnSub'),
-    officer: $('officer'), ofA: $<HTMLImageElement>('ofA'), ofB: $<HTMLImageElement>('ofB'), ofMsg: $('ofMsg'),
+    officer: $('officer'), ofMsg: $('ofMsg'),
     count: $('count'), tut: $('tut'), tutHead: $('tutHead'), tutTh: $('tutTh'), tutEn: $('tutEn'), tutOk: $('tutOk'), tutArrow: $('tutArrow'),
   };
   private slots = new Map<PpeType, HTMLElement>();
@@ -107,7 +94,6 @@ export class Hud {
 
   /** Redraw the images that contain text, e.g. once the web font has loaded. */
   refreshArt() {
-    [this.el.ofA.src, this.el.ofB.src] = officerURLs() as [string, string];
     this.el.coinImg.src = coinURL();
   }
 

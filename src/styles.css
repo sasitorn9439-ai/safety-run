@@ -126,13 +126,12 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 .banner.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
 .banner b{display:block;font:600 26px/1.15 Kanit,sans-serif;color:var(--c,#ffd400)}
 .banner span{display:block;font-size:15px;color:#fff}
-.officer{position:absolute;right:8px;bottom:26%;width:calc(100% - 16px);display:flex;justify-content:flex-end;align-items:flex-end;gap:2px;opacity:0;transform:translateX(8px);transition:opacity .3s,transform .4s ease-out}
+.officer{--portrait-width:min(34vw,150px);position:absolute;right:8px;bottom:26%;width:calc(100% - 16px);display:flex;justify-content:flex-end;align-items:flex-end;gap:2px;opacity:0;transform:translateX(8px);transition:opacity .3s,transform .4s ease-out}
 .officer.on{opacity:1;transform:none}
-.of{position:relative;flex:none;width:min(34vw,150px);aspect-ratio:1}
-.of img{position:absolute;inset:0;width:100%;height:100%}
-.of-a{animation:ofA .5s steps(1,end) infinite}.of-b{animation:ofB .5s steps(1,end) infinite}
-@keyframes ofA{0%{opacity:1}50%{opacity:0}}@keyframes ofB{0%{opacity:0}50%{opacity:1}}
-.bubble{position:relative;flex:1;max-width:260px;margin-bottom:34%;background:#fff;color:#111;border-radius:14px;padding:8px 12px 10px}
+.of{position:relative;flex:none;width:var(--portrait-width);aspect-ratio:394/360;background:url('../assets/officer/wave-strip.png') left bottom / 1200% 100% no-repeat}
+.officer.on .of{animation:officer-wave .9s steps(12,jump-none) infinite}
+@keyframes officer-wave{to{background-position:100% bottom}}
+.bubble{position:relative;flex:1;max-width:260px;margin-bottom:calc(var(--portrait-width) * .60 - 22px);background:#fff;color:#111;border-radius:14px;padding:8px 12px 10px}
 .bubble::after{content:"";position:absolute;right:-12px;bottom:14px;border:8px solid transparent;border-left:14px solid #fff;border-right:0}
 .bubble small{display:block;font-weight:600;font-size:13px;color:var(--o)}
 .bubble p{margin:2px 0 0;font-weight:600;font-size:15px;line-height:1.3}
@@ -152,7 +151,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 .tut-arrow.left{--r:180deg;--dx:-1;--dy:0}.tut-arrow.right{--r:0deg;--dx:1;--dy:0}
 .tut-arrow.up{--r:-90deg;--dx:0;--dy:-1}.tut-arrow.down{--r:90deg;--dx:0;--dy:1}
 @keyframes nudge{0%{opacity:.5;transform:translate(calc(var(--dx) * -28px),calc(var(--dy) * -28px))}50%{opacity:1;transform:none}100%{opacity:.5;transform:translate(calc(var(--dx) * 28px),calc(var(--dy) * 28px))}}
-@media (prefers-reduced-motion:reduce){.zone-tint.pulse,.chip.pop,.hud-coins.pop img,.toast.on,.count.on,.tut-arrow.on,.of-a,.of-b,.hud-ppe span.has{animation:none}.of-a{opacity:1}.of-b{opacity:0}.banner,.officer{transition:opacity .2s}}
+@media (prefers-reduced-motion:reduce){.zone-tint.pulse,.chip.pop,.hud-coins.pop img,.toast.on,.count.on,.tut-arrow.on,.officer.on .of,.hud-ppe span.has{animation:none}.banner,.officer{transition:opacity .2s}}
 .ov{z-index:3}
 .ov.how{z-index:4}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
