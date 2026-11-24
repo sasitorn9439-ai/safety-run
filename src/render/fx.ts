@@ -3,10 +3,13 @@
  * blending the last two sim steps, sorting what to draw, the mascot's pose, particles and screen shake.
  * Both renderers (WebGL and Canvas2D) read from here, so they move identically.
  */
-import type { HazardKind, PpeType } from '../../shared/hazards.js';
+import { HZ, type HazardKind, type PpeType } from '../../shared/hazards.js';
 import { SLIDE_SECONDS, ZMAX, type GameObject, type PowerType, type SimEvent } from '../../shared/sim.js';
 import { Camera, type Pt } from './camera.js';
 import type { Frame } from './types.js';
+
+const JUMP_GUIDE_RADIUS = 5.1;
+const JUMP_GUIDE_HEIGHT = 1.25;
 
 export const TAU = Math.PI * 2;
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -136,6 +139,9 @@ export class DrawList {
     const list = this.scratch;
     list.length = 0;
     for (const o of f.s.objs) if (!o.gone) list.push(o);
+    const lowHazards = list.filter(o =>
+      o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power' && o.k !== 'bonus' && HZ[o.k].t === 'low',
+    );
     list.sort((a, b) => b.z - a.z);
     let player = false;
     const addPlayer = () => { const it = this.next(); it.kind = 'player'; it.z = 0; player = true; };
@@ -180,6 +186,14 @@ export class DrawList {
           it.blink = !!o.locked && ((now * .012) | 0) % 2 === 0;                                      // a locked mark blinks
           if (o.locked) it.fall = Math.pow(1 - clamp(1 - z / (o.fz || 1), 0, 1), 2) * 2.6;          // the crate comes down, landing as it reaches you
         }
+      }
+      if (it.kind !== 'hazard') {
+        let distance = JUMP_GUIDE_RADIUS;
+        for (const hazard of lowHazards) {
+          if (Math.abs(hazard.l - o.l) < .5) distance = Math.min(distance, Math.abs(hazard.z - o.z));
+        }
+        const offset = distance / JUMP_GUIDE_RADIUS;
+        it.y -= JUMP_GUIDE_HEIGHT * (1 - offset * offset) * u;
       }
     }
     if (!player) addPlayer();
