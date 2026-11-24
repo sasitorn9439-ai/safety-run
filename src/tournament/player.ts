@@ -5,12 +5,15 @@ import { $, esc } from '../lib/dom.js';
 import { LS } from '../lib/storage.js';
 import type { GameRenderer } from '../render/index.js';
 import { Hud } from '../ui/hud.js';
-import { Clock, STAGE_NAMES, connect, errText, fmtTime, tourApi, type Board, type Channel, type Msg, type Room, type Slot } from './net.js';
+import { Clock, STAGE_NAMES, errText, fmtTime, openChannel, tourApi, type Board, type Channel, type Msg, type Room, type Slot } from './net.js';
 import { Race } from './race.js';
 import { GatePanel, fxHtml, itemListHtml } from './ui.js';
 
 interface Seat { code: string; slot: Slot; token: string; avatar: number }
 interface Saved { code: string; seed: number; inputs: Race['inputs'] }
+
+/** a phone reports its race this often (the big screen runs DELAY_TICKS in host.ts behind to absorb it) */
+const SEND_MS = 250;
 
 const SCREENS = ['tMenu', 'tLobby', 'tResult', 'howOv', 'hLogin'] as const;
 export const showScreen = (id: (typeof SCREENS)[number] | null) => { for (const s of SCREENS) $(s).classList.toggle('on', s === id); };
@@ -92,8 +95,8 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
     });
     const saved = LS.get<Saved>('srTourRun');
     if (saved && saved.code === r.code && saved.seed === r.seed) race.receive(0, saved.inputs, 0);
-    const mine = race;
-    channel = await connect(r.code, onMsg, () => race === mine);
+    const mine = race, ch = await openChannel(r.code, 'player', onMsg);
+    if (race === mine) channel = ch; else ch.close();
   }
 
   function onMsg(m: Msg) {
@@ -116,7 +119,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
     const from = full ? 0 : Math.max(0, Math.min(sent, race.inputs.length - 20));
     channel.send({ t: 'in', slot: seat.slot, from, n: race.inputs.length, e: race.inputs.slice(from), tick: race.run.tick });
     sent = race.inputs.length;
-  }, 150);
+  }, SEND_MS);
   setInterval(() => { if (race && room) LS.set('srTourRun', { code: room.code, seed: race.spec.seed, inputs: race.inputs } satisfies Saved); }, 1000);
 
   async function submit() {

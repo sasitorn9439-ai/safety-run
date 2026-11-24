@@ -3,13 +3,13 @@ import { STEP, TOUR_DURATIONS, type StageId } from '../../shared/sim.js';
 import { avName, avImg } from '../lib/avatar.js';
 import { $, esc } from '../lib/dom.js';
 import type { GameRenderer } from '../render/index.js';
-import { Clock, STAGE_NAMES, connect, errText, fmtTime, tourApi, type Channel, type Msg, type Room, type Slot } from './net.js';
+import { Clock, STAGE_NAMES, errText, fmtTime, openChannel, tourApi, type Channel, type Msg, type Room, type Slot } from './net.js';
 import { Race } from './race.js';
 import { showScreen } from './player.js';
 import { GatePanel, fxHtml } from './ui.js';
 
-/** the host runs each race this far behind the phone, so presses have arrived before it gets there */
-const DELAY_TICKS = 15;
+/** the host runs each race this far behind the phone (0.6 s), so the phone's report every 250 ms has arrived before it gets there */
+const DELAY_TICKS = 36;
 /** auto camera: stay at least this long on someone, and move on after ROTATE_MS when nothing is happening */
 const DWELL_MS = 2500, ROTATE_MS = 8000;
 const hostKey = (code: string) => `srHost:${code}`;
@@ -108,8 +108,8 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
     races = new Map(r.players.map(p => [p.slot, new Race({ seed: r.seed!, stage: r.stage, duration: r.duration, startAt: r.startAt! })]));
     focus = r.players[0]?.slot ?? 0; focusSince = performance.now(); leader = null;
     $('hStage').textContent = STAGE_NAMES[r.stage];
-    const seed = r.seed;
-    channel = await connect(code, onMsg, () => raceSeed === seed);
+    const seed = r.seed, ch = await openChannel(code, 'host', onMsg);
+    if (raceSeed === seed) channel = ch; else ch.close();
   }
 
   function stopRace() {
@@ -133,7 +133,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
 
   setInterval(() => {
     if (channel && races.size) channel.send({ t: 'board', board: [...races.keys()].map(s => [s, scoreOf(s)]) });
-  }, 500);
+  }, 1000);
 
   /** auto camera: a question beats a new leader, which beats taking turns */
   function camera(now: number) {

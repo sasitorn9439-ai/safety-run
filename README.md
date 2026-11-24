@@ -86,8 +86,11 @@ start a rematch with the same players.
 * **Items:** LOTO Lock (moving hazards stop for 8 s), fire extinguisher (clears your lane ahead), Buddy System (auto-dodge for 5 s),
   Zero Accident ×2 (double distance points for 15 s, lost on a crash) and Spot Audit (+30, and the player in the lead gets a question:
   wrong means slower). A Spot Audit arrives as an `audit` input, so it is part of the replay.
-* **The big screen doesn't stream video.** Each phone sends its `[tick, action]` presses over Supabase Realtime. The host runs the three
-  races itself, 0.25 s behind, and shows one of them: the one with a question up, a new leader, or each in turn (or the one you tap).
+* **The big screen doesn't stream video.** Each phone sends its `[tick, action]` presses over Supabase Realtime every 250 ms. The host runs
+  the three races itself, 0.6 s behind, and shows one of them: the one with a question up, a new leader, or each in turn (or the one you tap).
+  A room has two one-way channels (`…-up` phones → host, `…-down` host → phones), and every send is an HTTPS broadcast. A phone shows up on
+  the big screen even when its websocket can't connect, and each side receives only what is meant for it. Supabase counts every delivery
+  against the plan's messages per second, and clients over that limit are disconnected.
 * **Scores** come from `api/tournament` replaying each phone's presses with the room's seed (`replayTour`). Ties go to the most right
   answers. Tournament results are kept apart from the main leaderboard (`safety_run_tour_*` tables).
 
