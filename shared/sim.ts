@@ -53,6 +53,7 @@ export const NEAR_SCORE = 2;
 
 /** a mystery coin: touch it and answer a safety question for a random points bonus; metres between two at the least */
 export const BONUS_GAP = 1555;
+export const BONUS_CHANCE = 0.4;
 export const BONUS_MIN = 50, BONUS_MAX = 300, BONUS_STEP = 10;
 /** seconds the run waits for an answer before giving up on its own (keeps a replay from ever waiting forever) */
 export const BONUS_SECONDS = 7;
@@ -193,7 +194,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   let hitKind: HazardKind | null = null;
   let slow = 0, magnet = 0, lift = 0, hearts = 0, lastPower = dist;
   let combo = 0, comboT = 0, leftLane = 0, leftT = 9;
-  let lastBonus = dist, pendingBonus: BonusQuiz | null = null, bonusTimer = 0;
+  let nextBonusCheck = (Math.floor(dist / BONUS_GAP) + 1) * BONUS_GAP, bonusArmed = false, pendingBonus: BonusQuiz | null = null, bonusTimer = 0;
 
   const mult = () => 1 + Math.min(MULT_MAX - 1, Math.floor(combo / 3));
   const say = (text: string, seconds: number) => { toast = text; toastT = seconds; };
@@ -282,15 +283,15 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       if (powerAt === at) powerAt = (powerAt + 1) % trail.length;
       lastPower = dist;
     }
-    // bonus coin: its own stream too, a number every spawn whether or not it is used; once every BONUS_GAP metres, not a dice roll
+    // bonus coin: its own stream too, a number every spawn whether or not it is used; placed once a BONUS_GAP checkpoint rolls it armed
     const bc = bonusRandom();
     let bonusAt = -1;
-    if (trail.length >= 3 && dist - lastBonus >= BONUS_GAP) {
+    if (trail.length >= 3 && bonusArmed) {
       bonusAt = Math.floor(bc * trail.length);
       if (bonusAt === at) bonusAt = (bonusAt + 1) % trail.length;
       if (bonusAt === powerAt) bonusAt = (bonusAt + 1) % trail.length;
       if (bonusAt === at) bonusAt = (bonusAt + 1) % trail.length;
-      lastBonus = dist;
+      bonusArmed = false;
     }
     // a trail from the previous spawn may still be running into these hazards: clear the pickups right around them
     objs.push(...fresh);
@@ -464,6 +465,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     }
     objs = objs.filter(o => o.z > -3 && !(o.gone && (o.k === 'ppe' || o.k === 'coin' || o.k === 'power' || o.k === 'bonus')));
     if (dist >= nextSur) { nextSur += 1500; surprise(); }
+    if (dist >= nextBonusCheck) { nextBonusCheck += BONUS_GAP; if (bonusRandom() < BONUS_CHANCE) bonusArmed = true; }
   }
 
   const isFinished = () => !!hitKind || tick === MAX_TICKS;
