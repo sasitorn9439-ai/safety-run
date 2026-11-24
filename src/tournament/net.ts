@@ -15,10 +15,10 @@ export type BoardRow = [slot: Slot, score: number, tick: number, dist: number, l
 export type Board = BoardRow[];
 /**
  * What goes over the realtime channel. Players send their inputs (`n` = how many they have recorded in all, `e` the entries
- * from index `from`, `tick` how far their race has run). The host sends standings, and passes Spot Audits on.
+ * from index `from`, `tick` how far their race has run, `d` and `l` where they are at that tick: metres run and lane). The host sends standings, and passes Spot Audits on.
  */
 export type Msg =
-  | { t: 'in'; slot: Slot; from: number; n: number; e: InputEntry[]; tick: number }
+  | { t: 'in'; slot: Slot; from: number; n: number; e: InputEntry[]; tick: number; d: number; l: number }
   | { t: 'audit'; slot: Slot }
   | { t: 'board'; board: Board }
   | { t: 'audited'; to: Slot; by: Slot };

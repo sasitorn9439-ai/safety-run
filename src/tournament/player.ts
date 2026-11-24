@@ -118,7 +118,8 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
     const full = performance.now() - lastFull > 2000;
     if (full) lastFull = performance.now();
     const from = full ? 0 : Math.max(0, Math.min(sent, race.inputs.length - 20));
-    channel.send({ t: 'in', slot: seat.slot, from, n: race.inputs.length, e: race.inputs.slice(from), tick: race.run.tick });
+    const v = race.run.view();
+    channel.send({ t: 'in', slot: seat.slot, from, n: race.inputs.length, e: race.inputs.slice(from), tick: race.run.tick, d: Math.round(v.dist * 100) / 100, l: v.lane });
     sent = race.inputs.length;
   }, SEND_MS);
   setInterval(() => { if (race && room) LS.set('srTourRun', { code: room.code, seed: race.spec.seed, inputs: race.inputs } satisfies Saved); }, 1000);

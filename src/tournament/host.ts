@@ -119,7 +119,11 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
   const scoreOf = (slot: Slot) => races.get(slot)?.run.score() ?? 0;
 
   function onMsg(m: Msg) {
-    if (m.t === 'in') races.get(m.slot)?.receive(m.from, m.e, m.tick);
+    if (m.t === 'in') {
+      const race = races.get(m.slot);
+      race?.receive(m.from, m.e, m.tick);
+      if (race && m.tick > race.live.tick) race.live = { tick: m.tick, dist: m.d, lane: m.l };
+    }
     else if (m.t === 'audit') {
       // the audit goes to whoever leads among the others
       const others = [...races.keys()].filter(s => s !== m.slot).sort((a, b) => scoreOf(b) - scoreOf(a));
@@ -132,10 +136,8 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
 
   setInterval(() => {
     if (!channel || !races.size) return;
-    channel.send({ t: 'board', board: [...races].map(([s, r]) => {
-      const v = r.run.view();
-      return [s, r.run.score(), r.run.tick, Math.round(v.dist * 100) / 100, v.lane];
-    }) });
+    // positions are the phones' own latest reports: the replay here runs DELAY_TICKS behind them
+    channel.send({ t: 'board', board: [...races].map(([s, r]) => [s, r.run.score(), r.live.tick, r.live.dist, r.live.lane]) });
   }, BOARD_MS);
 
   /** auto camera: a question beats a new leader, which beats taking turns */

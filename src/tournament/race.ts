@@ -16,6 +16,8 @@ export class Race {
   private alpha = 1;
   /** host only: the phone has run this far */
   reported = 0;
+  /** host only: where the phone said it was at `reported`, fresher than this replay, which runs behind it */
+  live = { tick: 0, dist: 0, lane: 0 };
 
   constructor(readonly spec: RaceSpec, beep?: Beep, emit?: Emit) {
     this.run = createRun(spec.seed, beep, emit, { tour: { stage: spec.stage, durationTicks: Math.round(spec.duration / STEP) } });
