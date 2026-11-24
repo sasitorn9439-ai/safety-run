@@ -5,7 +5,7 @@ import { $, esc } from '../lib/dom.js';
 import { LS } from '../lib/storage.js';
 import type { GameRenderer } from '../render/index.js';
 import { Hud } from '../ui/hud.js';
-import { Clock, STAGE_NAMES, errText, fmtTime, openChannel, tourApi, type Board, type Channel, type Msg, type Room, type Slot } from './net.js';
+import { Clock, STAGE_NAMES, connect, errText, fmtTime, tourApi, type Board, type Channel, type Msg, type Room, type Slot } from './net.js';
 import { Race } from './race.js';
 import { GatePanel, fxHtml, itemListHtml } from './ui.js';
 
@@ -92,7 +92,8 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
     });
     const saved = LS.get<Saved>('srTourRun');
     if (saved && saved.code === r.code && saved.seed === r.seed) race.receive(0, saved.inputs, 0);
-    try { channel = await openChannel(r.code, onMsg); } catch (e) { $('resMsg').textContent = errText((e as Error).message); }
+    const mine = race;
+    channel = await connect(r.code, onMsg, () => race === mine);
   }
 
   function onMsg(m: Msg) {
