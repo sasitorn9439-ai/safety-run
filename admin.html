@@ -2,18 +2,18 @@
 <html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Safety Run Admin</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23ffd400%27/%3E%3Cpath d=%27M7 20a9 9 0 0 1 18 0z%27 fill=%27%23111%27/%3E%3Crect x=%275%27 y=%2720%27 width=%2722%27 height=%274%27 rx=%272%27 fill=%27%23111%27/%3E%3C/svg%3E">
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}
-body{margin:0;background:#121418;color:#f4f5f7;font:15px/1.5 Kanit,system-ui,sans-serif;padding:20px max(4vw,14px)}
-h1{margin:0 0 4px;font-size:28px;color:#ffd400}
-h2{margin:28px 0 10px;font-size:20px;color:#ffd400}
+:root{color-scheme:dark;--ink:#f4f5f7;--muted:#aab0bb;--accent:#ffd400;--line:#343942}*{box-sizing:border-box}
+body{margin:0;background:#121418;color:#f4f5f7;font:15px/1.5 Kanit,system-ui,sans-serif;padding:24px clamp(16px,4vw,48px)}
+h1{margin:0 0 4px;font-size:28px;font-weight:600}
+h2{margin:32px 0 12px;font-size:20px;font-weight:600}
 h3{margin:0 0 8px;font-size:15px;font-weight:600}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}
-input,select{min-height:44px;padding:8px 12px;border-radius:10px;border:2px solid #3a3f48;background:#1d2026;color:#fff;font:16px Kanit}
-button{min-height:44px;padding:8px 16px;border:0;border-radius:10px;background:#ffd400;color:#111;font:600 15px Kanit;cursor:pointer}
+input,select{min-height:44px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:#1d2026;color:#fff;font:16px Kanit}
+button{min-height:44px;padding:8px 16px;border:0;border-radius:8px;background:var(--ink);color:#121418;font:600 15px Kanit;cursor:pointer}
 button.alt{background:#2e333b;color:#fff}
-td button{min-height:36px;padding:4px 12px;font-size:14px;margin-right:6px}
+td button{min-height:36px;padding:4px 12px;font-size:14px;margin-right:4px}
 #runs tr.hid td:not(:last-child){opacity:.55}
 .msg{color:#ffb4a8;min-height:22px}
 #msg{color:#aab0bb}
@@ -22,30 +22,40 @@ td button{min-height:36px;padding:4px 12px;font-size:14px;margin-right:6px}
 .gate p{margin:0;color:#aab0bb}.gate .msg{color:#ffb4a8}
 .top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:8px}
 .top .row{margin:0}
-#runs .fr td{padding:6px;vertical-align:top;background:#181a1f}
-#runs .fr input,#runs .fr select{display:block;width:100%;min-width:7em;min-height:36px;padding:4px 8px;font-size:14px;background:#121418}
-#runs .fr input+input{margin-top:4px}
-#runs .fr [type=datetime-local]{min-width:12.5em}
-#runs .fr [type=number]{min-width:6em}
-#runs .fr .on{border-color:#ffd400}
+#runs th button{padding:0;min-height:28px;background:transparent;color:inherit;font:inherit}
+#runs th button::after{content:" ↕";color:#aab0bb}
+#runs th[aria-sort=ascending] button::after{content:" ↑";color:#ffd400}
+#runs th[aria-sort=descending] button::after{content:" ↓";color:#ffd400}
+#filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,224px),1fr));gap:12px 16px;margin:0 0 16px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#1d2026}
+#filters fieldset{min-width:0;margin:0;padding:0;border:0}
+#filters legend{margin-bottom:4px;color:#aab0bb}
+#filters fieldset div{display:flex;flex-wrap:wrap;gap:4px}
+#filters input,#filters select{flex:1;min-width:0;width:0;min-height:36px;padding:4px 8px;font-size:14px;background:#121418}
+#filters .range{position:relative}
+#filters summary{min-height:36px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#121418;font-size:14px;cursor:pointer;overflow-wrap:anywhere}
+#filters details:not([open]) .range-fields{display:none}
+#filters .range-fields{position:absolute;z-index:1;inset-inline:0;top:100%;display:grid;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:8px;background:#1d2026;box-shadow:0 6px 16px #0008}
+#filters .range-fields label{display:grid;gap:4px;color:#aab0bb;font-size:13px}
+#filters .range-fields input{width:100%}
+#filters .on{border-color:#ffd400}
 .pager{justify-content:flex-end}
 .pager button{min-width:44px;padding:8px 12px}
 .pager button:disabled{opacity:.4;cursor:default}
 .pager label{display:flex;align-items:center;gap:6px;color:#aab0bb;font-size:14px}
 .scroll{overflow-x:auto}
 table{border-collapse:collapse;width:100%;min-width:560px;background:#1d2026;border-radius:10px}
-th,td{padding:8px 10px;border-bottom:1px solid #2e333b;text-align:left;white-space:nowrap}
+th,td{padding:8px 12px;border-bottom:1px solid #2e333b;text-align:left;white-space:nowrap}
 td.n{text-align:right;font-variant-numeric:tabular-nums}
 .flag,.st-unfinished{color:#ff8a7a}
 .st-legacy{color:#aab0bb}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:8px}
-.card{padding:10px 14px;background:#1d2026;border-radius:12px}
-.card b{display:block;font-size:26px;font-weight:800;line-height:1.3;color:#ffd400;font-variant-numeric:tabular-nums}
+.card{padding:12px 16px;background:#1d2026;border-radius:12px}
+.card b{display:block;font-size:28px;font-weight:600;line-height:1.3;font-variant-numeric:tabular-nums}
 .card span{color:#aab0bb;font-size:13px}
-.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:8px;margin-top:8px}
-.charts section{min-width:0;padding:12px 14px;background:#1d2026;border-radius:12px}
+.charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+.charts section{min-width:0;padding:16px;background:#1d2026;border-radius:12px}
 .legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-bottom:8px;color:#aab0bb;font-size:13px}
-.sw{display:inline-block;width:12px;height:12px;margin-right:6px;border-radius:3px;vertical-align:-1px}
+.sw{display:inline-block;width:12px;height:12px;margin-right:4px;border-radius:3px;vertical-align:-1px}
 .fin{background:#c98500}.unf{background:#3987e5}
 .bars{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px 10px;max-height:360px;overflow-y:auto;font-size:13px}
 .bars span{color:#aab0bb;white-space:nowrap}
@@ -54,6 +64,7 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 .bar i:last-child{border-radius:0 4px 4px 0}
 .empty{margin:24px 0;color:#aab0bb;text-align:center}
 .charts .wide{grid-column:1/-1}
+@media(max-width:760px){.charts{grid-template-columns:minmax(0,1fr)}}
 .ramp{display:inline-flex;align-items:center;gap:6px}
 .ramp i{display:inline-block;width:80px;height:10px;border-radius:3px;background:linear-gradient(90deg,#2a2e35,#ffd400)}
 .heat{overflow-x:auto}
@@ -64,6 +75,12 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 .heat td{width:44px;min-width:44px;height:32px;border-radius:4px;color:#f4f5f7;font-variant-numeric:tabular-nums;cursor:default}
 .heat td.hi{color:#111;font-weight:600}
 .heat td:hover{outline:2px solid #f4f5f7;outline-offset:-1px}
+#app{max-width:1600px;margin-inline:auto}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#runs thead{background:#242830}
+#runs tbody tr:hover,#runs tbody tr:focus-within{background:#242830}
+#runs th[aria-sort] button{color:var(--accent)}
+#runs-note{color:var(--muted);font-variant-numeric:tabular-nums}
 </style></head><body>
 <form id="gate" class="gate" autocomplete="off" hidden>
   <h1>Safety Run · Admin</h1>
@@ -73,7 +90,7 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
   <p id="gate-msg" class="msg" role="alert"></p>
 </form>
 <main id="app" hidden>
-<div class="top"><div><h1>Safety Run · Admin</h1><div>EHS Day 2026 — สรุปผลรายรอบ ตัวกรองในตารางมีผลกับภาพรวมด้วย</div></div>
+<div class="top"><div><h1>Safety Run · Admin</h1><div>EHS Day 2026 · ตัวกรองมีผลกับทั้งภาพรวมและตารางรายรอบ</div></div>
   <div class="row"><button type="button" class="alt" id="refresh">รีเฟรช</button><button type="button" class="alt" id="logout">ออกจากระบบ</button></div></div>
 <p id="msg" class="msg"></p>
 <h2>ภาพรวม</h2>
@@ -84,20 +101,31 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
   <section class="wide"><h3>ผู้เล่นเข้ามาเล่นช่วงไหน</h3><div class="legend"><span>จำนวนผู้เล่น (คน) ที่เริ่มเล่นในแต่ละชั่วโมง นับคนละครั้งต่อช่อง</span><span class="ramp">น้อย <i></i> มาก</span></div><div id="heat"></div></section>
 </div>
 <h2>รายรอบ</h2>
-<div class="row"><span id="runs-note"></span><button type="button" class="alt" id="f-reset">ล้างตัวกรอง</button><button type="button" id="export">Export ข้อมูลวิ่ง (CSV)</button></div>
-<form id="filters" autocomplete="off" class="scroll"><table id="runs"><thead>
-<tr><th>รหัส</th><th>ไอคอน</th><th>ครั้งที่</th><th>เริ่ม</th><th>จบ</th><th>เวลาเล่น</th><th>คะแนน</th><th>สถานะ</th><th>จัดการ</th></tr>
-<tr class="fr">
-  <td><input id="f-id" type="search" placeholder="ค้นหา" aria-label="กรองรหัส"></td>
-  <td><input id="f-avatar" type="search" placeholder="ค้นหา" aria-label="กรองไอคอน"></td>
-  <td><select id="f-run" aria-label="กรองครั้งที่"><option value="all">ทั้งหมด</option></select></td>
-  <td><input id="f-start-min" type="datetime-local" aria-label="เริ่มตั้งแต่"><input id="f-start-max" type="datetime-local" aria-label="เริ่มถึง"></td>
-  <td><input id="f-end-min" type="datetime-local" aria-label="จบตั้งแต่"><input id="f-end-max" type="datetime-local" aria-label="จบถึง"></td>
-  <td><input id="f-secs-min" type="number" min="0" inputmode="numeric" placeholder="≥ วินาที" aria-label="เวลาเล่นต่ำสุด (วินาที)"><input id="f-secs-max" type="number" min="0" inputmode="numeric" placeholder="≤ วินาที" aria-label="เวลาเล่นสูงสุด (วินาที)"></td>
-  <td><input id="f-score-min" type="number" inputmode="numeric" placeholder="≥" aria-label="คะแนนต่ำสุด"><input id="f-score-max" type="number" inputmode="numeric" placeholder="≤" aria-label="คะแนนสูงสุด"></td>
-  <td><select id="f-status" aria-label="กรองสถานะ"><option value="all">ทุกสถานะ</option><option value="finished">ส่งคะแนนแล้ว</option><option value="unfinished">ไม่ได้ส่งคะแนน</option><option value="legacy">legacy</option></select></td>
-  <td><select id="f-hidden" aria-label="กรองการซ่อน"><option value="all">ทั้งหมด</option><option value="shown">แสดงบนอันดับ</option><option value="hidden">ซ่อนอยู่</option></select></td>
-</tr></thead><tbody id="rb"></tbody></table></form>
+<div class="row"><span id="runs-note"></span><button type="button" class="alt" id="f-reset">ล้างตัวกรอง</button><button type="button" id="export">ส่งออก CSV</button></div>
+<form id="filters" autocomplete="off" aria-label="ตัวกรองรายรอบ">
+  <fieldset><legend>รหัสพนักงาน</legend><div><input id="f-id" type="search" placeholder="ค้นหา" aria-label="กรองรหัสพนักงาน"></div></fieldset>
+  <fieldset><legend>ไอคอน</legend><div><input id="f-avatar" type="search" placeholder="ค้นหา" aria-label="กรองไอคอน"></div></fieldset>
+  <fieldset><legend>ครั้งที่</legend><div><select id="f-run" aria-label="กรองครั้งที่"><option value="all">ทั้งหมด</option></select></div></fieldset>
+  <fieldset><legend>เวลาเริ่ม</legend><details class="range"><summary id="f-start-range">ทุกช่วง</summary><div class="range-fields"><label>ตั้งแต่<input id="f-start-min" type="datetime-local" aria-label="เริ่มตั้งแต่"></label><label>ถึง<input id="f-start-max" type="datetime-local" aria-label="เริ่มถึง"></label></div></details></fieldset>
+  <fieldset><legend>เวลาจบ</legend><details class="range"><summary id="f-end-range">ทุกช่วง</summary><div class="range-fields"><label>ตั้งแต่<input id="f-end-min" type="datetime-local" aria-label="จบตั้งแต่"></label><label>ถึง<input id="f-end-max" type="datetime-local" aria-label="จบถึง"></label></div></details></fieldset>
+  <fieldset><legend>เวลาเล่น</legend><details class="range"><summary id="f-secs-range">ทุกช่วง</summary><div class="range-fields"><label>ต่ำสุด (วินาที)<input id="f-secs-min" type="number" min="0" inputmode="numeric" placeholder="≥ วินาที" aria-label="เวลาเล่นต่ำสุด (วินาที)"></label><label>สูงสุด (วินาที)<input id="f-secs-max" type="number" min="0" inputmode="numeric" placeholder="≤ วินาที" aria-label="เวลาเล่นสูงสุด (วินาที)"></label></div></details></fieldset>
+  <fieldset><legend>คะแนน</legend><details class="range"><summary id="f-score-range">ทุกช่วง</summary><div class="range-fields"><label>ต่ำสุด<input id="f-score-min" type="number" inputmode="numeric" placeholder="≥" aria-label="คะแนนต่ำสุด"></label><label>สูงสุด<input id="f-score-max" type="number" inputmode="numeric" placeholder="≤" aria-label="คะแนนสูงสุด"></label></div></details></fieldset>
+  <fieldset><legend>สถานะ</legend><div><select id="f-status" aria-label="กรองสถานะ"><option value="all">ทุกสถานะ</option><option value="finished">ส่งคะแนนแล้ว</option><option value="unfinished">ไม่ได้ส่งคะแนน</option><option value="legacy">legacy</option></select></div></fieldset>
+  <fieldset><legend>การแสดงบนอันดับ</legend><div><select id="f-hidden" aria-label="กรองการซ่อน"><option value="all">ทั้งหมด</option><option value="shown">แสดงบนอันดับ</option><option value="hidden">ซ่อนอยู่</option></select></div></fieldset>
+</form>
+<div class="scroll"><table id="runs"><thead>
+<tr>
+  <th scope="col"><button type="button" data-sort="id">รหัสพนักงาน</button></th>
+  <th scope="col"><button type="button" data-sort="avatar">ไอคอน</button></th>
+  <th scope="col"><button type="button" data-sort="runNo">ครั้งที่</button></th>
+  <th scope="col"><button type="button" data-sort="startedAt">เริ่ม</button></th>
+  <th scope="col"><button type="button" data-sort="finishedAt">จบ</button></th>
+  <th scope="col"><button type="button" data-sort="secs">เวลาเล่น</button></th>
+  <th scope="col"><button type="button" data-sort="score">คะแนน</button></th>
+  <th scope="col"><button type="button" data-sort="status">สถานะ</button></th>
+  <th scope="col"><button type="button" data-sort="hidden">จัดการ</button></th>
+</tr>
+</thead><tbody id="rb"></tbody></table></div>
 <nav class="row pager" aria-label="เปลี่ยนหน้า">
   <button type="button" class="alt" id="pg-first" aria-label="หน้าแรก">«</button>
   <button type="button" class="alt" id="pg-prev" aria-label="หน้าก่อน">‹</button>

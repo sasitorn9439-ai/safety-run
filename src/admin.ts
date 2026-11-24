@@ -10,10 +10,46 @@ interface Cache { key: string; runs: AdminRun[]; at: number }
 let key = '';
 let runs: AdminRun[] = [];
 let loadedAt = 0;
-/** runs that pass the column filters, newest first */
+/** filtered runs in the selected column order */
 let shown: AdminRun[] = [];
 /** 0-based page of the runs table */
 let page = 0;
+
+const sortValues = {
+  id: (r: AdminRun) => r.id,
+  avatar: (r: AdminRun) => avName(r.avatar),
+  runNo: (r: AdminRun) => r.runNo,
+  startedAt: (r: AdminRun) => Date.parse(r.startedAt),
+  finishedAt: (r: AdminRun) => r.finishedAt == null ? null : Date.parse(r.finishedAt),
+  secs: (r: AdminRun) => r.secs,
+  score: (r: AdminRun) => r.score,
+  status: runStatus,
+  hidden: (r: AdminRun) => Number(r.hidden),
+} satisfies Record<string, (r: AdminRun) => string | number | null>;
+
+let sortColumn: keyof typeof sortValues = 'startedAt';
+let sortDirection: 'ascending' | 'descending' = 'descending';
+const textOrder = new Intl.Collator('th', { numeric: true, sensitivity: 'base' });
+const sortButtons = document.querySelectorAll<HTMLButtonElement>('#runs button[data-sort]');
+
+function sortShown() {
+  const value = sortValues[sortColumn];
+  const direction = sortDirection === 'ascending' ? 1 : -1;
+  shown.sort((a, b) => {
+    const left = value(a), right = value(b);
+    if (left == null) return right == null ? 0 : 1;
+    if (right == null) return -1;
+    const order = typeof left === 'number' && typeof right === 'number'
+      ? left - right
+      : textOrder.compare(String(left), String(right));
+    return direction * order;
+  });
+  for (const button of sortButtons) {
+    const header = button.closest('th');
+    if (button.dataset.sort === sortColumn) header?.setAttribute('aria-sort', sortDirection);
+    else header?.removeAttribute('aria-sort');
+  }
+}
 
 function readCache(): Cache | null {
   try {
@@ -47,8 +83,17 @@ function readFilter(): RunFilter {
     return el.value;
   };
   const range = (id: string, parse: (v: string) => number | null, slack = 0): Range => {
+    const min = parse(v(id + '-min'));
     const max = parse(v(id + '-max'));
-    return { min: parse(v(id + '-min')), max: max == null ? null : max + slack };
+    const format = parse === time
+      ? (value: number) => new Date(value).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })
+      : (value: number) => String(value);
+    const summary = $(id + '-range');
+    summary.textContent = min != null && max != null ? `${format(min)} – ${format(max)}`
+      : min != null ? `ตั้งแต่ ${format(min)}`
+      : max != null ? `ถึง ${format(max)}` : 'ทุกช่วง';
+    summary.classList.toggle('on', min != null || max != null);
+    return { min, max: max == null ? null : max + slack };
   };
   const status = v('f-status'), hidden = v('f-hidden');
   return {
@@ -105,6 +150,7 @@ function runRow(r: AdminRun) {
 
 function render() {
   shown = filterRuns(runs, readFilter());
+  sortShown();
   const s = summarize(shown);
   const card = (label: string, value: string) => `<div class="card"><b>${value}</b><span>${label}</span></div>`;
   $('stats').innerHTML = [
@@ -135,7 +181,7 @@ function renderPage() {
   const start = page * size, list = shown.slice(start, start + size);
   $('rb').innerHTML = list.length ? list.map(runRow).join('') : '<tr><td colspan="9" class="empty">ไม่มีข้อมูลตามตัวกรองนี้</td></tr>';
   $('runs-note').textContent = `${fmt(shown.length)} รอบ`;
-  $('export').textContent = `Export ข้อมูลวิ่งที่กรองอยู่ (${fmt(shown.length)} รอบ)`;
+  $('export').textContent = `ส่งออก CSV (${fmt(shown.length)} รอบ)`;
   $<HTMLButtonElement>('export').disabled = !shown.length;
   $('pg-info').textContent = list.length ? `${fmt(start + 1)}–${fmt(start + list.length)} จาก ${fmt(shown.length)} · หน้า ${fmt(page + 1)} / ${fmt(pages)}` : '';
   $<HTMLButtonElement>('pg-first').disabled = $<HTMLButtonElement>('pg-prev').disabled = page === 0;
@@ -230,11 +276,44 @@ $('rb').onclick = async e => {
   }
 };
 
+for (const button of sortButtons) {
+  const column = button.dataset.sort;
+  if (!isSortColumn(column)) continue;
+  button.onclick = () => {
+    sortDirection = sortColumn === column && sortDirection === 'descending' ? 'ascending' : 'descending';
+    sortColumn = column;
+    shown = filterRuns(runs, readFilter());
+    sortShown();
+    page = 0;
+    renderPage();
+  };
+}
+
+function isSortColumn(column: string | undefined): column is keyof typeof sortValues {
+  return column !== undefined && Object.hasOwn(sortValues, column);
+}
+
 const filters = $<HTMLFormElement>('filters');
 // a new filter starts again from the first page
 filters.oninput = () => { page = 0; render(); };
 filters.onsubmit = e => e.preventDefault();
-$('f-reset').onclick = () => { filters.reset(); page = 0; render(); };
+const rangePickers = filters.querySelectorAll<HTMLDetailsElement>('details.range');
+function closeRanges() {
+  for (const picker of rangePickers) picker.open = false;
+}
+document.addEventListener('click', e => {
+  for (const picker of rangePickers) {
+    if (e.target instanceof Node && !picker.contains(e.target)) picker.open = false;
+  }
+});
+filters.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || !(e.target instanceof HTMLElement)) return;
+  const picker = e.target.closest<HTMLDetailsElement>('details.range[open]');
+  if (!picker) return;
+  picker.open = false;
+  picker.querySelector('summary')?.focus();
+});
+$('f-reset').onclick = () => { filters.reset(); closeRanges(); page = 0; render(); };
 const go = (p: number) => { page = p; renderPage(); $('runs').scrollIntoView({ block: 'start' }); };
 $('pg-first').onclick = () => go(0);
 $('pg-prev').onclick = () => go(page - 1);
