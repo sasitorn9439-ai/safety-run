@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23ffd400%27/%3E%3Cpath d=%27M7 20a9 9 0 0 1 18 0z%27 fill=%27%23111%27/%3E%3Crect x=%275%27 y=%2720%27 width=%2722%27 height=%274%27 rx=%272%27 fill=%27%23111%27/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="shell" id="shell">
@@ -34,16 +34,17 @@
 </div>
 <div class="count" id="count" aria-hidden="true"></div>
 <div class="tut" id="tut"><small id="tutHead"></small><strong id="tutTh"></strong><span id="tutEn"></span></div>
-<div class="tut-ok" id="tutOk">ผ่าน! เยี่ยม</div>
+<div class="tut-ok" id="tutOk">ผ่านแล้ว</div>
 <div class="tut-arrow" id="tutArrow"><svg viewBox="-30 -20 60 40" aria-hidden="true"><path d="M-18 -5 L5 -5 L5 -14 L18 0 L5 14 L5 5 L-18 5 Z" fill="#ffd400" stroke="#111" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
 <button id="skipTut" type="button">ข้ามการสอน · Skip</button>
 <button id="pauseBtn" type="button" aria-label="หยุดชั่วคราว · Pause"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="3" width="4.5" height="14" rx="1.2"/><rect x="11.5" y="3" width="4.5" height="14" rx="1.2"/></svg></button>
 
 <div class="ov on" id="menu"><div class="card scroll">
-<div class="tape"></div>
-<span class="badge">EHS Day 2026 · MCAM</span>
-<h1>SAFETY RUN</h1>
-<p class="sub">วิ่งปลอดภัย · หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><b style="color:#ffd400">เล่นได้ไม่จำกัด นับคะแนนครั้งที่ดีที่สุด</b><br>ใส่รหัสพนักงานแล้วรับไอคอนประจำตัว ใช้แทนชื่อบนตารางอันดับ</p>
+<header class="menu-hero">
+<div><p class="event">EHS Day 2026 · MCAM</p><h1>SAFETY RUN</h1></div>
+<img src="/assets/mascot-2d/menu-runner.png" alt="" width="112" height="112">
+</header>
+<p class="sub">หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><strong>เล่นได้หลายรอบ นับคะแนนสูงสุด</strong><br>กรอกรหัสพนักงานเพื่อรับไอคอนบนตารางอันดับ</p>
 <div class="prizes" aria-label="รางวัล">
 <div class="prize p1"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="16" y="2" width="12" height="40" rx="5" fill="#1b1d21"/><rect x="11" y="11" width="22" height="22" rx="6" fill="#2b2f36" stroke="#ffd400" stroke-width="1.5"/><rect x="14" y="14" width="16" height="16" rx="4" fill="#0e1a24"/><path d="M17 23h3l2-4 2 7 2-3h2" fill="none" stroke="#5ad1ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>อันดับ 1 · 1st prize</b><span>HUAWEI Band 11 Series (Polym Black)</span></div></div>
 <div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="3" y="9" width="38" height="26" rx="4" fill="#2e9e47"/><g fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="13" y="14" width="11" height="16" rx="1.5"/><path d="M13 20h11"/><path d="M24 19h3a2 2 0 0 1 2 2v5a2 2 0 0 0 4 0v-8l-3-3"/></g></svg><div><b>อันดับ 2 และ 3 · 2nd &amp; 3rd prize</b><span>บัตรเติมน้ำมัน มูลค่า 500 บาท</span></div></div>
@@ -60,7 +61,6 @@
 </div></div>
 
 <div class="ov how" id="howOv" role="dialog" aria-modal="true" aria-labelledby="howTitle"><div class="card scroll">
-<div class="tape"></div>
 <h2 id="howTitle">วิธีเล่น · How to play</h2>
 <ul>
 <li><b>← →</b><span>ปัดซ้าย/ขวา เปลี่ยนเลน หลบโฟล์คลิฟท์และกองวัสดุ<br><span class="en">Swipe to change lanes</span></span></li>
@@ -79,8 +79,7 @@
 </div></div>
 
 <div class="ov" id="over"><div class="card">
-<div class="tape"></div>
-<p class="hit">เกิดอุบัติเหตุ! · Accident</p>
+<p class="hit">เกิดอุบัติเหตุ · Accident</p>
 <h2 id="hTitle"></h2>
 <div class="en" id="hTitleEn"></div>
 <div class="lesson"><p id="hTip"></p><p class="en" id="hTipEn"></p></div>
@@ -91,7 +90,6 @@
 </div></div>
 
 <div class="ov" id="pauseOv"><div class="card">
-<div class="tape"></div>
 <p class="hit">หยุดชั่วคราว · Paused</p>
 <div class="stats"><div><strong id="pScore">0</strong><span>คะแนน · Score</span></div><div><strong id="pDist">0</strong><span>ระยะทาง (ม.) · Distance</span></div></div>
 <button class="btn" id="pResume" type="button">เล่นต่อ · Resume</button>
@@ -100,7 +98,6 @@
 </div></div>
 
 <div class="ov" id="quiz"><div class="card">
-<div class="tape"></div>
 <p class="hit" id="qHead">โอกาสรอด</p>
 <span class="badge" id="qLv"></span>
 <p class="q" id="qText"></p>
@@ -109,14 +106,12 @@
 <button class="btn" id="qNext" style="display:none"></button>
 </div></div>
 <div class="ov" id="avOv"><div class="card">
-<div class="tape"></div>
 <p class="hit" id="avHead">ไอคอนประจำตัวของคุณ</p>
 <div class="youav"><div id="avBig"></div><b id="avName"></b></div>
 <p class="sub" style="text-align:center;margin-bottom:0">ตารางอันดับจะแสดงไอคอนนี้แทนรหัสพนักงาน<br>ไม่มีใครได้ไอคอนซ้ำกับคุณ</p>
-<button class="btn" id="avGo">เริ่มวิ่ง!</button>
+<button class="btn" id="avGo">เริ่มวิ่ง</button>
 </div></div>
 <div class="ov" id="done"><div class="card scroll">
-<div class="tape"></div>
 <p class="hit" id="doneHead">ส่งคะแนนแล้ว · Score submitted</p>
 <h2 id="doneScore"></h2>
 <p class="sub" id="doneRank"></p>
@@ -129,7 +124,6 @@
 </div></div>
 
 <div class="ov" id="boardOv"><div class="card scroll">
-<div class="tape"></div>
 <h2>อันดับ · Leaderboard</h2>
 <p class="sub" id="boardTotal"></p>
 <ol class="board" id="boardList"></ol>
