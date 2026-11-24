@@ -1,6 +1,6 @@
 /** Which mascot frame to show for the current game state. Pure and driven by a per-set config (frame counts + tagged ranges), so any set can be plugged in. */
 import { SLIDE_SECONDS } from '../../shared/sim.js';
-import { clamp, type Fx, type Interp } from './fx.js';
+import { clamp, liftBounce, type Fx, type Interp } from './fx.js';
 import type { Frame } from './types.js';
 
 export type PixelAnim = 'idle' | 'run' | 'jump' | 'slide';
@@ -27,6 +27,9 @@ export function pixelFrame(f: Frame, I: Interp, fx: Fx, now: number, cfg: FrameC
     if (p < .72) return { anim: 'slide', frame: within(s.hold, (p - .22) / .5) };
     return { anim: 'slide', frame: within(s.recover, (p - .72) / .28) };
   }
+  // on the man-lift: a crouch each time it lands on the deck, the apex pose while it springs up
+  const lb = liftBounce(f, now);
+  if (lb) return lb.contact > .25 ? { anim: 'jump', frame: within(cfg.jump.land, 1 - lb.contact) } : { anim: 'jump', frame: within(cfg.jump.apex, .5) };
   // in the air: takeoff/rise while going up, apex near the top, fall while coming down
   const vy = f.s.vy, j = cfg.jump;
   if (I.py > .02 || vy > 0) {

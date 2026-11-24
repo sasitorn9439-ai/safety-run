@@ -1,5 +1,5 @@
 import { HAZARD_KINDS, HZ, PPE } from '../shared/hazards.js';
-import { SLIDE_SECONDS, SPARK_HALF_CYCLE, START_SPEED, STEP, createRun, type Action, type GameObject, type PowerType } from '../shared/sim.js';
+import { LIFT_HEIGHT, POWER_SECONDS, SLIDE_SECONDS, SPARK_HALF_CYCLE, START_SPEED, STEP, createRun, type Action, type GameObject, type PowerType } from '../shared/sim.js';
 import { createRenderer, type SceneState } from './render/index.js';
 import './dev.css';
 
@@ -39,6 +39,7 @@ export async function startDev() {
             <button type="button" data-action="up">Jump ↑</button>
             <button type="button" data-action="right">Right →</button>
             <button type="button" data-action="down">Slide ↓</button>
+            <button id="dev-lift" type="button">Ride man-lift</button>
           </div>
         </fieldset>
         <label class="dev-check"><input id="dev-run" type="checkbox" checked> Scroll corridor</label>
@@ -75,6 +76,8 @@ export async function startDev() {
     let acc = 0;
     let last = performance.now();
     let objects: GameObject[] = [];
+    // the movement-only sim has no power-ups, so the man-lift is played here: seconds left on it and the height it carries the mascot to
+    let lift = 0, liftPy = 0, prevLiftPy = 0;
 
     const place = () => {
       const z = depth.valueAsNumber;
@@ -88,6 +91,10 @@ export async function startDev() {
       previous = motion.view();
       previousCorridor = corridor;
       motion.step();
+      prevLiftPy = liftPy;
+      lift = Math.max(0, lift - STEP);
+      liftPy += ((lift > 0 ? LIFT_HEIGHT : 0) - liftPy) * Math.min(1, STEP * 8);
+      if (lift === 0 && liftPy < .01) liftPy = 0;
       if (scroll.checked) corridor += START_SPEED * STEP;
       now += STEP * 1000;
     }
@@ -107,6 +114,7 @@ export async function startDev() {
       event.preventDefault();
       move(action);
     });
+    document.querySelector<HTMLButtonElement>('#dev-lift')!.onclick = () => { lift = POWER_SECONDS.lift; };
     play.onclick = () => {
       paused = !paused;
       acc = 0;
@@ -118,6 +126,7 @@ export async function startDev() {
       motion = makeMotion();
       previous = motion.view();
       corridor = previousCorridor = acc = 0;
+      lift = liftPy = prevLiftPy = 0;
     };
 
     new ResizeObserver(() => renderer.resize()).observe(canvas);
@@ -131,17 +140,18 @@ export async function startDev() {
       for (const object of objects) {
         if (object.k === 'sparks') object.on = motion.tick % (SPARK_HALF_CYCLE * 2) < SPARK_HALF_CYCLE;
       }
-      const scene: SceneState = { ...view, dist: corridor, objs: objects, inv: 0 };
+      const onLift = lift > 0 || liftPy > 0;
+      const scene: SceneState = { ...view, dist: corridor, objs: objects, inv: 0, ...(onLift && { py: liftPy, vy: 0, slide: 0, lift }) };
       renderer.render({
         s: scene,
-        prev: { ...previous, dist: previousCorridor },
+        prev: { ...previous, dist: previousCorridor, ...(onLift && { py: prevLiftPy, slide: 0 }) },
         alpha: paused ? 1 : acc / STEP,
         playing: true,
         flash: 0,
         still: !scroll.checked,
       }, now);
-      const pose = view.slide > 0 ? `Slide ${Math.round(100 * (1 - view.slide / SLIDE_SECONDS))}%` : view.py > 0 ? 'Jump' : 'Grounded';
-      const readout = `${pose} · lane ${view.lane} · height ${view.py.toFixed(2)}`;
+      const pose = lift > 0 ? `Man-lift ${lift.toFixed(1)} s` : view.slide > 0 ? `Slide ${Math.round(100 * (1 - view.slide / SLIDE_SECONDS))}%` : view.py > 0 ? 'Jump' : 'Grounded';
+      const readout = `${pose} · lane ${view.lane} · height ${scene.py.toFixed(2)}`;
       if (output.value !== readout) output.value = readout;
       requestAnimationFrame(draw);
     };
