@@ -14,3 +14,13 @@ export async function api<T>(path: string, data?: unknown): Promise<ApiResult<T>
   try { j = await r.json(); } catch { /* non-JSON error page */ }
   return { ok: r.ok, status: r.status, ...j } as ApiResult<T>;
 }
+
+/** Errors from /api/finish that no retry can fix: the run is unknown, the token is wrong or the replay does not verify. */
+const FINAL_FINISH_ERRORS = new Set(['run', 'token', 'old_run', 'invalid_replay']);
+
+/**
+ * True only when the server itself rejected the run for good. A 429, a 408, a proxy 4xx or any non-JSON
+ * error says nothing about the run, so the unsent score must stay on the device for a retry.
+ */
+export const isFinalFinishError = (r: { status: number; error?: string }): boolean =>
+  r.status >= 400 && r.status < 500 && r.error !== undefined && FINAL_FINISH_ERRORS.has(r.error);

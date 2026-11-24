@@ -1,6 +1,6 @@
 import { avName } from '../shared/avatar.js';
 import type { Action } from '../shared/sim.js';
-import { api, type BoardResp, type FinishResp, type StartResp } from './lib/api.js';
+import { api, isFinalFinishError, type BoardResp, type FinishResp, type StartResp } from './lib/api.js';
 import { avImg } from './lib/avatar.js';
 import { Sfx } from './lib/audio.js';
 import { $, esc } from './lib/dom.js';
@@ -228,7 +228,7 @@ export async function startApp() {
           $('doneRank').textContent = `${avName(p.avatar)} · คะแนนดีที่สุด ${r.best} · อันดับที่ ${b.rank} จาก ${b.total} คน`;
           if (b.rank <= 5) $('doneMsg').innerHTML = `<div class="win">ตอนนี้คุณอยู่อันดับ ${b.rank} รักษาอันดับไว้จนประกาศผล</div>`;
         }
-      } else if (r.status >= 400 && r.status < 500) {
+      } else if (isFinalFinishError(r)) {
         LS.set('srPending', null); game.sess = null;
         $('doneHead').textContent = 'รอบนี้ส่งคะแนนไม่ได้'; $('doneMsg').textContent = 'ข้อมูลการเล่นไม่ผ่านการตรวจสอบ กรุณาเริ่มรอบใหม่ · Start a new run';
         ag.textContent = 'กลับหน้าเริ่ม · Back to start'; ag.style.display = 'block'; ag.onclick = goMenu;
