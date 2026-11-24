@@ -107,7 +107,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
     races = new Map(r.players.map(p => [p.slot, new Race({ seed: r.seed!, stage: r.stage, duration: r.duration, startAt: r.startAt! })]));
     focus = r.players[0]?.slot ?? 0; focusSince = performance.now(); leader = null;
     $('hStage').textContent = STAGE_NAMES[r.stage];
-    const seed = r.seed, ch = await openChannel(code, 'host', onMsg);
+    const seed = r.seed, ch = await openChannel(code, 'host', { hostToken }, onMsg);
     if (raceSeed === seed) channel = ch; else ch.close();
   }
 

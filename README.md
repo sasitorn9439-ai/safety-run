@@ -87,18 +87,23 @@ start a rematch with the same players.
 * **Items:** LOTO Lock (moving hazards stop for 8 s), fire extinguisher (clears your lane ahead), Buddy System (auto-dodge for 5 s),
   Zero Accident ×2 (double distance points for 15 s, lost on a crash) and Spot Audit (+30, and the player in the lead gets a question:
   wrong means slower). A Spot Audit arrives as an `audit` input, so it is part of the replay.
-* **The big screen doesn't stream video.** Each phone sends its `[tick, action]` presses over Supabase Realtime every 250 ms. The host runs
-  the three races itself, 0.6 s behind, and shows one of them: the one with a question up, a new leader, or each in turn (or the one you tap).
-  A room has two one-way channels (`…-up` phones → host, `…-down` host → phones), and every send is an HTTPS broadcast. A phone shows up on
-  the big screen even when its websocket can't connect, and each side receives only what is meant for it. Supabase counts every delivery
-  against the plan's messages per second, and clients over that limit are disconnected.
+* **The big screen doesn't stream video.** Each phone sends its `[tick, action]` presses, with where it is and how many times it has
+  jumped and slid, every 250 ms. The host runs the three races itself, 0.6 s behind, and shows one of them: the one with a question up, a
+  new leader, or each in turn (or the one you tap). Twice a second it sends the standings and every runner's position down to the phones,
+  which draw the others as ghosts ahead of or behind them.
+  A room has two one-way channels (`safety-run-tour:CODE-up` phones → host, `safety-run-tour:CODE-down` host → phones), and each side
+  receives only what is meant for it: every delivery counts against the realtime plan's messages per second.
 * **Scores** come from `api/tournament` replaying each phone's presses with the room's seed (`replayTour`). Ties go to the most right
   answers. Tournament results are kept apart from the main leaderboard (`safety_run_tour_*` tables).
 
-Under `npm run dev` the realtime channel goes through the dev server (`/api/relay`), so no Supabase is needed locally (host key: `dev`).
-For production, set the two `VITE_SUPABASE_*` variables below and allow public Realtime channels in the Supabase project
-(Realtime settings). The channel only carries what the big screen shows. Anyone with the anon key could send fake presses to the host,
-but the scores that count are always the server's own replay.
+Under `npm run dev` the realtime channel goes through the dev server (`/api/relay`), so no realtime service is needed locally (host key: `dev`).
+For production, use **Ably**: set `ABLY_API_KEY` and `VITE_REALTIME=ably`. The key stays on the server: `api/tournament` (action
+`realtime`) signs each seat a token that may only hear or speak its own way on its own room, and each side attaches in `PUBLISH` or
+`SUBSCRIBE` mode only. Restrict the key to `safety-run-tour:*` with Publish and Subscribe (Ably reads a wildcard only after a namespace's
+colon). To run the same thing locally: `ABLY_API_KEY=… VITE_REALTIME=ably npm run dev`.
+Supabase Realtime still works without `VITE_REALTIME`: set the two `VITE_SUPABASE_*` variables and allow public Realtime channels in the
+Supabase project; there every send is an HTTPS broadcast. Either way the channel only carries what the big screen shows: the scores that
+count are always the server's own replay.
 
 ## Mascot sets
 
@@ -143,5 +148,7 @@ One data file, `src/render/ppe-icons.ts`, draws them in the game (floating picku
 | `ADMIN_KEY` | password for `/admin` |
 | `ALLOWED_IDS` | optional comma-separated list of valid employee IDs; empty = any 3–15 letters/digits |
 | `MAX_PLAYS` | optional cap on plays per employee; empty/0 = unlimited |
-| `VITE_SUPABASE_URL` | the Supabase project URL, for the tournament's realtime channel (read at build time) |
+| `ABLY_API_KEY` | the Ably key for the tournament's realtime channels (server only; restrict it to `safety-run-tour:*`, Publish + Subscribe) |
+| `VITE_REALTIME` | `ably` to use Ably (read at build time) |
+| `VITE_SUPABASE_URL` | the Supabase project URL, for the realtime channel without Ably (read at build time) |
 | `VITE_SUPABASE_ANON_KEY` | the project's anon (public) key, same purpose |

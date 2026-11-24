@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",
+    "ably": "^2.30.0",
     "pixi.js": "^8.23.0",
     "postgres": "^3.4.5",
     "uqr": "^0.1.3"

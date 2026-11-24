@@ -1,4 +1,6 @@
 import type { InputEntry, StageId } from '../../shared/sim.js';
+import type { TokenRequest } from 'ably';
+import { tourTopic } from '../../shared/tour-channels.js';
 import { api, type ApiResult } from '../lib/api.js';
 
 export type Slot = 0 | 1 | 2;
@@ -48,27 +50,50 @@ export class Clock {
 
 export interface Channel { send(m: Msg): void; close(): void }
 export type Role = 'host' | 'player';
-
-const topic = (code: string, way: 'up' | 'down') => `safety-run-tour-${code}-${way}`;
+/** who is asking for the room's channels: the big screen's host token, or a player's seat */
+export type SeatAuth = { hostToken: string } | { slot: Slot; token: string };
 
 /** the project URL; the bare project ref the dashboard shows as the project ID works too */
 export const supabaseUrl = (v: string) => (/^https?:\/\//.test(v.trim()) ? v.trim() : `https://${v.trim()}.supabase.co`);
 
 /**
  * The room's two one-way channels. Phones send their presses *up* to the big screen; the big screen sends standings and Spot Audits
- * *down*. Every send goes over HTTPS, so a phone is seen by the big screen even when its websocket can't connect, and each side
- * listens only to what is meant for it. Supabase counts every delivery as a message, so this keeps a room to about a third of what
- * one shared channel cost, well under the plan's per-second limit (over it, Supabase disconnects clients).
- * Supabase Realtime when VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set; the dev server's relay under `npm run dev` without them.
+ * *down*, and each side listens only to what is meant for it. Realtime services count every delivery as a message, so this keeps a
+ * room to about a third of what one shared channel cost, well under the plan's per-second limit.
+ * Ably when VITE_REALTIME=ably (the server signs a token for this seat with ABLY_API_KEY); Supabase Realtime when
+ * VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set; the dev server's relay under `npm run dev` without either.
  * Problems show as a banner over the screen: a phone the big screen can't see must never fail quietly.
  */
-export async function openChannel(code: string, role: Role, onMsg: (m: Msg) => void): Promise<Channel> {
-  const listen = topic(code, role === 'host' ? 'up' : 'down'), speak = topic(code, role === 'host' ? 'down' : 'up');
+export async function openChannel(code: string, role: Role, auth: SeatAuth, onMsg: (m: Msg) => void): Promise<Channel> {
+  const listen = tourTopic(code, role === 'host' ? 'up' : 'down'), speak = tourTopic(code, role === 'host' ? 'down' : 'up');
   const banner = document.getElementById('tNet');
   const trouble = (key: string | null) => {
     banner?.classList.toggle('on', !!key);
     if (banner && key) banner.textContent = errText(key);
   };
+  const down = role === 'host' ? 'realtime_down' : 'realtime_board';
+  let failing = 0;
+  const sent = () => { if (failing >= 3) trouble(null); failing = 0; };
+  const failed = (e: unknown) => { console.error('realtime send', e); if (++failing === 3) trouble('realtime_send'); };
+
+  if (import.meta.env.VITE_REALTIME === 'ably') {
+    const Ably = await import('ably');
+    const client = new Ably.Realtime({
+      authCallback: (_params, done) => void tourApi<{ tokenRequest: TokenRequest }>('realtime', { code, ...auth })
+        .then(r => (r.ok ? done(null, r.tokenRequest!) : done(errText(r.error), null))),
+    });
+    // channel modes: each side attaches only to hear or only to speak, so nobody is sent the messages it would ignore
+    const out = client.channels.get(speak, { modes: ['PUBLISH'] });
+    const sub = client.channels.get(listen, { modes: ['SUBSCRIBE'] });
+    void sub.subscribe('m', msg => onMsg(msg.data as Msg));
+    // the client reconnects (and falls back to other hosts and transports) by itself; the banner says so meanwhile
+    client.connection.on(change => {
+      if (change.current === 'connected') trouble(null);
+      else if (change.current === 'disconnected' || change.current === 'suspended' || change.current === 'failed') trouble(down);
+    });
+    return { send: m => void out.publish('m', m).then(sent, failed), close: () => { client.close(); trouble(null); } };
+  }
+
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined, key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
   if (url && key) {
     const { createClient } = await import('@supabase/supabase-js');
@@ -79,14 +104,11 @@ export async function openChannel(code: string, role: Role, onMsg: (m: Msg) => v
     // supabase-js keeps rejoining on its own after an error; the banner says so meanwhile
     sub.subscribe(status => {
       if (status === 'SUBSCRIBED') trouble(null);
-      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') trouble(role === 'host' ? 'realtime_down' : 'realtime_board');
+      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') trouble(down);
     });
-    let failing = 0;
+    // every send goes over HTTPS, so a phone is seen by the big screen even when its websocket can't connect
     return {
-      send: m => void out.httpSend('m', m).then(
-        () => { if (failing >= 3) trouble(null); failing = 0; },
-        e => { console.error('realtime send', e); if (++failing === 3) trouble('realtime_send'); },
-      ),
+      send: m => void out.httpSend('m', m).then(sent, failed),
       close: () => { void client.removeAllChannels(); trouble(null); },
     };
   }
@@ -113,7 +135,7 @@ export const TOUR_ERR: Record<string, string> = {
   bad_id: 'รหัสพนักงานไม่ถูกต้อง (ตัวอักษร/ตัวเลข 3–15 ตัว)',
   key: 'รหัส Host ไม่ถูกต้อง',
   empty: 'ยังไม่มีผู้เล่นในห้อง',
-  realtime: 'ยังไม่ได้ตั้งค่า Realtime (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)',
+  realtime: 'ยังไม่ได้ตั้งค่า Realtime (ABLY_API_KEY + VITE_REALTIME=ably หรือ VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)',
   realtime_down: 'รับสัญญาณจากผู้เล่นไม่ได้ กำลังเชื่อมต่อใหม่…',
   realtime_board: 'ไม่ได้รับอันดับสดจากจอกลาง (ยังแข่งได้ตามปกติ) กำลังเชื่อมต่อใหม่…',
   realtime_send: 'ส่งข้อมูลไปจอกลางไม่ได้ ตรวจอินเทอร์เน็ต กำลังลองใหม่…',

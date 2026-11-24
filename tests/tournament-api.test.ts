@@ -103,3 +103,33 @@ describe('tournament rooms', () => {
     expect(seen.size).toBeGreaterThan(1);
   });
 });
+
+describe('realtime tokens', () => {
+  afterEach(() => { delete process.env.ABLY_API_KEY; });
+
+  it('signs a token for the host and for a seated player, each only for its own way on its own room', async () => {
+    process.env.ABLY_API_KEY = 'appId.keyId:secret';
+    const { code, hostToken } = await room();
+    const { slot, token } = (await call({ action: 'join', code, id: 'E001' })).body;
+    const caps = async (b: Body) => {
+      const r = await call({ action: 'realtime', code, ...b });
+      expect(r.status).toBe(200);
+      expect(r.body.tokenRequest.keyName).toBe('appId.keyId');
+      expect(JSON.stringify(r.body)).not.toContain('secret');
+      return JSON.parse(r.body.tokenRequest.capability);
+    };
+    const up = `safety-run-tour:${code}-up`, down = `safety-run-tour:${code}-down`;
+    expect(await caps({ hostToken })).toEqual({ [up]: ['subscribe'], [down]: ['publish'] });
+    expect(await caps({ slot, token })).toEqual({ [up]: ['publish'], [down]: ['subscribe'] });
+  });
+
+  it('refuses anyone without a seat, and says so when realtime is not set up', async () => {
+    const { code } = await room();
+    const { slot } = (await call({ action: 'join', code, id: 'E001' })).body;
+    expect((await call({ action: 'realtime', code, slot, token: 'x' })).body.error).toBe('realtime');
+    process.env.ABLY_API_KEY = 'appId.keyId:secret';
+    expect((await call({ action: 'realtime', code, slot, token: 'x' })).status).toBe(403);
+    expect((await call({ action: 'realtime', code, slot: 1, token: 'x' })).status).toBe(403);
+    expect((await call({ action: 'realtime', code })).status).toBe(403);
+  });
+});

@@ -96,7 +96,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
     });
     const saved = LS.get<Saved>('srTourRun');
     if (saved && saved.code === r.code && saved.seed === r.seed) race.receive(0, saved.inputs, 0);
-    const mine = race, ch = await openChannel(r.code, 'player', onMsg);
+    const mine = race, ch = await openChannel(r.code, 'player', { slot: seat!.slot, token: seat!.token }, onMsg);
     if (race === mine) channel = ch; else ch.close();
   }
 
