@@ -1,5 +1,6 @@
 import { HAZARD_KINDS, HZ, PPE } from '../shared/hazards.js';
 import { LIFT_HEIGHT, POWER_SECONDS, SLIDE_SECONDS, SPARK_HALF_CYCLE, START_SPEED, STEP, createRun, type Action, type GameObject, type PowerType } from '../shared/sim.js';
+import { ZONES } from '../shared/zones.js';
 import { createRenderer, type SceneState } from './render/index.js';
 import './dev.css';
 
@@ -29,6 +30,9 @@ export async function startDev() {
         <label>Asset or scene <select id="dev-asset"></select></label>
         <label>Distance <output id="dev-depth-value"></output>
           <input id="dev-depth" type="range" min="6" max="62" step=".5" value="18">
+        </label>
+        <label>Area (scenery)
+          <select id="dev-zone"><option value="-1">By distance</option>${ZONES.map((z, i) => `<option value="${i}">${z.en}</option>`).join('')}</select>
         </label>
         <label>Asset lane
           <select id="dev-lane"><option value="-1">Left</option><option value="0" selected>Center</option><option value="1">Right</option></select>
@@ -61,6 +65,9 @@ export async function startDev() {
     const depth = document.querySelector<HTMLInputElement>('#dev-depth')!;
     const depthValue = document.querySelector<HTMLOutputElement>('#dev-depth-value')!;
     const lane = document.querySelector<HTMLSelectElement>('#dev-lane')!;
+    const zone = document.querySelector<HTMLSelectElement>('#dev-zone')!;
+    const q = new URLSearchParams(location.search).get('zone');
+    if (q !== null) zone.value = q;
     const scroll = document.querySelector<HTMLInputElement>('#dev-run')!;
     const play = document.querySelector<HTMLButtonElement>('#dev-play')!;
     const step = document.querySelector<HTMLButtonElement>('#dev-step')!;
@@ -141,7 +148,7 @@ export async function startDev() {
         if (object.k === 'sparks') object.on = motion.tick % (SPARK_HALF_CYCLE * 2) < SPARK_HALF_CYCLE;
       }
       const onLift = lift > 0 || liftPy > 0;
-      const scene: SceneState = { ...view, dist: corridor, objs: objects, inv: 0, ...(onLift && { py: liftPy, vy: 0, slide: 0, lift }) };
+      const scene: SceneState = { ...view, dist: corridor, objs: objects, inv: 0, stageZone: Number(zone.value), ...(onLift && { py: liftPy, vy: 0, slide: 0, lift }) };
       renderer.render({
         s: scene,
         prev: { ...previous, dist: previousCorridor, ...(onLift && { py: prevLiftPy, slide: 0 }) },

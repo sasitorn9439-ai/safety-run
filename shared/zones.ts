@@ -30,27 +30,27 @@ export interface Zone {
 
 export const ZONES: readonly Zone[] = [
   {
-    id: 'entry', th: 'ทางเข้าคลังสินค้า', en: 'Warehouse entrance', tip: 'สวม PPE ให้ครบก่อนเข้าพื้นที่ปฏิบัติงาน', tipEn: 'Full PPE before you enter the work area',
-    kinds: { spill: 2, hose: 2, pipe: 1, forklift: 2, pallet: 2 }, patterns: { single: 7, double: 2 }, tint: 'rgba(0,0,0,0)', accent: '#ffd400',
+    id: 'entry', th: 'หน้าโรงงาน', en: 'Entrance', tip: 'สวม PPE ให้ครบก่อนเข้าพื้นที่ และเดินในทางเดินเท้าที่ตีเส้นไว้', tipEn: 'Full PPE before you go in, and keep to the marked walkway',
+    kinds: { spill: 2, manhole: 2, pipe: 1, forklift: 2, pallet: 2 }, patterns: { single: 7, double: 2 }, tint: 'rgba(0,0,0,0)', accent: '#ffd400',
   },
   {
-    id: 'forklift', th: 'ทางรถโฟล์คลิฟท์', en: 'Forklift lane', tip: 'เดินในช่องทางเดินเท้า หยุดและสบตาคนขับก่อนข้าม', tipEn: 'Stay on the walkway; stop and make eye contact before crossing',
+    id: 'forklift', th: 'พื้นที่โกดัง', en: 'Warehouse', tip: 'ระวังรถโฟล์คลิฟท์ หยุดและสบตาคนขับก่อนข้าม ห้ามปีนชั้นวางสินค้า', tipEn: 'Watch for forklifts: stop and make eye contact before crossing; never climb the racks',
     kinds: { forklift: 5, pallet: 3, spill: 1, hose: 1 }, patterns: { single: 3, double: 3, slalom: 5 }, ppe: 'boots', tint: 'rgba(255,170,0,.10)', accent: '#ffaa00',
   },
   {
-    id: 'chemical', th: 'พื้นที่สารเคมี', en: 'Chemical area', tip: 'ตรวจ SDS สวมแว่นและถุงมือ เจอของเหลวหกให้แจ้ง', tipEn: 'Check the SDS, wear glasses and gloves, report spills',
+    id: 'chemical', th: 'ห้องเก็บสารเคมี', en: 'Chemical room', tip: 'อ่าน SDS ก่อนใช้ สวมแว่นและถุงมือ เจอสารหกให้กั้นพื้นที่และแจ้งทันที', tipEn: 'Read the SDS first, wear glasses and gloves; cordon off and report any spill',
     kinds: { spill: 4, hose: 2, fumes: 4, pallet: 1 }, patterns: { single: 3, double: 2, lowwall: 4, jumpslide: 1 }, ppe: 'glasses', tint: 'rgba(120,220,60,.12)', accent: '#9be34a',
   },
   {
-    id: 'height', th: 'งานบนที่สูง / นั่งร้าน', en: 'Work at height', tip: 'ตรวจนั่งร้านก่อนใช้ทุกครั้ง สวมหมวกนิรภัยคาดสายรัดคาง', tipEn: 'Inspect scaffolding before use; hard hat with the chin strap on',
+    id: 'height', th: 'งานบนที่สูง', en: 'Work at height', tip: 'ตรวจนั่งร้านก่อนใช้ สูงเกิน 2 เมตรต้องคาดเข็มขัดนิรภัย และคาดสายรัดคางหมวก', tipEn: 'Inspect the scaffold first; above 2 m wear a harness, and fasten your chin strap',
     kinds: { pipe: 5, drop: 4, pallet: 1, forklift: 1 }, patterns: { single: 3, double: 2, highwall: 4, jumpslide: 3 }, ppe: 'helmet', tint: 'rgba(90,170,255,.11)', accent: '#5aaaff',
   },
   {
-    id: 'electrical', th: 'ห้องไฟฟ้า', en: 'Electrical room', tip: 'LOTO ล็อกและแขวนป้ายก่อนซ่อม เก็บสายไฟให้พ้นทางเดิน', tipEn: 'Lock out and tag out before repairs; keep cables off the walkway',
+    id: 'electrical', th: 'ไลน์ผลิต', en: 'Production', tip: 'ห้ามถอดการ์ดเครื่องจักร ทำ LOTO ก่อนซ่อมทุกครั้ง เก็บสายไฟให้พ้นทางเดิน', tipEn: 'Never remove machine guards; lock out and tag out before repairs; keep cables off the walkway',
     kinds: { hose: 4, sparks: 5, pipe: 2 }, patterns: { single: 2, double: 3, lowwall: 3, jumpslide: 3, slalom: 2 }, ppe: 'gloves', tint: 'rgba(110,90,255,.14)', accent: '#a08aff',
   },
   {
-    id: 'evac', th: 'ซ้อมหนีไฟ', en: 'Evacuation drill', tip: 'รู้ทางหนีไฟ ไม่วิ่งสวนทาง ไปรวมพลที่จุดนัดหมาย', tipEn: 'Know your exits and go to the assembly point',
+    id: 'evac', th: 'ซ้อมหนีไฟ', en: 'Evacuation drill', tip: 'ได้ยินสัญญาณเตือนให้หยุดงาน เดินตามป้ายทางหนีไฟ ไปรวมพลที่จุดนัดหมาย', tipEn: 'When the alarm sounds, stop work, follow the exit signs and go to the assembly point',
     kinds: { spill: 1, hose: 1, pipe: 1, forklift: 1, pallet: 1, fumes: 1, drop: 1, sparks: 1 }, patterns: { single: 2, double: 3, slalom: 3, lowwall: 2, highwall: 2, jumpslide: 3 }, ppe: 'ear', tint: 'rgba(255,60,50,.12)', accent: '#ff5a4a',
   },
 ];
@@ -67,6 +67,9 @@ export function zoneAt(dist: number): ZoneAt {
   const k = Math.floor((dist - ZONE_FIRST) / ZONE_LENGTH), index = 1 + (k % (ZONES.length - 1));
   return { index, zone: ZONES[index]!, n: k + 2 };
 }
+
+/** the area at metre `dist`: by distance, or always `fixed` (a tournament stage set to one area; -1 = by distance) */
+export const zoneIndexAt = (dist: number, fixed = -1): number => (fixed >= 0 ? fixed : zoneAt(dist).index);
 
 /** Safety points, one at a time, from the Toolbox Talk box (a short talk before the work starts) */
 export const TIPS: readonly string[] = [

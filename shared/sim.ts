@@ -154,6 +154,8 @@ export interface RunView {
   sur: Surprise | null; dbl: number; hitKind: HazardKind | null;
   /** which area we are in: index into ZONES, and how many areas have been entered (1-based) */
   zone: number; zoneN: number;
+  /** the tournament stage's one area (index into ZONES), or -1 when the area changes with distance */
+  stageZone: number;
   /** near-miss combo and its multiplier (1..MULT_MAX), seconds left before the combo runs out */
   combo: number; mult: number; comboT: number;
   /** seconds left on the E-Stop, the 5S broom and the man-lift; first-aid hearts in stock (0 or 1) */
@@ -304,7 +306,8 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       const rows = frees.map((f, i) => ({ z: ZMAX + i * gap, hz: [-1, 0, 1].filter(l => l !== f).map(l => ({ k: (random() < 0.5 ? 'forklift' : 'pallet') as HazardKind, l })) }));
       return { rows, free: frees };
     }
-    const low = () => [-1, 0, 1].map(l => ({ k: (random() < 0.5 ? 'spill' : 'hose') as HazardKind, l }));
+    const tripHazard = zone.id === 'entry' ? 'manhole' : 'hose';
+    const low = () => [-1, 0, 1].map(l => ({ k: (random() < 0.5 ? 'spill' : tripHazard) as HazardKind, l }));
     const high = () => [-1, 0, 1].map(l => ({ k: 'pipe' as HazardKind, l }));
     if (id === 'lowwall') return { rows: [{ z: ZMAX, hz: low() }], free: [null] };
     if (id === 'highwall') return { rows: [{ z: ZMAX, hz: high() }], free: [null] };
@@ -714,7 +717,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     },
     view: () => ({
       dist, lane, px, py, vy, slide, objs, got, shield, inv, revives, coins, bonus, earned, toast, toastT, flash, sur, dbl, hitKind,
-      zone: zoneOf(dist).index, zoneN: zoneOf(dist).n, combo, mult: mult(), comboT, slow, magnet, lift, hearts, pendingBonus,
+      zone: zoneOf(dist).index, zoneN: zoneOf(dist).n, stageZone: tourZone, combo, mult: mult(), comboT, slow, magnet, lift, hearts, pendingBonus,
       tour: tour && {
         ticksLeft: Math.max(0, tour.durationTicks - tick), gate,
         sprint, think, stun, loto, buddy, streak, correct: correctN, wrong: wrongN, crashes,

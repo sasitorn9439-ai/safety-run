@@ -104,6 +104,31 @@ export function drawHazard(c: Ctx, k: HazardKind, u: number, blink = false) {
     c.fillText('!', sign + u * .019, g - u * .065);
     c.restore();
   }
+  if (k === 'manhole') {
+    // Cast-iron rim, exposed shaft wall and recessed opening.
+    for (const [y, width, height, color] of [
+      [0, .48, .22, '#b2b6b7'], [0, .43, .18, '#535453'], [.024, .40, .14, '#191e22'],
+    ] as const) {
+      c.fillStyle = color; c.beginPath();
+      c.ellipse(0, y*u, width*u, height*u, 0, 0, Math.PI*2); c.fill();
+    }
+    c.strokeStyle = '#b7a16d'; c.lineWidth = .021*u;
+    for (const y of [-.115, -.061]) {
+      c.beginPath(); c.moveTo(-.11*u, y*u); c.lineTo(.07*u, y*u); c.stroke();
+    }
+    // Rest the cover across the far-right rim, tread facing up.
+    c.save(); c.translate(.32*u, -.30*u); c.scale(u, u*.44);
+    c.fillStyle = '#34393b'; c.beginPath(); c.arc(0, .055, .42, 0, Math.PI*2); c.fill();
+    c.fillStyle = '#858986'; c.beginPath(); c.arc(0, 0, .42, 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#535957'; c.lineWidth = .027;
+    c.beginPath(); c.arc(0, 0, .35, 0, Math.PI*2); c.stroke();
+    for (const y of [-.14, 0, .14]) {
+      for (const x of [-.16, .02]) {
+        c.beginPath(); c.moveTo(x, y+.05); c.lineTo(x+.09, y-.05); c.stroke();
+      }
+    }
+    c.restore();
+  }
   if (k === 'hose') {
     c.save(); c.lineCap = 'round';
     c.beginPath();
@@ -236,6 +261,7 @@ export const HAZARD_BOX: Record<HazardKind, [number, number, number, number]> = 
   drop: [-.6, -.2, .6, .14],
   sparks: [-.62, -.78, .62, .06],
   spill: [-.62, -.54, .62, .24],
+  manhole: [-.51, -.60, .81, .25],
   hose: [-.56, -.5, .56, .2],
   pipe: [-.58, -2.02, .58, .06],
   pallet: [-.5, -1.22, .5, .06],
@@ -348,10 +374,10 @@ export function drawMascotSlide(c: Ctx, progress: number) {
 /* ---------- scenery (art units; origin as noted) ---------- */
 
 /** Corridor pillar, origin = bottom centre. 0.38 wide, 7.2 tall, hazard stripes at the base. */
-export function drawPillar(c: Ctx, u: number) {
+export function drawPillar(c: Ctx, u: number, white = false) {
   const w = .38 * u, h = 7.2 * u;
-  c.fillStyle = '#4a5059'; c.fillRect(-w / 2, -h, w, h);
-  c.fillStyle = '#5d646e'; c.fillRect(-w / 2, -h, w * .35, h);
+  c.fillStyle = white ? '#d5d9d8' : '#4a5059'; c.fillRect(-w / 2, -h, w, h);
+  c.fillStyle = white ? '#f5f6f2' : '#5d646e'; c.fillRect(-w / 2, -h, w * .35, h);
   const bh = .5 * u;
   for (let i = 0; i < 4; i++) { c.fillStyle = i % 2 ? '#1a1a1a' : '#ffd400'; c.fillRect(-w / 2, -bh + i * bh / 4, w, bh / 4); }
 }

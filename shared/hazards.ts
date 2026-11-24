@@ -1,6 +1,6 @@
-export type HazardKind = 'spill' | 'hose' | 'pipe' | 'forklift' | 'pallet' | 'fumes' | 'drop' | 'sparks';
+export type HazardKind = 'spill' | 'manhole' | 'hose' | 'pipe' | 'forklift' | 'pallet' | 'fumes' | 'drop' | 'sparks';
 /**
- * The first five stand still. The other three move or change:
+ * Most hazards stand still. The other three move or change:
  *   fumes  – a chemical cloud that drifts sideways across the lanes (block: get out of its way)
  *   drop   – a load that falls on whichever lane you are in, a red mark follows you and then locks (block: leave the lane once it locks)
  *   sparks – an electrical arc that is on for half a second, off for half a second (low: jump it, or run through it while it is off)
@@ -20,6 +20,7 @@ export interface Hazard {
 
 export const HZ: Record<HazardKind, Hazard> = {
   spill: { t: 'low', th: 'พื้นเปียก / สารเคมีหก', en: 'Wet floor / chemical spill', tip: 'เห็นของเหลวหก ให้หยุด กั้นพื้นที่ วางป้ายเตือน แจ้งผู้รับผิดชอบ และตรวจ SDS หากเป็นสารเคมี', tipEn: 'Stop, barricade, put up a sign and report it. Check the SDS if it is a chemical.' },
+  manhole: { t: 'low', th: 'หลุมท่อเปิด', en: 'Open manhole', tip: 'หลีกเลี่ยงช่องเปิด กั้นพื้นที่ และแจ้งผู้รับผิดชอบให้ติดตั้งฝาปิดที่มั่นคง', tipEn: 'Keep clear of the opening. Barricade the area and report the missing cover.' },
   hose: { t: 'low', th: 'สายไฟ/สายยางพาดทางเดิน', en: 'Cables and hoses across the walkway', tip: 'จัดเก็บสายให้เรียบร้อย ใช้รางครอบสายหรือเดินสายด้านบน ห้ามพาดผ่านทางเดิน', tipEn: 'Route cables overhead or use cable covers. Keep walkways clear of trip hazards.' },
   pipe: { t: 'high', th: 'นั่งร้าน/โครงสร้างอยู่ต่ำ', en: 'Scaffolding / low overhead clearance', tip: 'สวมหมวกนิรภัยตลอดเวลาในพื้นที่ผลิต และทำแถบเหลือง-ดำที่จุดต่ำเพื่อเตือน', tipEn: 'Wear your hard hat in production areas and mark low points with yellow-black tape.' },
   forklift: { t: 'block', th: 'รถโฟล์คลิฟท์', en: 'Forklift traffic', tip: 'เดินในช่องทางเดินเท้าเท่านั้น หยุดและสบตาคนขับก่อนข้าม ห้ามเดินตัดหน้ารถ', tipEn: 'Use pedestrian walkways only. Stop and make eye contact with the driver before crossing.' },

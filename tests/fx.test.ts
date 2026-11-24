@@ -147,10 +147,26 @@ describe('pose', () => {
 });
 
 describe('envItems', () => {
-  it('always fills the corridor with pillars on both sides and a light every 8 m', () => {
+  it('spaces both rows of pillars every 24 m in each stage and across the entrance boundary', () => {
+    for (const zone of [undefined, 0, 1, 2, 3, 4, 5]) {
+      const out: EnvItem[] = [];
+      const dist = 775;
+      const count = envItems(dist, out, zone);
+      for (const lane of [-2.4, 2.4]) {
+        const positions = out.slice(0, count).filter(i => !i.light && i.l === lane).map(i => i.z + dist);
+        expect(positions.slice(0, 3)).toEqual([792, 816, 840]);
+      }
+    }
+  });
+  it('leaves the entrance sky clear of ceiling lights', () => {
+    const out: EnvItem[] = [];
+    const count = envItems(0, out, 0);
+    expect(out.slice(0, count).some(item => item.light)).toBe(false);
+  });
+  it('fills indoor corridors with pillars on both sides and a light every 8 m', () => {
     for (const d of [0, 3.7, 11.9, 1234.5]) {
       const out: EnvItem[] = [];
-      const n = envItems(d, out);
+      const n = envItems(d, out, 1);
       const items = out.slice(0, n);
       expect(items.filter(i => !i.light && i.l < 0).length).toBe(items.filter(i => !i.light && i.l > 0).length);
       expect(items.filter(i => i.light).length).toBeGreaterThanOrEqual(8);
