@@ -120,7 +120,7 @@ describe('realtime tokens', () => {
     };
     const up = `safety-run-tour:${code}-up`, down = `safety-run-tour:${code}-down`;
     expect(await caps({ hostToken })).toEqual({ [up]: ['subscribe'], [down]: ['publish'] });
-    expect(await caps({ slot, token })).toEqual({ [up]: ['publish'], [down]: ['subscribe'] });
+    expect(await caps({ slot, token })).toEqual({ [up]: ['publish', 'subscribe'], [down]: ['subscribe'] });
   });
 
   it('gives a player the same client id in every room, without their employee id', async () => {

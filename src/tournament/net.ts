@@ -1,4 +1,4 @@
-import type { InputEntry, StageId } from '../../shared/sim.js';
+import { STEP, type InputEntry, type StageId } from '../../shared/sim.js';
 import type { TokenRequest } from '@ably/pubsub-device';
 import { tourTopic } from '../../shared/tour-channels.js';
 import { api, type ApiResult } from '../lib/api.js';
@@ -49,6 +49,15 @@ export class Clock {
 }
 
 export interface Channel { send(m: Msg): void; close(): void }
+
+const ABLY = import.meta.env.VITE_REALTIME === 'ably';
+/**
+ * A phone reports its race this often. On Ably the other phones hear the reports directly, so their ghosts are only this plus one
+ * hop behind; a room of three then costs about 128 messages a second (Free: 500). Supabase's Free limit (100) allows 250 ms.
+ */
+export const SEND_MS = ABLY ? 100 : 250;
+/** the big screen runs each race this far behind the phone (in ticks), so the phone's next report has arrived before it gets there */
+export const DELAY_TICKS = Math.round((SEND_MS + 350) / 1000 / STEP);
 export type Role = 'host' | 'player';
 /** who is asking for the room's channels: the big screen's host token, or a player's seat */
 export type SeatAuth = { hostToken: string } | { slot: Slot; token: string };
@@ -76,16 +85,18 @@ export async function openChannel(code: string, role: Role, auth: SeatAuth, onMs
   const sent = () => { if (failing >= 3) trouble(null); failing = 0; };
   const failed = (e: unknown) => { console.error('realtime send', e); if (++failing === 3) trouble('realtime_send'); };
 
-  if (import.meta.env.VITE_REALTIME === 'ably') {
+  if (ABLY) {
     const { createClient } = await import('@ably/pubsub-device');
     const client = createClient({
+      echoMessages: false,
       authCallback: (_params, done) => void tourApi<{ tokenRequest: TokenRequest }>('realtime', { code, ...auth })
         .then(r => (r.ok ? done(null, r.tokenRequest!) : done(errText(r.error), null))),
     });
-    // channel modes: each side attaches only to hear or only to speak, so nobody is sent the messages it would ignore
-    const out = client.channels.get(speak, { modes: ['PUBLISH'] });
+    // channel modes: the big screen only speaks down and only hears up. A phone hears down, and also hears the other phones on up,
+    // so it gets their positions straight from them instead of a hop later through the big screen
     const sub = client.channels.get(listen, { modes: ['SUBSCRIBE'] });
-    void sub.subscribe('m', msg => onMsg(msg.data as Msg));
+    const out = client.channels.get(speak, { modes: role === 'host' ? ['PUBLISH'] : ['PUBLISH', 'SUBSCRIBE'] });
+    for (const ch of role === 'host' ? [sub] : [sub, out]) void ch.subscribe('m', msg => onMsg(msg.data as Msg));
     // the client reconnects (and falls back to other hosts and transports) by itself; the banner says so meanwhile
     client.connection.on(change => {
       if (change.current === 'connected') trouble(null);

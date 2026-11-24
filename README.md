@@ -90,7 +90,8 @@ start a rematch with the same players.
 * **The big screen doesn't stream video.** Each phone sends its `[tick, action]` presses, with where it is and how many times it has
   jumped and slid, every 250 ms. The host runs the three races itself, 0.6 s behind, and shows one of them: the one with a question up, a
   new leader, or each in turn (or the one you tap). Twice a second it sends the standings and every runner's position down to the phones,
-  which draw the others as ghosts ahead of or behind them.
+  which draw the others as ghosts ahead of or behind them. On Ably the phones also hear each other's reports directly, every 100 ms, so
+  a ghost is about 70 ms behind (`SEND_MS` and `DELAY_TICKS` in `src/tournament/net.ts`).
   A room has two one-way channels (`safety-run-tour:CODE-up` phones → host, `safety-run-tour:CODE-down` host → phones), and each side
   receives only what is meant for it: every delivery counts against the realtime plan's messages per second.
 * **Scores** come from `api/tournament` replaying each phone's presses with the room's seed (`replayTour`). Ties go to the most right

@@ -5,7 +5,7 @@ import { $, esc } from '../lib/dom.js';
 import { LS } from '../lib/storage.js';
 import type { GameRenderer } from '../render/index.js';
 import { Hud } from '../ui/hud.js';
-import { Clock, errText, fmtTime, openChannel, tourApi, type Board, type Channel, type Msg, type Room, type Slot } from './net.js';
+import { Clock, SEND_MS, errText, fmtTime, openChannel, tourApi, type Board, type Channel, type Msg, type Room, type Slot } from './net.js';
 import { Ghosts } from './ghosts.js';
 import { Race } from './race.js';
 import { GatePanel, fxHtml, itemListHtml } from './ui.js';
@@ -13,8 +13,6 @@ import { GatePanel, fxHtml, itemListHtml } from './ui.js';
 interface Seat { code: string; slot: Slot; token: string; avatar: number }
 interface Saved { code: string; seed: number; inputs: Race['inputs'] }
 
-/** a phone reports its race this often (the big screen runs DELAY_TICKS in host.ts behind to absorb it) */
-const SEND_MS = 250;
 
 const SCREENS = ['tMenu', 'tLobby', 'tResult', 'howOv', 'hLogin'] as const;
 export const showScreen = (id: (typeof SCREENS)[number] | null) => { for (const s of SCREENS) $(s).classList.toggle('on', s === id); };
@@ -102,6 +100,8 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
 
   function onMsg(m: Msg) {
     if (m.t === 'board') { board = m.board; if (race) ghosts.see(m.board, race.elapsed(clock.now())); }
+    // on Ably another phone's own report reaches this one directly; the ghost takes whichever is newer
+    else if (m.t === 'in' && m.slot !== seat?.slot && race) ghosts.see([[m.slot, 0, m.tick, m.d, m.l, m.j, m.s]], race.elapsed(clock.now()));
     else if (m.t === 'audited' && m.to === seat?.slot) audits++;
   }
 

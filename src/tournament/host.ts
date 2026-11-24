@@ -3,13 +3,11 @@ import { STEP } from '../../shared/sim.js';
 import { avName, avImg } from '../lib/avatar.js';
 import { $, esc } from '../lib/dom.js';
 import type { GameRenderer } from '../render/index.js';
-import { Clock, STAGE_NAMES, errText, fmtTime, openChannel, tourApi, type Channel, type Msg, type Room, type Slot } from './net.js';
+import { Clock, DELAY_TICKS, STAGE_NAMES, errText, fmtTime, openChannel, tourApi, type Channel, type Msg, type Room, type Slot } from './net.js';
 import { Race } from './race.js';
 import { showScreen } from './player.js';
 import { GatePanel, fxHtml } from './ui.js';
 
-/** the host runs each race this far behind the phone (0.6 s), so the phone's report every 250 ms has arrived before it gets there */
-const DELAY_TICKS = 36;
 /** auto camera: stay at least this long on someone, and move on after ROTATE_MS when nothing is happening */
 const DWELL_MS = 2500, ROTATE_MS = 8000;
 /**
