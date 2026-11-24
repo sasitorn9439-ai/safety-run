@@ -66,8 +66,8 @@ export async function startApp() {
     setTimeout(() => show('over'), 350);
   }
 
-  /* ---------- how to play and what's new: modals over the menu ---------- */
-  function menuModal(name: 'how' | 'news', onClose = () => {}) {
+  /* ---------- how to play, prizes and what's new: modals over the menu ---------- */
+  function menuModal(name: 'how' | 'news' | 'prize', onClose = () => {}) {
     const ov = $(name + 'Ov');
     const close = () => { ov.classList.remove('on'); $(name + 'Btn').focus(); onClose(); };
     const open = () => { ov.classList.add('on'); $(name + 'Close').focus({ preventScroll: true }); ov.querySelector('.card')!.scrollTop = 0; };
@@ -76,7 +76,7 @@ export async function startApp() {
     ov.onclick = e => { if (e.target === ov) close(); };   // a tap on the dimmed backdrop closes it
     return { ov, open, close };
   }
-  const how = menuModal('how');
+  const how = menuModal('how'), prize = menuModal('prize');
   // what's new opens by itself once per version
   const newsVersion = $('newsOv').dataset.version!;
   const news = menuModal('news', () => LS.set('srNewsSeen', newsVersion));
@@ -152,7 +152,7 @@ export async function startApp() {
   addEventListener('pointercancel', () => { swiping = false; });
   const KEYS: Record<string, Action> = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', arrowup: 'up', w: 'up', ' ': 'up', arrowdown: 'down', s: 'down' };
   addEventListener('keydown', e => {
-    for (const m of [news, how]) if (e.key === 'Escape' && m.ov.classList.contains('on')) { m.close(); return; }
+    for (const m of [news, how, prize]) if (e.key === 'Escape' && m.ov.classList.contains('on')) { m.close(); return; }
     if ((e.target as HTMLElement).tagName === 'INPUT') return;
     const k = e.key.toLowerCase();
     if (k === 'escape' || k === 'p') {

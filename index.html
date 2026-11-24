@@ -45,11 +45,7 @@
 <img src="/assets/mascot-2d/menu-runner.png" alt="" width="112" height="112">
 </header>
 <p class="sub">หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><strong>เล่นได้หลายรอบ นับคะแนนสูงสุด</strong><br>กรอกรหัสพนักงานเพื่อรับไอคอนบนตารางอันดับ</p>
-<div class="prizes" aria-label="รางวัล">
-<div class="prize p1"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="16" y="2" width="12" height="40" rx="5" fill="#1b1d21"/><rect x="11" y="11" width="22" height="22" rx="6" fill="#2b2f36" stroke="#ffd400" stroke-width="1.5"/><rect x="14" y="14" width="16" height="16" rx="4" fill="#0e1a24"/><path d="M17 23h3l2-4 2 7 2-3h2" fill="none" stroke="#5ad1ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>อันดับ 1 · 1st prize</b><span>HUAWEI Band 11 Series (Polym Black)</span></div></div>
-<div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="3" y="9" width="38" height="26" rx="4" fill="#2e9e47"/><g fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="13" y="14" width="11" height="16" rx="1.5"/><path d="M13 20h11"/><path d="M24 19h3a2 2 0 0 1 2 2v5a2 2 0 0 0 4 0v-8l-3-3"/></g></svg><div><b>อันดับ 2 ถึง 5 · 2nd to 5th prize</b><span>บัตรเติมน้ำมัน มูลค่า 500 บาท</span></div></div>
-<div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M5 22a17 15 0 0 1 34 0z" fill="#ff7a1a"/><path d="M5 22c3-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 5.5-2 8.5 0" fill="none" stroke="#c45c10" stroke-width="1.5"/><path d="M22 7v26a4 4 0 0 1-8 0" fill="none" stroke="#cfd6de" stroke-width="2.2" stroke-linecap="round"/></svg><div><b>อันดับ 6 และ 7 · 6th &amp; 7th prize</b><span>BEZ ร่มพับอัตโนมัติ</span></div></div>
-</div>
+<button class="btn alt prize-btn" id="prizeBtn" type="button" aria-haspopup="dialog">🏆 ดูของรางวัล Top 7 · Prizes</button>
 <form id="login" autocomplete="off">
 <label class="field">รหัสพนักงาน · Employee ID<input id="empId" maxlength="15" required autocapitalize="characters"></label>
 <p class="msg" id="loginMsg"></p>
@@ -77,6 +73,17 @@
 </ul>
 <p class="small">กดเริ่มแล้วนับเป็น 1 ครั้งทันที ห้ามปิดหน้าจอระหว่างเล่น · กดปุ่ม ‖ เพื่อหยุดชั่วคราว · คอมพิวเตอร์ใช้ปุ่มลูกศร หยุดด้วย P หรือ Esc</p>
 <button class="btn" id="howClose" type="button">เข้าใจแล้ว · Got it</button>
+</div></div>
+
+<div class="ov how" id="prizeOv" role="dialog" aria-modal="true" aria-labelledby="prizeTitle"><div class="card scroll">
+<h2 id="prizeTitle">ของรางวัล · Prizes</h2>
+<div class="prizes">
+<div class="prize p1"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="16" y="2" width="12" height="40" rx="5" fill="#1b1d21"/><rect x="11" y="11" width="22" height="22" rx="6" fill="#2b2f36" stroke="#ffd400" stroke-width="1.5"/><rect x="14" y="14" width="16" height="16" rx="4" fill="#0e1a24"/><path d="M17 23h3l2-4 2 7 2-3h2" fill="none" stroke="#5ad1ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>อันดับ 1 · 1st prize</b><span>HUAWEI Band 11 Series (Polym Black)</span></div></div>
+<div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="3" y="9" width="38" height="26" rx="4" fill="#2e9e47"/><g fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="13" y="14" width="11" height="16" rx="1.5"/><path d="M13 20h11"/><path d="M24 19h3a2 2 0 0 1 2 2v5a2 2 0 0 0 4 0v-8l-3-3"/></g></svg><div><b>อันดับ 2 ถึง 5 · 2nd to 5th prize</b><span>บัตรเติมน้ำมัน มูลค่า 500 บาท</span></div></div>
+<div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M5 22a17 15 0 0 1 34 0z" fill="#ff7a1a"/><path d="M5 22c3-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 5.5-2 8.5 0" fill="none" stroke="#c45c10" stroke-width="1.5"/><path d="M22 7v26a4 4 0 0 1-8 0" fill="none" stroke="#cfd6de" stroke-width="2.2" stroke-linecap="round"/></svg><div><b>อันดับ 6 และ 7 · 6th &amp; 7th prize</b><span>BEZ ร่มพับอัตโนมัติ</span></div></div>
+</div>
+<p class="small">นับคะแนนสูงสุดของแต่ละคน รักษาอันดับไว้จนประกาศผล</p>
+<button class="btn" id="prizeClose" type="button">ปิด · Close</button>
 </div></div>
 
 <div class="ov how" id="newsOv" data-version="0.0.1" role="dialog" aria-modal="true" aria-labelledby="newsTitle"><div class="card scroll">
