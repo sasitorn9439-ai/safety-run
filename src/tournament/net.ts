@@ -44,61 +44,56 @@ export class Clock {
 }
 
 export interface Channel { send(m: Msg): void; close(): void }
+export type Role = 'host' | 'player';
 
-/**
- * One channel per room. Supabase Realtime (broadcast) when VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set;
- * under `npm run dev` without them, the dev server's relay (server/dev-api.ts).
- */
-async function openChannel(code: string, onMsg: (m: Msg) => void): Promise<Channel> {
-  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined, key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-  if (url && key) {
-    const { createClient } = await import('@supabase/supabase-js');
-    const client = createClient(supabaseUrl(url), key, { auth: { persistSession: false } });
-    const ch = client.channel(`safety-run-tour-${code}`, { config: { broadcast: { self: false } } });
-    ch.on('broadcast', { event: 'm' }, ({ payload }) => onMsg(payload as Msg));
-    await new Promise<void>((resolve, reject) => ch.subscribe(status => {
-      if (status === 'SUBSCRIBED') resolve();
-      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') reject(new Error(status));
-    }));
-    return {
-      send: m => void ch.send({ type: 'broadcast', event: 'm', payload: m }),
-      close: () => void client.removeChannel(ch),
-    };
-  }
-  if (!import.meta.env.DEV) throw new Error('realtime');
-  const me = Math.random().toString(36).slice(2);
-  const es = new EventSource(`/api/relay?room=${encodeURIComponent(code)}`);
-  es.onmessage = e => { const { from, m } = JSON.parse(e.data) as { from: string; m: Msg }; if (from !== me) onMsg(m); };
-  await new Promise<void>(resolve => { es.onopen = () => resolve(); });
-  return {
-    send: m => void fetch('/api/relay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ room: code, msg: { from: me, m } }) }),
-    close: () => es.close(),
-  };
-}
+const topic = (code: string, way: 'up' | 'down') => `safety-run-tour-${code}-${way}`;
 
 /** the project URL; the bare project ref the dashboard shows as the project ID works too */
 export const supabaseUrl = (v: string) => (/^https?:\/\//.test(v.trim()) ? v.trim() : `https://${v.trim()}.supabase.co`);
 
 /**
- * Opens the room's channel and keeps trying every few seconds while `wanted()` holds, with a banner over the screen meanwhile:
- * a phone that can't reach the channel is invisible to the big screen, so that must never fail quietly.
+ * The room's two one-way channels. Phones send their presses *up* to the big screen; the big screen sends standings and Spot Audits
+ * *down*. Every send goes over HTTPS, so a phone is seen by the big screen even when its websocket can't connect, and each side
+ * listens only to what is meant for it. Supabase counts every delivery as a message, so this keeps a room to about a third of what
+ * one shared channel cost, well under the plan's per-second limit (over it, Supabase disconnects clients).
+ * Supabase Realtime when VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set; the dev server's relay under `npm run dev` without them.
+ * Problems show as a banner over the screen: a phone the big screen can't see must never fail quietly.
  */
-export async function connect(code: string, onMsg: (m: Msg) => void, wanted: () => boolean): Promise<Channel | null> {
+export async function openChannel(code: string, role: Role, onMsg: (m: Msg) => void): Promise<Channel> {
+  const listen = topic(code, role === 'host' ? 'up' : 'down'), speak = topic(code, role === 'host' ? 'down' : 'up');
   const banner = document.getElementById('tNet');
-  for (;;) {
-    try {
-      const ch = await openChannel(code, onMsg);
-      banner?.classList.remove('on');
-      if (wanted()) return ch;
-      ch.close();
-      return null;
-    } catch (e) {
-      console.error('realtime channel', e);
-      if (banner) { banner.textContent = errText((e as Error).message === 'realtime' ? 'realtime' : 'realtime_down'); banner.classList.add('on'); }
-      await new Promise(r => setTimeout(r, 3000));
-      if (!wanted()) { banner?.classList.remove('on'); return null; }
-    }
+  const trouble = (key: string | null) => {
+    banner?.classList.toggle('on', !!key);
+    if (banner && key) banner.textContent = errText(key);
+  };
+  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined, key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  if (url && key) {
+    const { createClient } = await import('@supabase/supabase-js');
+    const client = createClient(supabaseUrl(url), key, { auth: { persistSession: false } });
+    const out = client.channel(speak);
+    const sub = client.channel(listen, { config: { broadcast: { self: false } } });
+    sub.on('broadcast', { event: 'm' }, ({ payload }) => onMsg(payload as Msg));
+    // supabase-js keeps rejoining on its own after an error; the banner says so meanwhile
+    sub.subscribe(status => {
+      if (status === 'SUBSCRIBED') trouble(null);
+      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') trouble(role === 'host' ? 'realtime_down' : 'realtime_board');
+    });
+    let failing = 0;
+    return {
+      send: m => void out.httpSend('m', m).then(
+        () => { if (failing >= 3) trouble(null); failing = 0; },
+        e => { console.error('realtime send', e); if (++failing === 3) trouble('realtime_send'); },
+      ),
+      close: () => { void client.removeAllChannels(); trouble(null); },
+    };
   }
+  if (!import.meta.env.DEV) { trouble('realtime'); return { send() {}, close() {} }; }
+  const es = new EventSource(`/api/relay?room=${encodeURIComponent(listen)}`);
+  es.onmessage = e => onMsg(JSON.parse(e.data) as Msg);
+  return {
+    send: m => void fetch('/api/relay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ room: speak, msg: m }) }),
+    close: () => es.close(),
+  };
 }
 
 export const STAGE_NAMES: Record<StageId, string> = {
@@ -116,7 +111,9 @@ export const TOUR_ERR: Record<string, string> = {
   key: 'รหัส Host ไม่ถูกต้อง',
   empty: 'ยังไม่มีผู้เล่นในห้อง',
   realtime: 'ยังไม่ได้ตั้งค่า Realtime (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)',
-  realtime_down: 'เชื่อมต่อจอกลางไม่ได้ กำลังลองใหม่…',
+  realtime_down: 'รับสัญญาณจากผู้เล่นไม่ได้ กำลังเชื่อมต่อใหม่…',
+  realtime_board: 'ไม่ได้รับอันดับสดจากจอกลาง (ยังแข่งได้ตามปกติ) กำลังเชื่อมต่อใหม่…',
+  realtime_send: 'ส่งข้อมูลไปจอกลางไม่ได้ ตรวจอินเทอร์เน็ต กำลังลองใหม่…',
   server: 'ระบบขัดข้อง ลองใหม่อีกครั้ง',
 };
 export const errText = (e: string | undefined) => TOUR_ERR[e ?? 'server'] ?? TOUR_ERR.server!;
