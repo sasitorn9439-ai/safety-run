@@ -350,19 +350,22 @@ const fireTracks = (n = 8, len = .62): Part => ({
 
 /**
  * Rays of gold light fanning out from `cy`, turning slowly (12-fold, so one ray's step a loop never shows a seam). In the game
- * they are drawn over the mascot, faint enough to see it through them; `alpha` is the strength at the centre.
+ * they are drawn over the mascot, so they melt away toward the middle (`clear`, a fraction of R) and leave the mascot clear;
+ * `alpha` is their strength where they are brightest.
  */
-const raysDraw = (c: Ctx, t: number, cy: number, R: number, alpha: number, rays = 12) => {
+const raysDraw = (c: Ctx, t: number, cy: number, R: number, alpha: number, clear = 0, rays = 12) => {
   c.save(); c.translate(0, cy); c.rotate(t * TAU / rays);
   for (let k = 0; k < rays; k++) {
     const a = k / rays * TAU, g = c.createLinearGradient(0, 0, Math.cos(a) * R, Math.sin(a) * R);
-    g.addColorStop(0, `rgba(255,224,102,${alpha})`); g.addColorStop(1, 'rgba(255,224,102,0)');
+    if (clear) { g.addColorStop(0, 'rgba(255,224,102,0)'); g.addColorStop(clear * .55, 'rgba(255,224,102,0)'); g.addColorStop(clear, `rgba(255,224,102,${alpha})`); }
+    else g.addColorStop(0, `rgba(255,224,102,${alpha})`);
+    g.addColorStop(1, 'rgba(255,224,102,0)');
     c.fillStyle = g; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, R, a - .09, a + .09); c.closePath(); c.fill();
   }
   c.restore();
 };
 // shorter rays when a crouch or slide lowers the body, so they never reach past the bottom of the frame (y 0.32)
-const sunburst: Part = { front: (c, t, cy) => raysDraw(c, t, cy, Math.min(.68, .31 - cy), .45) };
+const sunburst: Part = { front: (c, t, cy) => raysDraw(c, t, cy, Math.min(.68, .31 - cy), .55, .6) };
 /** the golden aura in an avatar: the glow and the rays behind the mascot, filling the circle */
 const sunburstBackdrop = (c: Ctx, t: number) => {
   const g = c.createRadialGradient(0, 0, .02, 0, 0, .48);
