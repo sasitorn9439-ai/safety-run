@@ -31,10 +31,8 @@
 .t-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .t-opt{display:flex;flex-direction:column;gap:2px;padding:6px;border-radius:10px;background:color-mix(in srgb, var(--c) 22%, #111);border:2px solid var(--c);font-size:13px;line-height:1.25}
 .t-opt b{display:grid;place-items:center;width:24px;height:24px;border-radius:6px;background:var(--c);color:#fff;font-size:15px}
-.t-gate-time{display:flex;align-items:center;gap:8px;margin-top:8px}
-.t-gate-bar{display:block;flex:1;height:10px;border-radius:5px;background:#333;overflow:hidden}
+.t-gate-bar{display:block;height:10px;margin-top:8px;border-radius:5px;background:#333;overflow:hidden}
 .t-gate-bar u{display:block;height:100%;background:var(--y);transform-origin:left}
-.t-gate-time b{min-width:3.2em;color:var(--y);font-size:16px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
 
 /* ---------- phone: lobby, items, results ---------- */
 .t-seats{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
@@ -88,7 +86,6 @@ body.host .hud,body.host .t-race{display:none}
 .h-gate .t-opt b{width:34px;height:34px;font-size:20px}
 .h-gate .t-gate-head{font-size:16px}
 .h-gate .t-gate-bar{height:14px;border-radius:7px}
-.h-gate .t-gate-time b{font-size:clamp(18px, 2vw, 26px)}
 .h-podium{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
 .h-podium li{display:grid;grid-template-columns:28px 56px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border-radius:12px;background:var(--surface)}
 .h-podium li.p1{background:#2a2410;outline:2px solid var(--y)}

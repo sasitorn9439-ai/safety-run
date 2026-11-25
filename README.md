@@ -86,7 +86,7 @@ start a rematch with the same players.
 * **Safety Check.** A row of question cards across all three lanes every 650 m. The world slows down and three gates (A/B/C) come up
   with the answers. Run through the right one for points and a Safety Sprint (2× speed for 3 s); the wrong one slows you down. A right
   answer pays 500 if you take your lane as soon as the gates come up, falling to 100 if you take it at the last moment (`gateScore`,
-  timed from your last lane change; a yellow bar shows the time left and what you would get). That is far more than the pickups: the
+  timed from your last lane change; a yellow bar shows the time left). That is far more than the pickups: the
   near-miss multiplier is off in a tournament. The questions are
   trick questions (`shared/trick-questions.ts`), the same ones in the same order for every player.
 * **Items:** LOTO Lock (moving hazards stop for 8 s), fire extinguisher (clears your lane ahead), Buddy System (auto-dodge for 5 s),
