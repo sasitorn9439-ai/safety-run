@@ -42,6 +42,27 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 .field{display:block;margin-top:12px;font-size:14px;color:var(--secondary)}
 .field input{display:block;width:100%;margin-top:4px;min-height:48px;padding:10px 12px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--ink);font:16px Kanit,sans-serif}
 .field input:focus{outline:none;border-color:var(--y)}
+/* employee ID + padlock: the lock is the login (open → busy while the wardrobe loads → locked) */
+.id-row{display:flex;gap:8px;margin-top:4px}
+.id-row input{flex:1;margin-top:0;transition:border-color .25s,background-color .25s,color .25s}
+.id-row input:read-only{border-color:var(--y);background:#2a2410;color:var(--y);font-weight:600;letter-spacing:.12em}
+.lock{flex:none;display:grid;place-items:center;width:52px;min-height:48px;padding:0;border-radius:10px;border:2px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;transition:background-color .25s,border-color .25s,color .25s}
+.lock svg{width:28px;height:28px;overflow:visible}
+.lock .shackle{fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;transform-box:view-box;transform-origin:8px 11px;transform:translateY(-3.5px) rotate(-28deg);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.lock .body{fill:currentColor;transform-box:view-box;transform-origin:12px 21px}
+.lock .hole{fill:var(--surface);transition:fill .25s}
+.lock:hover{border-color:var(--y);color:var(--ink)}
+.lock[data-state=busy] .shackle{transform:translateY(-1.5px) rotate(-8deg)}
+.lock[data-state=busy] svg{animation:lock-wait .5s ease-in-out infinite alternate}
+.lock[data-state=locked]{background:var(--y);border-color:var(--y);color:#111}
+.lock[data-state=locked] .shackle{transform:none}
+.lock[data-state=locked] .hole{fill:var(--y)}
+.lock[data-state=locked] .body{animation:lock-clunk .4s .18s ease-out}
+.lock.shake{animation:lock-shake .4s ease-in-out}
+@keyframes lock-wait{to{transform:translateY(-2px)}}
+@keyframes lock-clunk{0%{transform:none}40%{transform:scale(1.12,.9)}100%{transform:none}}
+@keyframes lock-shake{20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
+@media (prefers-reduced-motion:reduce){.lock .shackle{transition:none}.lock svg,.lock .body,.lock.shake{animation:none!important}}
 .msg{margin:8px 0 0;color:#ff8a7a;font-size:14px;line-height:1.35}
 .msg:empty{display:none}
 .badge{display:inline-block;color:var(--muted);font-size:13px;margin-bottom:8px}

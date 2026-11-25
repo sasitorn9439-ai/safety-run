@@ -207,28 +207,60 @@ export async function startApp() {
     if (game.state === 'play' || game.state === 'pause' || game.state === 'resume' || game.state === 'tutor') { e.preventDefault(); e.returnValue = ''; }
   });
 
-  /* ---------- login / start ---------- */
-  { const lp = LS.get<{ id?: string }>('srPlayer'); if (lp) ($('empId') as HTMLInputElement).value = lp.id || ''; if (lp?.id) void loadWardrobe(lp.id); }
-  digitsOnly($('empId') as HTMLInputElement);
-  // the wardrobe follows the employee ID typed in: a different ID shows that player's boxes, before any run (a blank or
-  // malformed ID shows none)
-  {
-    let typing = 0;
-    $('empId').addEventListener('input', () => {
-      clearTimeout(typing);
-      typing = window.setTimeout(() => {
-        const id = ($('empId') as HTMLInputElement).value.trim().toUpperCase().replace(/\s+/g, '');
-        if (id === wardId) return;
-        const none = () => {
-          wardId = ''; wardState = null;
-          renderer.setLook(lookOf(EMPTY_WARDROBE)); game.invalidate(); wardrobe.refresh();
-        };
-        // 4 digits, or an older all-digit id the server still knows (e.g. 000); the server says which
-        if (/^[0-9]{1,4}$/.test(id)) { void loadWardrobe(id).then(r => { if (!r && wardId === id) none(); }); return; }
-        none();
-      }, 400);
-    });
+  /* ---------- login / start ----------
+     The padlock beside the employee ID is the login: locking loads that player's wardrobe (so the mascot wears their
+     look before the run), unlocking frees the field for another ID. Start locks it first if nobody tapped the padlock. */
+  const empIn = $<HTMLInputElement>('empId'), lockBtn = $<HTMLButtonElement>('lockBtn');
+  const typedId = () => empIn.value.trim().toUpperCase().replace(/\s+/g, '');
+  let lockedId = '', locking: { id: string; done?: Promise<boolean> } | null = null;
+  function setLock(state: 'open' | 'busy' | 'locked') {
+    lockBtn.dataset.state = state;
+    lockBtn.setAttribute('aria-pressed', String(state === 'locked'));
+    lockBtn.setAttribute('aria-label', state === 'locked' ? 'ล็อคอินแล้ว แตะเพื่อเปลี่ยนรหัส · Logged in, tap to change' : state === 'busy' ? 'กำลังล็อคอิน · Logging in' : 'ล็อคอิน · Log in');
+    empIn.readOnly = state !== 'open';
   }
+  function clearWardrobe() {
+    wardId = ''; wardState = null;
+    renderer.setLook(lookOf(EMPTY_WARDROBE)); game.invalidate(); wardrobe.refresh();
+  }
+  function shakeLock() { lockBtn.classList.remove('shake'); void lockBtn.offsetWidth; lockBtn.classList.add('shake'); }
+  /** logs `id` in: fetches its wardrobe and wears it; false (with a message unless quiet) when the server says no */
+  function lockIn(id: string, quiet = false): Promise<boolean> {
+    if (lockedId === id) return Promise.resolve(true);
+    if (locking?.id === id && locking.done) return locking.done;
+    const msg = $('loginMsg'), me: { id: string; done?: Promise<boolean> } = { id };
+    msg.textContent = ''; wardId = id; setLock('busy'); locking = me;
+    me.done = (async () => {
+      let r: Awaited<ReturnType<typeof api<Wardrobe>>> | null = null;
+      try { r = await api<Wardrobe>('/api/wardrobe', { id }); } catch { /* no connection */ }
+      if (locking !== me) return lockedId === id;               // unlocked or another ID locked meanwhile
+      locking = null;
+      if (r?.ok) {
+        wardState = parseWardrobe(r);
+        renderer.setLook(lookOf(wardState)); game.invalidate(); wardrobe.refresh();
+        lockedId = id; setLock('locked');
+        return true;
+      }
+      clearWardrobe(); setLock('open'); shakeLock();
+      if (!quiet) msg.textContent = r ? ERR[r.error ?? ''] ?? ERR.server! : 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ต · No connection';
+      return false;
+    })();
+    return me.done;
+  }
+  function unlock() {
+    locking = null; lockedId = '';
+    clearWardrobe(); setLock('open');
+    $('loginMsg').textContent = '';
+    empIn.focus(); empIn.select();
+  }
+  digitsOnly(empIn);
+  lockBtn.onclick = () => {
+    if (lockBtn.dataset.state !== 'open') { unlock(); return; }
+    const id = typedId();
+    if (!/^[0-9]{1,4}$/.test(id)) { $('loginMsg').textContent = ERR.bad_id!; shakeLock(); empIn.focus(); return; }   // the server decides 4 digits vs an older id
+    void lockIn(id);
+  };
+  { const lp = LS.get<{ id?: string }>('srPlayer'); if (lp?.id) { empIn.value = lp.id; void lockIn(lp.id, true); } }
 
   async function startRun(id: string, msg: HTMLElement, btn: HTMLButtonElement, label: string) {
     sfx.unlock();
@@ -237,7 +269,6 @@ export async function startApp() {
       const r = await api<StartResp>('/api/start', { id });
       if (r.ok && r.token) {
         LS.set('srPlayer', { id, avatar: r.avatar });
-        if (id !== wardId) void loadWardrobe(id);
         game.sess = { id, token: r.token, run: r.run!, runNo: r.runNo!, avatar: r.avatar!, seed: r.seed! } satisfies Session;
         LS.set('srPending', { ...game.sess, score: 0 });
         game.runLabel = `รอบที่ ${r.runNo} · GO!`;
@@ -252,9 +283,19 @@ export async function startApp() {
   }
   $('login').onsubmit = e => {
     e.preventDefault();
-    const id = ($('empId') as HTMLInputElement).value.trim().toUpperCase().replace(/\s+/g, ''), m = $('loginMsg');
-    if (!/^[0-9]{1,4}$/.test(id)) { m.textContent = ERR.bad_id!; return; }   // the server decides 4 digits vs an older id
-    void startRun(id, m, $<HTMLButtonElement>('startBtn'), 'เริ่มวิ่ง · Start');
+    const id = typedId(), m = $('loginMsg'), btn = $<HTMLButtonElement>('startBtn');
+    if (!/^[0-9]{1,4}$/.test(id)) { m.textContent = ERR.bad_id!; shakeLock(); return; }   // the server decides 4 digits vs an older id
+    if (btn.disabled) return;
+    void (async () => {
+      // not logged in yet (or logged in as someone else): lock the typed ID first so the run starts in their look
+      if (lockedId !== id) {
+        btn.disabled = true;
+        const ok = await lockIn(id);
+        btn.disabled = false;
+        if (!ok) return;
+      }
+      await startRun(id, m, btn, 'เริ่มวิ่ง · Start');
+    })();
   };
 
   /* ---------- leaderboard ---------- */
@@ -360,7 +401,7 @@ export async function startApp() {
   // handy for poking at the game from the browser console while developing
   if (import.meta.env.DEV) Object.assign(window, { __sr: { game, renderer, hud,
     /** local only (the dev server's /api/dev-boxes; production has no such route): __sr.boxes(20) */
-    boxes: async (n = 10) => { if (!wardId) return 'ใส่รหัสพนักงานแล้วเริ่มวิ่งก่อน'; await api('/api/dev-boxes', { id: wardId, n }); await loadWardrobe(wardId); return wardState?.boxes; },
+    boxes: async (n = 10) => { if (!wardId) return 'ใส่รหัสพนักงานแล้วกดปุ่มกุญแจก่อน'; await api('/api/dev-boxes', { id: wardId, n }); await loadWardrobe(wardId); return wardState?.boxes; },
   } });
   const ro = new ResizeObserver(() => { renderer.resize(); game.invalidate(); });
   ro.observe(canvas);
