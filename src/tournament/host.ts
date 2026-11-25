@@ -1,7 +1,6 @@
 import { renderSVG } from 'uqr';
 import { STEP } from '../../shared/sim.js';
 import { avName, avImg } from '../lib/avatar.js';
-import { Sfx } from '../lib/audio.js';
 import { $, esc } from '../lib/dom.js';
 import { lookOfWorn } from '../cosmetics/wardrobe.js';
 import { Music } from '../lib/music.js';
@@ -65,26 +64,20 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
   $('hNew').onclick = () => { sessionStorage.removeItem(hostKey(code)); location.href = '/tournament?newhost'; };
   $('hAuto').onclick = () => setAuto(!auto);
 
-  /* ---------- lobby music ---------- */
+  /* ---------- lobby music: same "PPE พร้อม" song as the Safety Quiz game ---------- */
   // Plays by itself: the click that logged the host in lets this page play sound. After a reload the browser may still
   // hold it back until the first click, which the button says.
-  const sfx = new Sfx(), music = new Music(() => sfx.ctx, LS.get<boolean>('srTourMute') ?? false);
+  const music = new Music(LS.get<boolean>('srTourMute') ?? false);
   const showMute = () => {
-    const locked = sfx.ctx?.state !== 'running';
     $('hMute').setAttribute('aria-pressed', String(music.muted));
-    $('hMuteText').textContent = music.muted ? 'เพลง: ปิด' : locked ? 'คลิกเพื่อเปิดเพลง' : 'เพลง: เปิด';
+    $('hMuteText').textContent = music.muted ? 'เพลง: ปิด' : music.blocked ? 'คลิกเพื่อเปิดเพลง' : 'เพลง: เปิด';
   };
-  const unlock = () => {
-    if (sfx.ctx?.state === 'running') return;
-    sfx.unlock();
-    if (sfx.ctx) sfx.ctx.onstatechange = () => { showMute(); music.setMuted(music.muted); };
-    showMute();
-  };
+  const unlock = () => { music.unlock(); showMute(); };
   unlock();
   addEventListener('pointerdown', unlock);
   $('hMute').onclick = () => {
     // a click that only unlocks the audio starts the music rather than muting it
-    if (music.muted || sfx.ctx?.state === 'running') { music.setMuted(!music.muted); LS.set('srTourMute', music.muted); }
+    if (music.muted || !music.blocked) { music.setMuted(!music.muted); LS.set('srTourMute', music.muted); }
     unlock(); showMute();
   };
   $('hCards').onclick = e => { const b = (e.target as HTMLElement).closest<HTMLElement>('[data-slot]'); if (b) { setAuto(false); look(+b.dataset.slot! as Slot, 'เลือกเอง'); } };
