@@ -3,12 +3,12 @@ import { esc } from '../lib/dom.js';
 import { GATE_COLORS, drawPowerIcon } from '../render/power-icons.js';
 
 export const ITEMS: readonly [TourItem, string, string][] = [
-  ['quiz', 'Safety Check', 'การ์ดเต็ม 3 เลน อ่านคำถามแล้ววิ่งเข้าประตู A/B/C ที่ถูก · ถูก = Safety Sprint พุ่ง 2 เท่า 3 วินาที · ผิด = ช้าลงครู่หนึ่ง'],
+  ['quiz', 'Safety Check', 'การ์ดเต็ม 3 เลน อ่านคำถามแล้ววิ่งเข้าประตู A/B/C ที่ถูก · ถูก = +500 และ Safety Sprint พุ่ง 2 เท่า 3 วินาที · ผิด = ช้าลงครู่หนึ่ง'],
   ['loto', 'LOTO Lock', 'ตัดพลังงาน 8 วินาที ควันหยุดลอย ของไม่ตก ประกายไฟดับ'],
   ['foam', 'ถังดับเพลิง', 'เคลียร์อันตรายในเลนของตัวเองไปข้างหน้าประมาณ 3 วินาที'],
   ['buddy', 'Buddy System', 'เพื่อนช่วยนำทาง หลบให้อัตโนมัติ 5 วินาที'],
-  ['streak', 'Zero Accident x2', 'คะแนนระยะทาง x2 นาน 15 วินาที หายทันทีถ้าชน'],
-  ['audit', 'Spot Audit', 'ได้ +30 และส่งผู้ตรวจไปหาคนที่นำอยู่ เขาต้องตอบคำถามให้ถูก ไม่งั้นช้าลง'],
+  ['streak', 'Zero Accident', 'ไม่ชนเลย 15 วินาที รับ +100 · ชนเมื่อไหร่ก็หมดสิทธิ์'],
+  ['audit', 'Spot Audit', 'ได้ +30 และส่งผู้ตรวจไปหาคนที่นำอยู่ เขาต้องตอบให้ถูก (ได้ +150) ไม่งั้นช้าลง'],
 ];
 
 const icons = new Map<string, string>();
@@ -39,7 +39,7 @@ export function fxHtml(t: TourView) {
   if (t.stun > 0) out.push(chip('💫', 'เซ', t.stun, 'bad'));
   if (t.loto > 0) out.push(chip(img('loto'), 'LOTO', t.loto));
   if (t.buddy > 0) out.push(chip(img('buddy'), 'Buddy', t.buddy));
-  if (t.streak > 0) out.push(chip(img('streak'), 'x2', t.streak));
+  if (t.streak > 0) out.push(chip(img('streak'), 'Zero Accident', t.streak));
   return out.join('');
 }
 

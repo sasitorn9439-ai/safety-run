@@ -84,11 +84,12 @@ start a rematch with the same players.
   costs about a second instead of ending the run, and the race ends on the clock. The normal power-ups and bonus coins are replaced
   by the tournament items, which draw from their own random streams so the track never changes.
 * **Safety Check.** A row of question cards across all three lanes every 650 m. The world slows down and three gates (A/B/C) come up
-  with the answers. Run through the right one for a Safety Sprint (2× speed for 3 s); the wrong one slows you down. The questions are
+  with the answers. Run through the right one for +500 (`GATE_SCORE`) and a Safety Sprint (2× speed for 3 s); the wrong one slows you down. A right
+  answer is worth far more than the pickups: the near-miss multiplier is off in a tournament. The questions are
   trick questions (`shared/trick-questions.ts`), the same ones in the same order for every player.
 * **Items:** LOTO Lock (moving hazards stop for 8 s), fire extinguisher (clears your lane ahead), Buddy System (auto-dodge for 5 s),
-  Zero Accident ×2 (double distance points for 15 s, lost on a crash) and Spot Audit (+30, and the player in the lead gets a question:
-  wrong means slower). A Spot Audit arrives as an `audit` input, so it is part of the replay.
+  Zero Accident (+100 for 15 s without a crash, lost on a crash) and Spot Audit (+30, and the player in the lead gets a question:
+  +150 for the right gate, slower for the wrong one). A Spot Audit arrives as an `audit` input, so it is part of the replay.
 * **The big screen doesn't stream video.** Each phone sends its `[tick, action]` presses, with where it is and how many times it has
   jumped and slid, every 250 ms. The host runs the three races itself, 0.6 s behind, and shows one of them: the one with a question up, a
   new leader, or each in turn (or the one you tap). Twice a second it sends the standings and every runner's position down to the phones,
