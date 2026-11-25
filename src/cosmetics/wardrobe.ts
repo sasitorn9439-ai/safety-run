@@ -2,12 +2,13 @@
  * The player's cosmetics: loot boxes waiting to be opened, what they own and what they wear. Pure data in, data out; the app
  * keeps it in localStorage (parseWardrobe is the boundary that turns whatever is stored there back into a valid Wardrobe).
  */
+import { CUSTOM_SKINS } from './characters.js';
 import { EFFECTS } from './effects.js';
 import { HATS } from './hats.js';
 import { DEFAULT_LOOK, DEFAULT_PALETTE, SKINS } from './skins.js';
 import { RARITIES, SLOTS, type Cosmetic, type Effect, type Hat, type Look, type Rarity, type Skin, type Slot } from './types.js';
 
-export const CATALOG: readonly Cosmetic[] = [...SKINS, ...HATS, ...EFFECTS];
+export const CATALOG: readonly Cosmetic[] = [...SKINS, ...CUSTOM_SKINS, ...HATS, ...EFFECTS];
 const BY_ID = new Map(CATALOG.map(c => [c.id, c]));
 export const cosmetic = (id: string) => BY_ID.get(id);
 
@@ -61,6 +62,7 @@ export function lookOf(w: Wardrobe): Look {
   const skin = w.equipped.skin ? cosmetic(w.equipped.skin) as Skin : null;
   return {
     pal: skin?.pal ?? DEFAULT_PALETTE,
+    figure: skin?.figure ?? null,
     hat: w.equipped.hat ? cosmetic(w.equipped.hat) as Hat : null,
     effect: w.equipped.effect ? cosmetic(w.equipped.effect) as Effect : null,
   };

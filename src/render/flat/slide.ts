@@ -112,7 +112,7 @@ export function drawSideSlide(c: Ctx, p: SlidePose, look: Look = DEFAULT_LOOK, t
 
   // head: big, tipped forward a little so it leads the slide
   const hc = add(S, rot(lean * .65, 0, -.22));
-  c.save(); c.translate(hc.x, hc.y); c.rotate(lean * .3 - p.headTilt); c.translate(0, .69); drawMascotHead(c, pal); look.hat?.draw(c); c.restore();
+  c.save(); c.translate(hc.x, hc.y); c.rotate(lean * .3 - p.headTilt); c.translate(0, .69); drawMascotHead(c, pal, !look.figure); look.figure?.head?.(c, t); look.hat?.draw(c); c.restore();
 
   // front arm, up for balance
   const hf = add(S, p.hand);

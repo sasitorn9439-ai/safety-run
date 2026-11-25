@@ -18,7 +18,7 @@ const SLOT_LABEL: Record<Slot, string> = { skin: 'สกิน · Skins', hat: '
 
 const idle = animsWith()[0]!;
 const lookWith = (item: Cosmetic): Look =>
-  item.slot === 'skin' ? { ...DEFAULT_LOOK, pal: item.pal } : item.slot === 'hat' ? { ...DEFAULT_LOOK, hat: item } : { ...DEFAULT_LOOK, effect: item };
+  item.slot === 'skin' ? { ...DEFAULT_LOOK, pal: item.pal, figure: item.figure ?? null } : item.slot === 'hat' ? { ...DEFAULT_LOOK, hat: item } : { ...DEFAULT_LOOK, effect: item };
 
 /** the mascot standing in `look`, fitted into the canvas; hats are shown close up on the head */
 function drawThumb(cv: HTMLCanvasElement, item: Cosmetic, locked: boolean) {
@@ -110,7 +110,7 @@ export function mountWardrobe(d: WardrobeDeps) {
   let trying: Partial<Record<Slot, Cosmetic>> = {};
   const tryOn = (base: Look): Look => {
     const { skin, hat, effect } = trying;
-    return { pal: skin?.slot === 'skin' ? skin.pal : base.pal, hat: hat?.slot === 'hat' ? hat : base.hat, effect: effect?.slot === 'effect' ? effect : base.effect };
+    return { pal: skin?.slot === 'skin' ? skin.pal : base.pal, figure: skin?.slot === 'skin' ? skin.figure ?? null : base.figure, hat: hat?.slot === 'hat' ? hat : base.hat, effect: effect?.slot === 'effect' ? effect : base.effect };
   };
   void loadMascot('flat').then(m => { set = m; });
   paintChests();

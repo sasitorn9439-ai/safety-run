@@ -21,7 +21,14 @@ export interface Palette {
 }
 
 interface Base { id: string; name: string; rarity: Rarity }
-export interface Skin extends Base { slot: 'skin'; pal: Palette }
+/**
+ * A custom skin: what turns the mascot into another character (no crystal on its head), with parts drawn with the body, so
+ * they lean, squash and tuck with it.
+ * `head` is in head coordinates (like a hat, drawn before the hat); `back` is in body coordinates over the cape (the camera
+ * sees the mascot's back, so a tail points toward it). `t` is the frame's place in its animation.
+ */
+export interface Figure { head?(c: Ctx, t: number): void; back?(c: Ctx, t: number): void }
+export interface Skin extends Base { slot: 'skin'; pal: Palette; figure?: Figure }
 /** drawn right after the head, in head coordinates: the head spans y −0.865…−0.44 and x ±0.27, its crystal reaches up to y −0.995 */
 export interface Hat extends Base { slot: 'hat'; draw(c: Ctx): void }
 /**
@@ -36,4 +43,4 @@ export interface Effect extends Base {
 export type Cosmetic = Skin | Hat | Effect;
 
 /** What the mascot wears right now. */
-export interface Look { pal: Palette; hat: Hat | null; effect: Effect | null }
+export interface Look { pal: Palette; hat: Hat | null; effect: Effect | null; figure?: Figure | null }

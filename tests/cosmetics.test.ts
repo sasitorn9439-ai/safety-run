@@ -12,11 +12,11 @@ import { play, think } from './bot.js';
 const rng = (seed: number) => () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
 
 describe('catalog', () => {
-  it('has 30 of each kind, every id unique, every rarity in every kind', () => {
+  it('has 30 of each kind (plus custom skins), every id unique, every rarity in every kind', () => {
     expect(new Set(CATALOG.map(c => c.id)).size).toBe(CATALOG.length);
     for (const slot of SLOTS) {
       const of = CATALOG.filter(c => c.slot === slot);
-      expect(of).toHaveLength(30);
+      expect(of.filter(c => !(c.slot === 'skin' && c.figure))).toHaveLength(30);
       for (const r of RARITIES) expect(of.some(c => c.rarity === r)).toBe(true);
     }
   });
@@ -110,6 +110,8 @@ const looks: [string, Look][] = [
   ['no cosmetics', DEFAULT_LOOK],
   ...CATALOG.filter(c => c.slot === 'hat').map(h => [h.id, { ...DEFAULT_LOOK, hat: h }] as [string, Look]),
   ...CATALOG.filter(c => c.slot === 'effect').map(e => [e.id, { ...DEFAULT_LOOK, effect: e }] as [string, Look]),
+  // custom skins add parts to the body: they must stay inside the cell too, and with a hat on
+  ...CATALOG.flatMap(c => c.slot === 'skin' && c.figure ? [[c.id, lookOf({ boxes: 0, owned: [c.id, 'hat-wizard'], equipped: { skin: c.id, hat: 'hat-wizard' } })] as [string, Look]] : []),
 ];
 
 describe('cosmetics on the flat mascot', async () => {
@@ -128,7 +130,7 @@ describe('cosmetics on the flat mascot', async () => {
   });
 
   it('wearing anything leaves the animations themselves alone: same frames, same tags, feet at the same anchor', () => {
-    for (const [, look] of looks.concat(CATALOG.filter(c => c.slot === 'skin').map(s => [s.id, { ...DEFAULT_LOOK, pal: s.pal }]))) {
+    for (const [, look] of looks.concat(CATALOG.filter(c => c.slot === 'skin').map(s => [s.id, lookOf({ boxes: 0, owned: [s.id], equipped: { skin: s.id } })]))) {
       m.look = look;
       expect(ANIMS.map(a => m.count(a))).toEqual(counts);
       expect(JSON.stringify(m.cfg)).toBe(cfg);

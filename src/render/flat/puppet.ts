@@ -87,13 +87,15 @@ export function drawPuppet(c: Ctx, p: Pose2D, look: Look = DEFAULT_LOOK, t = 0) 
   c.quadraticCurveTo(.18, -.32, .25 + k.spread * .8, -.26 + k.tipR);
   c.quadraticCurveTo(.04, -.26, -.03, -.23 + k.mid * .6);
   c.quadraticCurveTo(-.13, -.28, -.21 - k.spread * .8, -.25 + k.tipL); c.closePath(); c.fill();
+  look.figure?.back?.(c, t);
 
   // head, pivoting at the neck
   c.save(); c.translate(p.head.dx, -p.head.dy); c.translate(0, -.47); c.rotate(p.head.rot);
   const keep = p.headKeep ?? 0;                      // slides squash the body but keep the head round
   if (keep) c.scale((1 + (p.sx - 1) * (1 - keep)) / p.sx, (1 + (p.sy - 1) * (1 - keep)) / p.sy);
   c.translate(0, .47);
-  drawMascotHead(c, pal);
+  drawMascotHead(c, pal, !look.figure);
+  look.figure?.head?.(c, t);
   look.hat?.draw(c);
   c.restore();
   c.restore();

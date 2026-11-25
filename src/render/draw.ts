@@ -307,16 +307,19 @@ export const HAZARD_BOX: Record<HazardKind, [number, number, number, number]> = 
  * The head, seen from behind. The red crystal grows out of the crown: its base is hidden by the head, so what shows is a
  * two-tone red wedge rising above the head (as on the official sticker sheet, assets/mascot-reference/), not a diamond laid over it.
  */
-export function drawMascotHead(c: Ctx, pal: Palette = DEFAULT_PALETTE) {
+/** `gem` false leaves off the crystal on top: a custom skin is a different character, not the mascot in another colour */
+export function drawMascotHead(c: Ctx, pal: Palette = DEFAULT_PALETTE, gem = true) {
   // crystal first: the head is drawn over its base
   c.lineJoin = 'round';
   const poly = (pts: number[][], fill: string) => { c.fillStyle = fill; c.beginPath(); c.moveTo(pts[0]![0]!, pts[0]![1]!); for (const p of pts.slice(1)) c.lineTo(p[0]!, p[1]!); c.closePath(); c.fill(); };
   // everything is symmetric about x = 0, the mascot's centre line. The lower corners are tucked inside the head's outline.
-  poly([[-.15, -.825], [0, -.995], [0, -.76], [-.12, -.72]], pal.gemL);          // left face, lit
-  poly([[0, -.995], [.15, -.825], [.12, -.72], [0, -.76]], pal.gemR);            // right face, in shade
-  poly([[-.15, -.825], [0, -.995], [-.06, -.86]], pal.gemHi);                    // highlight on the upper left edge
-  c.strokeStyle = pal.gemEdge; c.lineWidth = .009;
-  c.beginPath(); c.moveTo(-.15, -.825); c.lineTo(0, -.995); c.lineTo(.15, -.825); c.stroke();
+  if (gem) {
+    poly([[-.15, -.825], [0, -.995], [0, -.76], [-.12, -.72]], pal.gemL);          // left face, lit
+    poly([[0, -.995], [.15, -.825], [.12, -.72], [0, -.76]], pal.gemR);            // right face, in shade
+    poly([[-.15, -.825], [0, -.995], [-.06, -.86]], pal.gemHi);                    // highlight on the upper left edge
+    c.strokeStyle = pal.gemEdge; c.lineWidth = .009;
+    c.beginPath(); c.moveTo(-.15, -.825); c.lineTo(0, -.995); c.lineTo(.15, -.825); c.stroke();
+  }
 
   // a rounded triangle (an onigiri): the apex is smooth because the crystal's base sits right behind it
   c.fillStyle = pal.head; c.strokeStyle = pal.headEdge; c.lineWidth = .013; c.beginPath();
