@@ -266,6 +266,18 @@ const rainbow: Part = {
   // long enough to run off the bottom of the screen on any phone
   below: RAINBOW_LEN + .05,
 };
+/** the rainbow in an avatar: wide bands running the full height of the circle behind the mascot, rippling downward */
+const rainbowBackdrop = (c: Ctx, t: number) => {
+  const cols = ['#ff5252', '#ffab40', '#ffee58', '#69f0ae', '#40c4ff', '#b388ff'], w = .075, n = 24;
+  cols.forEach((col, i) => {
+    c.save(); c.strokeStyle = col; c.lineWidth = w + .004; c.globalAlpha *= .9; c.beginPath();
+    for (let k = 0; k <= n; k++) {
+      const y = -.5 + k / n, x = (i - 2.5) * w + Math.sin((y * 1.5 - t) * TAU) * .04;
+      if (k) c.lineTo(x, y); else c.moveTo(x, y);
+    }
+    c.stroke(); c.restore();
+  });
+};
 /**
  * A tilted ring circling the body (both halves, so it passes in front and behind), sweeping from the top of the head down to
  * the ankles and back up once a loop. `lag` delays it (a fraction of the loop), so two rings can trail one another.
@@ -356,7 +368,7 @@ export const EFFECTS: readonly Effect[] = [
   { ...fx('flamefeet', 'เท้าไฟ · Fire feet', 'rare', feetFire(FIRE), fireTracks(5)), avatar: rain(flame, FIRE, { size: 1.3, sway: .04, up: true, fade: true }) },
   fx('lightning', 'สายฟ้า · Lightning', 'rare', orbit(bolt, ['#ffea00', '#ffffff'], 4, .07, .46, .16)),
   fx('frost', 'เกล็ดน้ำแข็ง · Frost', 'rare', aura('#b3e5fc', .6, .45), orbit(snowflake, ['#e1f5fe', '#81d4fa'], 5, .05)),
-  fx('rainbow', 'สายรุ้ง · Rainbow trail', 'rare', rainbow),
+  { ...fx('rainbow', 'สายรุ้ง · Rainbow trail', 'rare', rainbow), avatar: rainbowBackdrop },
   fx('smoke', 'หมอกนินจา · Ninja mist', 'rare', mist('214, 220, 228')),       // id kept from 'Ninja smoke' so players who own it keep it
   fx('pixels', 'พิกเซล · Pixels', 'rare', rise(square, ['#00e676', '#00b0ff', '#ff4081', '#ffea00'], 8, .03, .45)),
   fx('hoop', 'วงแหวนพลัง · Power ring', 'rare', hoop('#40c4ff'), hoop('#b388ff', .38, .1, .06)),
