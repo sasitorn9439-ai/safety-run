@@ -143,7 +143,7 @@ export const TOUR_ERR: Record<string, string> = {
   room: 'ไม่พบห้องนี้ ตรวจรหัสห้องอีกครั้ง',
   full: 'ห้องเต็มแล้ว (3 คน)',
   started: 'การแข่งขันเริ่มไปแล้ว',
-  bad_id: 'รหัสพนักงานไม่ถูกต้อง (ตัวอักษร/ตัวเลข 3–15 ตัว)',
+  bad_id: 'รหัสพนักงานไม่ถูกต้อง (ตัวเลข 4 หลักเท่านั้น)',
   key: 'รหัส Host ไม่ถูกต้อง',
   empty: 'ยังไม่มีผู้เล่นในห้อง',
   realtime: 'ยังไม่ได้ตั้งค่า Realtime (ABLY_API_KEY + VITE_REALTIME=ably หรือ VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)',

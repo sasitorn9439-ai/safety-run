@@ -12,7 +12,7 @@ export const sha = (s: unknown) => crypto.createHash('sha256').update(String(s))
 export const normId = (s: unknown) => String(s || '').trim().toUpperCase().replace(/\s+/g, '');
 const cleanName = (s: unknown) => String(s || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40);
 export const idOk = (id: string) => {
-  if (!/^[A-Z0-9-]{3,15}$/.test(id)) return false;
+  if (!/^[0-9]{4}$/.test(id)) return false;
   const allow = (process.env.ALLOWED_IDS || '').split(/[,\s]+/).filter(Boolean).map(normId);
   return !allow.length || allow.includes(id);
 };
