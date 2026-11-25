@@ -7,7 +7,8 @@ import { Tutorial } from './tutorial.js';
 
 export type GameState = 'menu' | 'tutor' | 'play' | 'pause' | 'resume' | 'over';
 
-export interface Session { id: string; token: string; run: number; runNo: number; avatar: number; seed: number }
+/** `worn`: what the player wears (cosmetic slot → item id) when the run starts, which dresses the HUD avatar */
+export interface Session { id: string; token: string; run: number; runNo: number; avatar: number; seed: number; worn?: Readonly<Record<string, string>> }
 export interface Pending extends Session { score: number; ticks?: number; inputs?: readonly InputEntry[] }
 
 const IDLE: SceneState = { dist: 0, lane: 0, px: 0, py: 0, vy: 0, slide: 0, inv: 0, shield: 0, objs: [] };
@@ -77,7 +78,7 @@ export class Game {
   begin(first: boolean) {
     this.clear();
     if (first) { this.tutorial = new Tutorial(this.sfx.beep, e => this.onSimEvent(e, this.tutorial?.px ?? 0));
-      if (this.sess) this.hud.setAvatar(this.sess.avatar);
+      if (this.sess) this.hud.setAvatar(this.sess.avatar, this.sess.worn);
       this.setState('tutor'); }
     else this.startReal();
   }
@@ -93,7 +94,7 @@ export class Game {
     this.loot = 0;
     this.acc = 0; this.alpha = 1;
     this.snapshot();
-    this.hud.setAvatar(this.sess.avatar);
+    this.hud.setAvatar(this.sess.avatar, this.sess.worn);
     this.setState('play');
   }
 

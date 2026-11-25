@@ -101,6 +101,13 @@ describe('leaderboard', () => {
     expect(JSON.stringify(r)).not.toContain('1001');
     expect(((await leaderboard(store, '')).body as Body).top[0].me).toBe(false);
   });
+
+  it('sends what each player wears, so their avatar is dressed in it', async () => {
+    const { s, ticks } = await play('1001');
+    await finish(store, { id: '1001', run: s.run, token: s.token, ticks, inputs: [] });
+    await store.setEquipped('1001', { hat: 'hat-cap' });
+    expect(((await leaderboard(store, '')).body as Body).top[0].look).toEqual({ hat: 'hat-cap' });
+  });
 });
 
 describe('admin', () => {

@@ -1,6 +1,7 @@
 export interface RunRow { tokenHash: string; score: number | null; seed: number | null; secs: number }
 export interface Usage { used: number; best: number | null }
-export interface BoardEntry { empId: string; avatar: number | null; score: number }
+/** `look`: what the player wears (cosmetic slot → item id), which dresses their avatar */
+export interface BoardEntry { empId: string; avatar: number | null; score: number; look: Record<string, string> }
 export interface AdminRow {
   id: string; avatar: number | null; plays: number; best: number | null; scores: string;
   startedAt: string | Date; flagged: boolean; unfinished: number;

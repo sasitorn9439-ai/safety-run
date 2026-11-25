@@ -88,7 +88,7 @@ export function createMemoryStore(file?: string): Store {
       const b = bests();
       const idx = id ? b.findIndex(r => r.empId === id) : -1;
       return {
-        top: b.slice(0, 20).map(r => ({ empId: r.empId, avatar: avatars.get(r.empId) ?? null, score: r.score! })),
+        top: b.slice(0, 20).map(r => ({ empId: r.empId, avatar: avatars.get(r.empId) ?? null, score: r.score!, look: { ...worn.get(r.empId) } })),
         total: b.length,
         rank: idx >= 0 ? idx + 1 : 0,
       };

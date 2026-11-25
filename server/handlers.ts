@@ -81,7 +81,7 @@ export async function leaderboard(store: Store, rawId: unknown): Promise<Reply> 
   return reply(200, {
     total, rank,
     // employee IDs never leave the server: the board shows avatars only
-    top: top.map(r => ({ avatar: r.avatar ?? -1, score: r.score, me: !!id && r.empId === id })),
+    top: top.map(r => ({ avatar: r.avatar ?? -1, score: r.score, me: !!id && r.empId === id, ...Object.keys(r.look).length && { look: r.look } })),
   }, id ? 'no-store' : 'public, s-maxage=5, stale-while-revalidate=10');
 }
 

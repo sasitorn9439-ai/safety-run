@@ -78,19 +78,19 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
     submitted = false;
     showScreen('tLobby');
     $('lobbyCode').textContent = room!.code;
-    $('lobbyAv').innerHTML = avImg(seat!.avatar, 72);
+    $('lobbyAv').innerHTML = avImg(seat!.avatar, 72, room!.players.find(p => p.slot === seat!.slot)?.look);
     $('lobbyName').textContent = `${avName(seat!.avatar)} · ช่อง ${seat!.slot + 1}`;
     $('lobbyInfo').textContent = `ด่านสุ่มตอนเริ่มแข่ง · ${fmtTime(room!.duration)} นาที`;
     $('lobbyWait').textContent = room!.phase === 'finished' ? 'รอ Host เปิดรอบใหม่' : 'รอ Host กดเริ่ม';
     $('lobbySeats').innerHTML = [0, 1, 2].map(s => {
       const p = room!.players.find(x => x.slot === s);
-      return `<li class="${p?.slot === seat!.slot ? 'me' : ''}">${p ? `${avImg(p.avatar, 36)}<span>${esc(avName(p.avatar))}</span>` : '<span class="empty">ว่าง</span>'}</li>`;
+      return `<li class="${p?.slot === seat!.slot ? 'me' : ''}">${p ? `${avImg(p.avatar, 36, p.look)}<span>${esc(avName(p.avatar))}</span>` : '<span class="empty">ว่าง</span>'}</li>`;
     }).join('');
   }
 
   async function beginRace(r: Room) {
     showScreen(null);
-    hud.reset(); hud.setAvatar(seat!.avatar); hud.show(true);
+    hud.reset(); hud.setAvatar(seat!.avatar, r.players.find(p => p.slot === seat!.slot)?.look); hud.show(true);
     renderer.setLook(lookOfWorn(r.players.find(p => p.slot === seat!.slot)?.look));
     $('tRace').classList.add('on');
     audits = 0; board = []; ghosts = new Ghosts(); finishing = false;
@@ -158,7 +158,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
     $('resScore').textContent = me?.score != null ? `${me.score} คะแนน` : '';
     $('resInfo').textContent = me?.correct != null ? `ตอบถูก ${me.correct} ข้อ` : '';
     const ranked = [...room!.players].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || (b.correct ?? 0) - (a.correct ?? 0));
-    $('resBoard').innerHTML = ranked.map((p, i) => `<li class="${p.slot === seat!.slot ? 'me' : ''}"><span class="n">${i + 1}</span><div>${avImg(p.avatar, 28)} ${esc(avName(p.avatar))}<small>${p.score == null ? 'รอผล…' : `ตอบถูก ${p.correct} ข้อ`}</small></div><span class="sc">${p.score ?? '—'}</span></li>`).join('');
+    $('resBoard').innerHTML = ranked.map((p, i) => `<li class="${p.slot === seat!.slot ? 'me' : ''}"><span class="n">${i + 1}</span><div>${avImg(p.avatar, 28, p.look)} ${esc(avName(p.avatar))}<small>${p.score == null ? 'รอผล…' : `ตอบถูก ${p.correct} ข้อ`}</small></div><span class="sc">${p.score ?? '—'}</span></li>`).join('');
   }
 
   /* ---------- input: swipe + keyboard ---------- */
@@ -220,7 +220,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
   function rank(mine: number) {
     if (!room || !seat) return;
     const me = room.players.find(p => p.slot === seat!.slot);
-    const html = me ? `<li class="me">${avImg(me.avatar, 22)}<b>${mine}</b></li>` : '';
+    const html = me ? `<li class="me">${avImg(me.avatar, 22, me.look)}<b>${mine}</b></li>` : '';
     if (html !== lastRank) { lastRank = html; $('tRank').innerHTML = html; }
   }
 

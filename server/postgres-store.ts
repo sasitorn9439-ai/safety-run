@@ -139,7 +139,7 @@ export function createPostgresStore(url: string): Store {
 
     async leaderboard(id) {
       // sequential on purpose: one pooled connection, no pipelining
-      const top = await sql`select b.emp_id, b.score, p.avatar from (${best()}) b left join safety_run_players p using (emp_id) order by b.score desc, b.finished_at asc limit 20`;
+      const top = await sql`select b.emp_id, b.score, p.avatar, p.equipped from (${best()}) b left join safety_run_players p using (emp_id) order by b.score desc, b.finished_at asc limit 20`;
       const cnt = await sql`select count(*)::int as total from (${best()}) b`;
       let rank = 0;
       if (id) {
@@ -148,7 +148,7 @@ export function createPostgresStore(url: string): Store {
           from b m where m.emp_id = ${id}`;
         rank = r[0]?.rank || 0;
       }
-      return { top: top.map(r => ({ empId: r.emp_id, avatar: r.avatar ?? null, score: r.score })), total: cnt[0]?.total || 0, rank };
+      return { top: top.map(r => ({ empId: r.emp_id, avatar: r.avatar ?? null, score: r.score, look: r.equipped ?? {} })), total: cnt[0]?.total || 0, rank };
     },
 
     async adminExport() {

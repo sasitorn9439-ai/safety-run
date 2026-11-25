@@ -1,6 +1,6 @@
 export interface StartResp { token: string; seed: number; run: number; runNo: number; max: number | null; best: number | null; avatar: number }
 export interface FinishResp { score: number; best: number | null; used: number; max: number | null }
-export interface BoardResp { total: number; rank: number; top: { avatar: number; score: number; me: boolean }[] }
+export interface BoardResp { total: number; rank: number; top: { avatar: number; score: number; me: boolean; look?: Record<string, string> }[] }
 export interface AdminRow { id: string; avatar: number | null; plays: number; best: number | null; scores: string; startedAt: string; flagged: boolean; unfinished: number; hidden: boolean }
 export interface AdminRun { id: string; avatar: number | null; runNo: number; startedAt: string; finishedAt: string | null; secs: number | null; score: number | null; legacy: boolean; hidden: boolean }
 

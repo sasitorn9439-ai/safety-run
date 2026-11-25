@@ -269,11 +269,11 @@ export async function startApp() {
       const r = await api<StartResp>('/api/start', { id });
       if (r.ok && r.token) {
         LS.set('srPlayer', { id, avatar: r.avatar });
-        game.sess = { id, token: r.token, run: r.run!, runNo: r.runNo!, avatar: r.avatar!, seed: r.seed! } satisfies Session;
+        game.sess = { id, token: r.token, run: r.run!, runNo: r.runNo!, avatar: r.avatar!, seed: r.seed!, worn: wardState?.equipped } satisfies Session;
         LS.set('srPending', { ...game.sess, score: 0 });
         game.runLabel = `รอบที่ ${r.runNo} · GO!`;
         if (r.runNo === 1) {
-          $('avBig').innerHTML = avImg(r.avatar, 120); $('avName').textContent = avName(r.avatar); show('avOv');
+          $('avBig').innerHTML = avImg(r.avatar, 120, wardState?.equipped); $('avName').textContent = avName(r.avatar); show('avOv');
           $('avGo').onclick = () => begin(!tutorialSeen.has(id) && LS.get<boolean>(tutorialKey(id)) !== true);
         } else begin(false);
       } else if (r.error === 'used') msg.textContent = `รหัสนี้เล่นครบ ${r.max} ครั้งแล้ว${r.best != null ? ` · คะแนนดีที่สุด ${r.best}` : ''}`;
@@ -300,7 +300,7 @@ export async function startApp() {
 
   /* ---------- leaderboard ---------- */
   const boardRow = (e: BoardResp['top'][number], i: number) =>
-    `<li${e.me ? ' style="outline:2px solid #ffd400"' : ''}><span class="n">${i < PRIZE_RANKS ? `<span class="medal m${i + 1}">${i + 1}</span>` : i + 1}</span>${avImg(e.avatar, 36)}<span class="who">${esc(avName(e.avatar))}${e.me ? ' (คุณ)' : ''}</span><span class="sc">${e.score}</span></li>`;
+    `<li${e.me ? ' style="outline:2px solid #ffd400"' : ''}><span class="n">${i < PRIZE_RANKS ? `<span class="medal m${i + 1}">${i + 1}</span>` : i + 1}</span>${avImg(e.avatar, 36, e.look)}<span class="who">${esc(avName(e.avatar))}${e.me ? ' (คุณ)' : ''}</span><span class="sc">${e.score}</span></li>`;
   const boardHtml = (list: BoardResp['top']) => list.map(boardRow).join('') || '<li><span></span><span></span><span>ยังไม่มีคะแนน · No scores yet</span><span></span></li>';
   async function loadBoard(target: string, meId?: string): Promise<Partial<BoardResp>> {
     try {

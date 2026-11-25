@@ -32,6 +32,8 @@
 }
 .dev-panel button:disabled { opacity: .45; }
 .dev-panel input { accent-color: #ffd400; }
+.dev-avatar { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+.dev-panel input[type=number] { min-height: 32px; padding: 4px 8px; border: 1px solid #454d5a; border-radius: 6px; background: #262c35; color: inherit; }
 @media (max-width: 620px) {
   .dev-layout { grid-template-columns: 1fr; grid-template-rows: minmax(230px, 54dvh) minmax(0, 1fr); }
   .dev-panel { border-left: 0; border-top: 1px solid #333a44; padding: 14px; }
