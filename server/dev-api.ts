@@ -1,21 +1,25 @@
 import type { Plugin } from 'vite';
 import { admin, finish, leaderboard, normId, start, wardrobe, type Reply } from './handlers.js';
 import type { ServerResponse } from 'node:http';
+import path from 'node:path';
 import { createMemoryStore } from './memory-store.js';
 import { createMemoryTourStore } from './tour-store.js';
 import { tournament } from './tournament.js';
 
 /**
- * Serves /api/* from memory while `vite` is running, so the game works without Postgres. Also stands in for Supabase Realtime
+ * Serves /api/* while `vite` is running, so the game works without Postgres: kept in memory and saved to .dev-data/store.json. Also stands in for Supabase Realtime
  * in the tournament (GET /api/relay is a server-sent event stream per room, POST /api/relay sends to it) and maps /tournament to its page.
  */
 export function devApi(): Plugin {
   return {
     name: 'safety-run-dev-api',
     apply: 'serve',
+    // the saved store changes on every run; the file watcher has no business with it
+    config: () => ({ server: { watch: { ignored: ['**/.dev-data/**'] } } }),
     configureServer(server) {
       process.env.ADMIN_KEY ||= 'dev';
-      const store = createMemoryStore(), tours = createMemoryTourStore();
+      const dataFile = path.join(server.config.root, '.dev-data', 'store.json');
+      const store = createMemoryStore(dataFile), tours = createMemoryTourStore();
       const relay = new Map<string, Set<ServerResponse>>();
       server.middlewares.use(async (req, res, next) => {
         const url = new URL(req.url || '/', 'http://localhost');
@@ -67,7 +71,7 @@ export function devApi(): Plugin {
           send({ status: 500, body: { error: 'server' } });
         }
       });
-      server.config.logger.info('  [dev-api] /api/* is served from memory (resets on restart). Admin key: ' + process.env.ADMIN_KEY);
+      server.config.logger.info(`  [dev-api] /api/* is served locally, saved in ${path.relative(server.config.root, dataFile)} (delete it to start over). Admin key: ${process.env.ADMIN_KEY}`);
     },
   };
 }

@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { DUPES_PER_BOX } from '../src/cosmetics/wardrobe.js';
 import type { AdminRow, Store } from './store.js';
 
@@ -6,13 +8,37 @@ interface Run {
   score: number | null; seed: number; finishedAt: number | null; secs: number | null; loot: number; dist: number | null;
 }
 
-/** In-memory Store for local development. Same rules as the Postgres one, gone on restart. */
-export function createMemoryStore(): Store {
-  const runs: Run[] = [];
-  const opened = new Map<string, { item: string; dupe: boolean }[]>(), worn = new Map<string, Record<string, string>>(), granted = new Map<string, number>();
-  const avatars = new Map<string, number>();
-  const hidden = new Set<string>();
-  let nextId = 1;
+interface Saved {
+  runs: Run[]; opened: [string, { item: string; dupe: boolean }[]][]; worn: [string, Record<string, string>][];
+  granted: [string, number][]; avatars: [string, number][]; hidden: string[]; nextId: number;
+}
+
+/**
+ * In-memory Store for local development, with the same rules as the Postgres one. Given a `file`, it starts from what that
+ * file holds and writes every change back to it, so runs and opened chests survive a dev-server restart; without one
+ * (the tests) it is gone on restart.
+ */
+export function createMemoryStore(file?: string): Store {
+  let saved: Partial<Saved> = {};
+  if (file) {
+    try { saved = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<Saved>; } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') console.warn(`[dev-api] could not read ${file}, starting empty:`, e);
+    }
+  }
+  const runs: Run[] = saved.runs ?? [];
+  const opened = new Map(saved.opened), worn = new Map(saved.worn), granted = new Map(saved.granted);
+  const avatars = new Map(saved.avatars);
+  const hidden = new Set(saved.hidden);
+  let nextId = saved.nextId ?? 1;
+
+  // written to a temp file and renamed, so a restart mid-write never leaves half a file
+  const save = () => {
+    if (!file) return;
+    const data: Saved = { runs, opened: [...opened], worn: [...worn], granted: [...granted], avatars: [...avatars], hidden: [...hidden], nextId };
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file + '.tmp', JSON.stringify(data));
+    fs.renameSync(file + '.tmp', file);
+  };
 
   const bests = () => {
     const by = new Map<string, Run>();
@@ -26,8 +52,9 @@ export function createMemoryStore(): Store {
 
   return {
     async init() {},
+    async known(id) { return avatars.has(id) || runs.some(r => r.empId === id); },
     async avatarOf(id) {
-      if (!avatars.has(id)) avatars.set(id, avatars.size);
+      if (!avatars.has(id)) { avatars.set(id, avatars.size); save(); }
       return avatars.get(id)!;
     },
     async usage(id) {
@@ -39,6 +66,7 @@ export function createMemoryStore(): Store {
       if (runs.some(x => x.empId === r.id && x.runNo === r.runNo)) return null;
       const run: Run = { id: nextId++, empId: r.id, runNo: r.runNo, name: r.name, tokenHash: r.tokenHash, startedAt: Date.now(), score: null, seed: r.seed, finishedAt: null, secs: null, loot: 0, dist: null };
       runs.push(run);
+      save();
       return run.id;
     },
     async getRun(runId, id) {
@@ -49,6 +77,7 @@ export function createMemoryStore(): Store {
       const r = runs.find(x => String(x.id) === runId);
       if (!r || r.score != null) return null;
       r.score = f.score; r.secs = f.secs; r.finishedAt = Date.now(); r.loot = f.loot; r.dist = f.dist;
+      save();
       return f.score;
     },
     async runScore(runId) {
@@ -105,6 +134,7 @@ export function createMemoryStore(): Store {
     async adminHide(id, hide) {
       if (!avatars.has(id) && !runs.some(r => r.empId === id)) return 0;
       if (hide) hidden.add(id); else hidden.delete(id);
+      save();
       return 1;
     },
     async wardrobe(id) {
@@ -115,13 +145,15 @@ export function createMemoryStore(): Store {
       const mine = opened.get(id) ?? [];
       if (mine.length !== boxNo - 1) return false;
       opened.set(id, [...mine, { item, dupe }]);
+      save();
       return true;
     },
-    async setEquipped(id, equipped) { worn.set(id, { ...equipped }); },
+    async setEquipped(id, equipped) { worn.set(id, { ...equipped }); save(); },
     async grantBoxes(ids, n) {
       const known = new Set([...avatars.keys(), ...runs.map(r => r.empId)]);
       const to = ids === 'all' ? [...known] : [...new Set(ids)];
       for (const id of to) granted.set(id, (granted.get(id) ?? 0) + n);
+      save();
       return { granted: to.length, unknown: to.filter(id => !known.has(id)) };
     },
   };

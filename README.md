@@ -8,7 +8,7 @@ Prizes: 1st HUAWEI Band 11 Series (Polym Black), 2nd–5th fuel card, 6th–7th 
 
 ```sh
 npm install
-npm run dev        # http://localhost:5173 — /api/* is served from memory, no database needed (admin key: dev)
+npm run dev        # http://localhost:5173 — /api/* runs locally, no database needed; saved in .dev-data/ (delete it to start over; admin key: dev)
                    # /?botsim: watch a bot (or play yourself) from any distance, to feel each speed step
 npm test           # sim parity + API tests
 npm run typecheck
@@ -27,7 +27,7 @@ npm run build      # typecheck + production bundle into dist/
 | `src/render/flat/` | The default mascot: puppet drawing, side-view slide, and its animations (also used by `tools/mascot-2d`) |
 | `src/ui/hud.ts` | In-game HUD as DOM elements |
 | `src/app.ts` | Screens and flow: login, quiz, submit, leaderboard, pause |
-| `server/` | `handlers.ts` (all API logic) on a `Store` interface: `postgres-store.ts` for production, `memory-store.ts` for `npm run dev` |
+| `server/` | `handlers.ts` (all API logic) on a `Store` interface: `postgres-store.ts` for production, `memory-store.ts` for `npm run dev` (saved to `.dev-data/store.json`) |
 | `api/*.ts` | Thin Vercel functions that call `server/handlers.ts` |
 | `src/tournament/` | The tournament page: `player.ts` (phone), `host.ts` (big screen), `race.ts` (steps a race on the server clock), `net.ts` (API + realtime channel) |
 | `server/tournament.ts` | Tournament rooms on a `TourStore` (`tour-store.ts` in memory, `postgres-tour-store.ts`) |
@@ -154,7 +154,7 @@ One data file, `src/render/ppe-icons.ts`, draws them in the game (floating picku
 |---|---|
 | `POSTGRES_URL` | added automatically when the Supabase store is connected to the project |
 | `ADMIN_KEY` | password for `/admin` |
-| `ALLOWED_IDS` | optional comma-separated list of valid employee IDs; empty = any 4-digit number |
+| `ALLOWED_IDS` | optional comma-separated list of valid employee IDs; empty = any 4-digit number (an all-digit id that already played before the 4-digit rule, e.g. `000`, keeps working) |
 | `MAX_PLAYS` | optional cap on plays per employee; empty/0 = unlimited |
 | `ABLY_API_KEY` | the Ably key for the tournament's realtime channels (server only; restrict it to `safety-run-tour:*`, Publish + Subscribe) |
 | `VITE_REALTIME` | `ably` to use Ably (read at build time) |

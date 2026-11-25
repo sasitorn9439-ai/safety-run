@@ -13,10 +13,17 @@ export const maxPlays = () => Math.max(0, +(process.env.MAX_PLAYS || 0) || 0);
 export const sha = (s: unknown) => crypto.createHash('sha256').update(String(s)).digest('hex');
 export const normId = (s: unknown) => String(s || '').trim().toUpperCase().replace(/\s+/g, '');
 const cleanName = (s: unknown) => String(s || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40);
-export const idOk = (id: string) => {
-  if (!/^[0-9]{4}$/.test(id)) return false;
+/**
+ * Employee ids are numbers. A new one must be exactly 4 digits; an all-digit id from before that rule (e.g. "000") keeps
+ * working for whoever already played with it, so their runs and chests stay theirs. Ids with letters are refused.
+ */
+export const idOk = async (store: Store, id: string) => {
+  if (!/^[0-9]{1,15}$/.test(id)) return false;
   const allow = (process.env.ALLOWED_IDS || '').split(/[,\s]+/).filter(Boolean).map(normId);
-  return !allow.length || allow.includes(id);
+  if (allow.length && !allow.includes(id)) return false;
+  if (/^[0-9]{4}$/.test(id)) return true;
+  await store.init();
+  return store.known(id);
 };
 const reply = (status: number, body: unknown, cache?: string): Reply => ({ status, body, cache });
 export const timingSafeKey = (given: unknown) => {
@@ -26,7 +33,7 @@ export const timingSafeKey = (given: unknown) => {
 
 export async function start(store: Store, b: Json, ua: string): Promise<Reply> {
   const id = normId(b.id), name = cleanName(b.name), MAX = maxPlays();
-  if (!idOk(id)) return reply(400, { error: 'bad_id' });
+  if (!await idOk(store, id)) return reply(400, { error: 'bad_id' });
   await store.init();
   const avatar = await store.avatarOf(id);
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -95,7 +102,8 @@ export async function admin(store: Store, b: Json): Promise<Reply> {
     if (!Number.isInteger(n) || n < 1 || n > 100) return reply(400, { error: 'n' });
     if (b.all === true) return reply(200, { n, ...await store.grantBoxes('all', n) });
     const raw = (Array.isArray(b.ids) ? b.ids : String(b.ids ?? '').split(/[,\s]+/)).map(normId).filter(Boolean);
-    const ids = [...new Set(raw)], bad = ids.filter(id => !idOk(id)), good = ids.filter(idOk);
+    const ids = [...new Set(raw)], ok = await Promise.all(ids.map(id => idOk(store, id)));
+    const bad = ids.filter((_, i) => !ok[i]), good = ids.filter((_, i) => ok[i]);
     if (!good.length || bad.length) return reply(400, { error: 'ids', bad });
     return reply(200, { n, ...await store.grantBoxes(good, n) });
   }
@@ -114,7 +122,7 @@ export const OPEN_MAX = 10;
  */
 export async function wardrobe(store: Store, b: Json): Promise<Reply> {
   const id = normId(b.id);
-  if (!idOk(id)) return reply(400, { error: 'bad_id' });
+  if (!await idOk(store, id)) return reply(400, { error: 'bad_id' });
   await store.init();
   const read = async () => {
     const s = await store.wardrobe(id);

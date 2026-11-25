@@ -50,6 +50,14 @@ async function startOn(id: string, seed: number) {
 }
 
 describe('wardrobe API', () => {
+  it("an older all-digit id still sees the chests it opened", async () => {
+    await store.avatarOf('000');
+    await store.grantBoxes(['000'], 2);
+    const opened = (await ward({ id: '000', action: 'open' })).body;
+    expect(opened.owned).toHaveLength(1);
+    expect((await ward({ id: ' 000 ' })).body).toMatchObject({ boxes: 1, owned: opened.owned });
+    expect((await ward({ id: '001' })).status).toBe(400);                  // never played: not a valid new id
+  });
   it('a new player has nothing, and cannot open a box they never picked up', async () => {
     expect((await ward({ id: '1001' })).body).toEqual({ boxes: 0, owned: [], equipped: {}, dupes: 0 });
     const r = await ward({ id: '1001', action: 'open' });
