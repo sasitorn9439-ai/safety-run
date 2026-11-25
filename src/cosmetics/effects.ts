@@ -277,14 +277,25 @@ const hoop = (color: string, rx = .46, ry = .12, lag = 0): Part => {
   return { back: half(false), front: half(true), ring: true };
 };
 
-const fx = (id: string, name: string, rarity: Rarity, ...parts: Part[]): Effect => ({
-  id: 'fx-' + id, slot: 'effect', name, rarity,
-  back: (c, t, cy) => { for (const p of parts) p.back?.(c, t, cy); },
-  front: (c, t, cy) => { for (const p of parts) p.front?.(c, t, cy); },
-  ...(parts.some(p => p.below) ? { below: Math.max(...parts.map(p => p.below ?? 0)) } : {}),
-  ...(parts.some(p => p.above) ? { above: Math.max(...parts.map(p => p.above ?? 0)) } : {}),
-  ...(parts.some(p => p.ring) && { ring: true as const }),
-});
+/** an effect from its parts; rings go in `ring`, on their own clock (see Effect.ring) */
+const fx = (id: string, name: string, rarity: Rarity, ...all: Part[]): Effect => {
+  const parts = all.filter(p => !p.ring), rings = all.filter(p => p.ring);
+  return {
+    id: 'fx-' + id, slot: 'effect', name, rarity,
+    back: (c, t, cy) => { for (const p of parts) p.back?.(c, t, cy); },
+    front: (c, t, cy) => { for (const p of parts) p.front?.(c, t, cy); },
+    ...(parts.some(p => p.below) ? { below: Math.max(...parts.map(p => p.below ?? 0)) } : {}),
+    ...(parts.some(p => p.above) ? { above: Math.max(...parts.map(p => p.above ?? 0)) } : {}),
+    ...(rings.length && { ring: {
+      back: (c: Ctx, t: number, cy: number) => { for (const p of rings) p.back?.(c, t, cy); },
+      front: (c: Ctx, t: number, cy: number) => { for (const p of rings) p.front?.(c, t, cy); },
+    } }),
+  };
+};
+/** how long a ring takes to sweep down the body and back up (Effect.ring) */
+export const RING_MS = 2400;
+/** where a ring is in its sweep at time `now` (ms), 0…1 */
+export const ringPhase = (now: number) => (now % RING_MS) / RING_MS;
 
 const PARTY = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb'];
 export const EFFECTS: readonly Effect[] = [

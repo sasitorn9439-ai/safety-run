@@ -8,6 +8,7 @@ import { SLOTS, type Cosmetic, type Look, type Rarity, type Slot } from '../cosm
 import { CATALOG, DUPES_PER_BOX, EMPTY_WARDROBE, RARITY_LABEL, lookOf, type Pull, type Wardrobe } from '../cosmetics/wardrobe.js';
 import { $, esc } from '../lib/dom.js';
 import { animsWith } from '../render/flat/anims.js';
+import { ringPhase } from '../cosmetics/effects.js';
 import { drawPuppet } from '../render/flat/puppet.js';
 import { drawLootBox } from '../render/draw.js';
 import { flatBox, loadMascot, type MascotSet } from '../render/pixel-mascot.js';
@@ -29,7 +30,9 @@ function drawThumb(cv: HTMLCanvasElement, item: Cosmetic, locked: boolean) {
   const [x0, y0, x1, y1] = item.slot === 'hat' ? [-.55, -1.55, .55, -.35] : flatBox({ ...DEFAULT_LOOK, effect: look.effect && { ...look.effect, above: 0 } });
   const u = cv.width / Math.max(x1 - x0, y1 - y0);
   c.save(); c.translate(cv.width / 2 - (x0 + x1) / 2 * u, cv.height / 2 - (y0 + y1) / 2 * u); c.scale(u, u);
+  look.effect?.ring?.back(c, .3, -.45);
   drawPuppet(c, idle.pose(0) as Parameters<typeof drawPuppet>[1], look, .3);
+  look.effect?.ring?.front(c, .3, -.45);
   c.restore();
   if (locked) { c.globalCompositeOperation = 'source-atop'; c.fillStyle = 'rgba(24,26,22,.86)'; c.fillRect(0, 0, cv.width, cv.height); }
 }
@@ -174,7 +177,11 @@ export function mountWardrobe(d: WardrobeDeps) {
     const lift = anim === 'jump' ? Math.sin(Math.min(1, i / 12) * Math.PI) * .35 : 0;
     c.save(); c.translate(W / 2, H - y1 * u - lift * u);
     set.look = look;
+    // a ring sweeps on its own clock, as in the game (Effect.ring)
+    const ring = look.effect?.ring, rt = ringPhase(performance.now());
+    if (ring) { c.save(); c.scale(u, u); ring.back(c, rt, -.45); c.restore(); }
     set.art(anim, i, 1).draw(c, u);
+    if (ring) { c.save(); c.scale(u, u); ring.front(c, rt, -.45); c.restore(); }
     c.restore();
   }
 
