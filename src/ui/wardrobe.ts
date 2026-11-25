@@ -26,6 +26,13 @@ function drawThumb(cv: HTMLCanvasElement, item: Cosmetic, locked: boolean) {
   const dpr = Math.min(2, devicePixelRatio || 1), size = cv.clientWidth || 72;
   cv.width = cv.height = Math.round(size * dpr);
   const c = cv.getContext('2d')!, look = lookWith(item);
+  // a skin that is a picture shows its avatar picture on the tile (the preview and the game still show the character)
+  const pic = item.slot === 'skin' ? item.figure?.portrait?.img : null;
+  if (pic) {
+    c.drawImage(pic, 0, 0, pic.naturalWidth, pic.naturalHeight, 0, 0, cv.width, cv.width * pic.naturalHeight / pic.naturalWidth);
+    if (locked) { c.globalCompositeOperation = 'source-atop'; c.fillStyle = 'rgba(24,26,22,.86)'; c.fillRect(0, 0, cv.width, cv.height); }
+    return;
+  }
   // an effect that reaches high above (a beam from the sky) is cut off at the usual height, so the mascot stays the same size
   const [x0, y0, x1, y1] = item.slot === 'hat' ? [-.55, -1.55, .55, -.35] : flatBox({ ...DEFAULT_LOOK, effect: look.effect && { ...look.effect, above: 0 } });
   const u = cv.width / Math.max(x1 - x0, y1 - y0);
@@ -123,6 +130,7 @@ export function mountWardrobe(d: WardrobeDeps) {
     return { pal: skin?.slot === 'skin' ? skin.pal : base.pal, figure: skin?.slot === 'skin' ? skin.figure ?? null : base.figure, hat: hat?.slot === 'hat' ? hat : base.hat, effect: effect?.slot === 'effect' ? effect : base.effect };
   };
   void loadMascot('flat').then(m => { set = m; });
+  for (const c of CATALOG) if (c.slot === 'skin') void c.figure?.portrait?.ready.then(() => refresh());   // a tile that is a picture, once it has loaded
   paintChests();
   void document.fonts?.ready.then(paintChests);                           // the lock's "?" is in Kanit
 
@@ -146,14 +154,22 @@ export function mountWardrobe(d: WardrobeDeps) {
     meter($('wardMeter'), w.dupes);
     setOpenButtons($<HTMLButtonElement>('wardOpen'), $<HTMLButtonElement>('wardOpenMany'), 'เปิด ');
     for (const b of document.querySelectorAll<HTMLButtonElement>('#wardTabs button')) b.setAttribute('aria-selected', String(b.dataset.slot === tab));
-    const items = CATALOG.filter(c => c.slot === tab);
+    const items = CATALOG.filter(c => c.slot === tab), runs = w.runs ?? 0, worn0 = w.equipped[tab];
+    // special items (Cosmetic.unlock): what they are, how to win them, and how many runs the player has done toward it
+    // ...shown only while that item is the one being looked at (worn, or tapped to try on)
+    $('wardInfo').innerHTML = items.filter(c => c.unlock && (worn0 === c.id || trying[tab]?.id === c.id)).map(c => {
+      const u = c.unlock!, done = runs >= u.runs, left = u.runs - runs;
+      return `<div class="ward-unlock${done ? ' done' : ''}"><h3>★ สกินพิเศษ — ${esc(c.name)}</h3><p>${esc(u.detail)}</p>`
+        + `<div class="ward-prog" role="progressbar" aria-valuemin="0" aria-valuemax="${u.runs}" aria-valuenow="${Math.min(runs, u.runs)}"><i style="width:${Math.min(100, runs / u.runs * 100)}%"></i></div>`
+        + `<p><b>${Math.min(runs, u.runs)}/${u.runs}</b> รอบ — ${done ? 'ปลดล็อกแล้ว ✓' : `${esc(u.how)} (เหลืออีก ${left} รอบ)`}</p></div>`;
+    }).join('');
     const worn = w.equipped[tab];
     grid.innerHTML = `<button class="ward-item${worn ? '' : ' on'}" data-id="" type="button"><span class="ward-none">${NONE_ICON}</span>${nameTag('ไม่ใส่ · None')}</button>` +
       items.map(c => {
         const own = w.owned.includes(c.id);
         const tried = trying[tab]?.id === c.id;
         return `<button class="ward-item${own ? '' : ' locked'}${worn === c.id ? ' on' : ''}${tried ? ' trying' : ''}" data-id="${c.id}" type="button" style="--r:${RARITY_COLOR[c.rarity]}"${own ? '' : ` aria-pressed="${tried}" aria-label="ลองใส่ ${esc(c.name)} (ยังไม่ได้ปลดล็อก)"`}>`
-          + `<canvas></canvas>${nameTag(short(c), !own)}</button>`;
+          + `<canvas></canvas>${nameTag(c.unlock && !own ? `${short(c)} ${Math.min(runs, c.unlock.runs)}/${c.unlock.runs}` : short(c), !own)}</button>`;
       }).join('');
     grid.querySelectorAll<HTMLButtonElement>('.ward-item[data-id]:not([data-id=""])').forEach(b => {
       const item = CATALOG.find(c => c.id === b.dataset.id)!;

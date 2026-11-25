@@ -97,6 +97,13 @@ export class Canvas2DRenderer implements GameRenderer {
         ? Array.from({ length: RING_FRAMES }, (_, i) => { const art = m.ring(key, i, front, scale)!; return new Sprite(art.box, art, base * scale, 1); }) : [];
       px.ringBack = ring(false); px.ringFront = ring(true);
       this.looks.set(key, px);
+      // a skin drawn as a picture was just painted without it (still loading): paint it again once the picture is there
+      const sprite = key.figure?.sprite, built = px;
+      if (sprite && !sprite.img) void sprite.ready.then(() => {
+        if (this.looks.get(key) !== built) return;
+        this.looks.delete(key);
+        if (this.pxSprites && this.pixel?.look === key) this.pxSprites = this.mascotFor(key);
+      });
     }
     return px;
   }

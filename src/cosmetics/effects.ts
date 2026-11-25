@@ -5,7 +5,7 @@
  * trails (which say how far `below` they reach) and the sky beam (which says how far `above`).
  */
 import { drawCoin, type Ctx } from '../render/draw.js';
-import type { Effect, Rarity } from './types.js';
+import type { BodyFit, Effect, Rarity } from './types.js';
 
 const TAU = Math.PI * 2;
 type Shape = (c: Ctx, x: number, y: number, r: number, color: string, rot: number) => void;
@@ -78,7 +78,7 @@ const butterfly: Shape = (c, x, y, r, col, rot) => {
 const cross: Shape = (c, x, y, r, col) => { dot(c, x, y, r * 1.1, '#ffffff', 0); c.fillStyle = col; c.fillRect(x - r * .25, y - r * .75, r * .5, r * 1.5); c.fillRect(x - r * .75, y - r * .25, r * 1.5, r * .5); };
 
 /* ---------- motions ---------- */
-type Draw = (c: Ctx, t: number, cy: number) => void;
+type Draw = (c: Ctx, t: number, cy: number, fit?: BodyFit) => void;
 interface Part { back?: Draw; front?: Draw; /** lowest y it reaches, when below the usual frame */ below?: number; /** how high it reaches, when above the usual frame */ above?: number; /** a ring at height cy (Effect.ring) */ ring?: true }
 const fade = (u: number) => Math.sin(Math.PI * u);
 /** each particle's colour comes from its place on the path, so the colours travel with it */
@@ -192,10 +192,12 @@ const mist = (rgb: string, n = 4): Part => {
   };
 };
 /** a pair of wings flapping gently, their roots `root` out to each side at height `dy` from the body's centre, raised `tilt` */
-const drawWings = (fill: string, edge: string, feathers: number, root = .12, dy = -.08, tilt = -.25, size = 1): Draw => (c, t, cy) => {
+const drawWings = (fill: string, edge: string, feathers: number, root = .12, dy = -.08, tilt = -.25, size = 1): Draw => (c, t, cy, fit) => {
   const flap = .12 * Math.sin(t * TAU);
+  // on a body that is not the mascot's (`fit`) the roots go to its shoulders and the wings grow with it
+  const y = fit ? -fit.shoulder - dy + .09 : cy + dy, k = size * (fit?.size ?? 1), x = fit ? root * 1.6 : root;
   for (const s of [-1, 1]) {
-    c.save(); c.translate(s * root, cy + dy); c.rotate(s * (tilt + flap)); c.scale(s * size, size);
+    c.save(); c.translate(s * x, y); c.rotate(s * (tilt + flap)); c.scale(s * k, k);
     for (let i = 0; i < feathers; i++) {
       const len = .5 - i * .08, y = i * .07;
       c.fillStyle = i % 2 ? edge : fill; c.beginPath(); c.moveTo(0, y);
@@ -300,8 +302,8 @@ const fx = (id: string, name: string, rarity: Rarity, ...all: Part[]): Effect =>
   const parts = all.filter(p => !p.ring), rings = all.filter(p => p.ring);
   return {
     id: 'fx-' + id, slot: 'effect', name, rarity,
-    back: (c, t, cy) => { for (const p of parts) p.back?.(c, t, cy); },
-    front: (c, t, cy) => { for (const p of parts) p.front?.(c, t, cy); },
+    back: (c, t, cy, fit) => { for (const p of parts) p.back?.(c, t, cy, fit); },
+    front: (c, t, cy, fit) => { for (const p of parts) p.front?.(c, t, cy, fit); },
     ...(parts.some(p => p.below) ? { below: Math.max(...parts.map(p => p.below ?? 0)) } : {}),
     ...(parts.some(p => p.above) ? { above: Math.max(...parts.map(p => p.above ?? 0)) } : {}),
     ...(rings.length && { ring: {
@@ -396,16 +398,17 @@ const meteors = (n = 4): Part => ({
 const meteorBackdrop = (c: Ctx, t: number) => { c.save(); c.scale(.9, .9); c.translate(.02, .45); meteors().back!(c, t, -.45); c.restore(); };
 
 /** the angel wings in an avatar: the wings behind the mascot's shoulders, sparkles rising round it (avatar coordinates, see Effect.avatar) */
-const angelBackdrop = (c: Ctx, t: number) => {
-  c.save(); c.translate(0, .21); c.scale(.8, .8); c.translate(0, .45);
-  drawWings('#ffffff', '#e3f2fd', 4)(c, t, -.45); rise(sparkle, ['#ffffff'], 4, .04).front!(c, t, -.45);
+const angelBackdrop = (c: Ctx, t: number, portrait = false) => {
+  // a picture avatar has broad shoulders filling the circle: the wings rise from behind them, bigger and raised, to show beside the head
+  c.save(); c.translate(0, portrait ? .1 : .21); c.scale(portrait ? .82 : .8, portrait ? .82 : .8); c.translate(0, .45);
+  drawWings('#ffffff', '#e3f2fd', 4, portrait ? .2 : .12, -.08, portrait ? -.6 : -.25)(c, t, -.45); rise(sparkle, ['#ffffff'], 4, .04).front!(c, t, -.45);
   c.restore();
 };
 
 /** the phoenix wings in an avatar: the orange glow and the wings behind the mascot's shoulders (avatar coordinates) */
-const phoenixBackdrop = (c: Ctx, t: number) => {
-  c.save(); c.translate(0, .21); c.scale(.8, .8); c.translate(0, .45);
-  aura('#ff6d00', .7, .5).back!(c, t, -.45); drawWings('#ff6d00', '#ffd600', 5)(c, t, -.45);
+const phoenixBackdrop = (c: Ctx, t: number, portrait = false) => {
+  c.save(); c.translate(0, portrait ? .1 : .21); c.scale(portrait ? .82 : .8, portrait ? .82 : .8); c.translate(0, .45);
+  aura('#ff6d00', .7, .5).back!(c, t, -.45); drawWings('#ff6d00', '#ffd600', 5, portrait ? .2 : .12, -.08, portrait ? -.6 : -.25)(c, t, -.45);
   c.restore();
 };
 
@@ -481,4 +484,22 @@ export const EFFECTS: readonly Effect[] = [
   fx('holy', 'แสงศักดิ์สิทธิ์ · Holy light', 'legendary', skyBeam('255, 245, 180'), aura('#fff59d', .6, .5), rise(sparkle, ['#ffffff', '#fff176'], 7, .05, .3)),
   fx('flies', 'กลิ่นตุๆ · Stinky flies', 'common', stink()),
   fx('safetyhero', 'ฮีโร่ความปลอดภัย · Safety hero', 'legendary', aura('#00e676', .7, .5), orbit(cross, ['#2e9e47'], 4, .06, .5, .16), rise(star, ['#ffd400', '#ffffff'], 5, .04)),
+];
+
+/* ---------- "sai mu" lucky-charm effects: two candidate looks to choose from (dev mode only, not in the catalog yet) ---------- */
+
+/** a gold amulet shape for the motions: an arched gold frame round a dark image */
+const amuletShape: Shape = (c, x, y, r, _col, rot) => {
+  c.save(); c.translate(x, y); c.rotate(Math.sin(rot) * .3);
+  c.fillStyle = '#d4a017'; c.beginPath(); c.moveTo(-r * .7, r); c.lineTo(-r * .7, -r * .3); c.quadraticCurveTo(0, -r * 1.4, r * .7, -r * .3); c.lineTo(r * .7, r); c.closePath(); c.fill();
+  c.fillStyle = '#4e342e'; c.beginPath(); c.moveTo(-r * .45, r * .75); c.lineTo(-r * .45, -r * .2); c.quadraticCurveTo(0, -r, r * .45, -r * .2); c.lineTo(r * .45, r * .75); c.closePath(); c.fill();
+  c.fillStyle = '#ffe082'; c.beginPath(); c.arc(0, r * .15, r * .18, 0, TAU); c.fill();
+  c.restore();
+};
+
+/** 4 · Gold overflowing: amulets and gold coins orbit the body in a glittering gold glow */
+/** 5 · Blessed: amulets float up round the mascot under a soft golden halo of light */
+export const BOSS_FX_OPTIONS: readonly Effect[] = [
+  fx('luckycharms', '4 · ทองล้นตัว · Gold overflowing', 'rare', aura('#ffd54f', .62, .4), orbit(amuletShape, ['#d4a017'], 4, .07, .48, .15), orbit(coin, ['#ffd400'], 4, .05, .4, .1, -.25), rise(sparkle, ['#fff59d', '#ffffff'], 5, .04)),
+  fx('luckycharms', '5 · พระคุ้มครอง · Blessed', 'rare', aura('#fff59d', .66, .55), rise(amuletShape, ['#d4a017'], 5, .07, .4), rise(sparkle, ['#ffffff'], 4, .035)),
 ];

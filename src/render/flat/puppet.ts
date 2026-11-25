@@ -77,17 +77,22 @@ export function drawPuppet(c: Ctx, p: Pose2D, look: Look = DEFAULT_LOOK, t = 0) 
   rr(c, -.16, -.49, .32, .32, .13, pal.body);
   arm(c, -1, p.handL, pal); arm(c, 1, p.handR, pal);
 
-  const k = p.cape;
-  c.fillStyle = pal.capeD; c.beginPath();
-  c.moveTo(-.18, -.49); c.quadraticCurveTo(0, -.43, .18, -.49);
-  c.quadraticCurveTo(.24 + k.spread * .5, -.28, .31 + k.spread, -.24 + k.tipR);
-  c.quadraticCurveTo(.16, -.19, .04, -.22 + k.mid);
-  c.quadraticCurveTo(-.09, -.16, -.25 - k.spread, -.24 + k.tipL); c.closePath(); c.fill();
-  c.fillStyle = pal.capeL; c.beginPath();
-  c.moveTo(-.17, -.47); c.quadraticCurveTo(.04, -.41, .17, -.47);
-  c.quadraticCurveTo(.18, -.32, .25 + k.spread * .8, -.26 + k.tipR);
-  c.quadraticCurveTo(.04, -.26, -.03, -.23 + k.mid * .6);
-  c.quadraticCurveTo(-.13, -.28, -.21 - k.spread * .8, -.25 + k.tipL); c.closePath(); c.fill();
+  look.figure?.arm?.(c, -1, p.handL.x, p.handL.y);
+  look.figure?.arm?.(c, 1, p.handR.x, p.handR.y);
+
+  if (!look.figure?.capeless) {
+    const k = p.cape;
+    c.fillStyle = pal.capeD; c.beginPath();
+    c.moveTo(-.18, -.49); c.quadraticCurveTo(0, -.43, .18, -.49);
+    c.quadraticCurveTo(.24 + k.spread * .5, -.28, .31 + k.spread, -.24 + k.tipR);
+    c.quadraticCurveTo(.16, -.19, .04, -.22 + k.mid);
+    c.quadraticCurveTo(-.09, -.16, -.25 - k.spread, -.24 + k.tipL); c.closePath(); c.fill();
+    c.fillStyle = pal.capeL; c.beginPath();
+    c.moveTo(-.17, -.47); c.quadraticCurveTo(.04, -.41, .17, -.47);
+    c.quadraticCurveTo(.18, -.32, .25 + k.spread * .8, -.26 + k.tipR);
+    c.quadraticCurveTo(.04, -.26, -.03, -.23 + k.mid * .6);
+    c.quadraticCurveTo(-.13, -.28, -.21 - k.spread * .8, -.25 + k.tipL); c.closePath(); c.fill();
+  }
   look.figure?.back?.(c, t);
 
   // head, pivoting at the neck

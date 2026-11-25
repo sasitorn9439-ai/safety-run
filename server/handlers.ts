@@ -126,7 +126,7 @@ export async function wardrobe(store: Store, b: Json): Promise<Reply> {
   await store.init();
   const read = async () => {
     const s = await store.wardrobe(id);
-    return { opened: s.opened.length, w: wardrobeFrom(s.earned, s.opened, s.equipped) };
+    return { opened: s.opened.length, w: wardrobeFrom(s.earned, s.opened, s.equipped, s.runs) };
   };
   let { opened, w } = await read();
   if (b.action === undefined || b.action === 'get') return reply(200, w);

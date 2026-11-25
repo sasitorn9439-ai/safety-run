@@ -139,7 +139,7 @@ export function createMemoryStore(file?: string): Store {
     },
     async wardrobe(id) {
       const earned = runs.reduce((n, r) => n + (r.empId === id ? r.loot : 0), granted.get(id) ?? 0);
-      return { earned, opened: [...opened.get(id) ?? []], equipped: { ...worn.get(id) } };
+      return { earned, runs: runs.filter(r => r.empId === id && r.score != null).length, opened: [...opened.get(id) ?? []], equipped: { ...worn.get(id) } };
     },
     async addCosmetic(id, boxNo, item, dupe) {
       const mine = opened.get(id) ?? [];

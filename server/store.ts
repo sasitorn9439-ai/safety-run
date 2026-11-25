@@ -57,4 +57,4 @@ export interface AdminPlayer {
   loot: number; granted: number; free: number; opened: number;
 }
 
-export interface StoredWardrobe { earned: number; opened: { item: string; dupe: boolean }[]; equipped: Record<string, string> }
+export interface StoredWardrobe { earned: number; /** verified runs finished, which unlock the special items */ runs: number; opened: { item: string; dupe: boolean }[]; equipped: Record<string, string> }

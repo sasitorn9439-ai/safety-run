@@ -64,7 +64,8 @@ export function drawFrontShoulders(c: Ctx, pal: Palette) {
     ell(c, s * .24, -.37, .056, .05, pal.mitt);
     ell(c, s * .225, -.385, .02, .014, 'rgba(255,255,255,.3)');                     // a glint on the mitt
   }
-  rr(c, -.17, -.5, .34, .34, .13, pal.sleeve);
+  rr(c, -.17, -.5, .34, .34, .13, pal.torso ?? pal.sleeve);
+  if (pal.torso) return;
   c.lineJoin = 'round';
   c.fillStyle = pal.capeD; c.beginPath(); c.moveTo(-.15, -.47); c.quadraticCurveTo(0, -.43, .15, -.47); c.lineTo(0, -.3); c.closePath(); c.fill();
   c.fillStyle = pal.capeL; c.beginPath(); c.moveTo(-.13, -.465); c.quadraticCurveTo(0, -.435, .13, -.465); c.lineTo(0, -.325); c.closePath(); c.fill();

@@ -217,6 +217,14 @@ export class PixiRenderer implements GameRenderer {
     if (!t) {
       t = this.pixelTextures(this.texBase, key);
       this.looks.set(key, t);
+      // a skin drawn as a picture was just painted without it (still loading): paint it again once the picture is there
+      const sprite = key.figure?.sprite, built = t;
+      if (sprite && !sprite.img) void sprite.ready.then(() => {
+        if (this.looks.get(key) !== built) return;
+        this.looks.delete(key);
+        if (this.pixel?.look === key && this.tx) this.tx.mascot = this.mascotFor(key);
+        for (const x of Object.values(built).flat()) x.tex.destroy(true);
+      });
     }
     return t;
   }

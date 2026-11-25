@@ -2,13 +2,15 @@
  * The player's cosmetics: loot boxes waiting to be opened, what they own and what they wear. Pure data in, data out; the app
  * keeps it in localStorage (parseWardrobe is the boundary that turns whatever is stored there back into a valid Wardrobe).
  */
-import { CUSTOM_SKINS } from './characters.js';
+import { CUSTOM_SKINS, SPECIAL_SKINS } from './characters.js';
 import { EFFECTS } from './effects.js';
 import { HATS } from './hats.js';
 import { DEFAULT_LOOK, DEFAULT_PALETTE, SKINS } from './skins.js';
 import { RARITIES, SLOTS, type Cosmetic, type Effect, type Hat, type Look, type Rarity, type Skin, type Slot } from './types.js';
 
-export const CATALOG: readonly Cosmetic[] = [...SKINS, ...CUSTOM_SKINS, ...HATS, ...EFFECTS];
+export const CATALOG: readonly Cosmetic[] = [...SKINS, ...CUSTOM_SKINS, ...SPECIAL_SKINS, ...HATS, ...EFFECTS];
+/** what loot boxes can give: everything but the special items, which are won another way */
+const BOX_POOL = CATALOG.filter(c => !c.unlock);
 const BY_ID = new Map(CATALOG.map(c => [c.id, c]));
 export const cosmetic = (id: string) => BY_ID.get(id);
 
@@ -20,7 +22,11 @@ export const RARITY_LABEL: Record<Rarity, string> = { common: 'Common', rare: 'R
 export const DUPES_PER_BOX = 5;
 
 /** `dupes` is the meter: duplicates since it last filled (0 … DUPES_PER_BOX − 1) */
-export interface Wardrobe { boxes: number; owned: readonly string[]; equipped: Readonly<Partial<Record<Slot, string>>>; dupes: number }
+export interface Wardrobe {
+  boxes: number; owned: readonly string[]; equipped: Readonly<Partial<Record<Slot, string>>>; dupes: number;
+  /** verified runs finished so far, for the special items (left out while it is 0) */
+  runs?: number;
+}
 export const EMPTY_WARDROBE: Wardrobe = { boxes: 0, owned: [], equipped: {}, dupes: 0 };
 
 /** one opened box, as stored: what it gave and whether the player had it already */
@@ -30,11 +36,13 @@ export interface Opened { item: string; dupe: boolean }
  * The wardrobe from its history: `earned` boxes (picked up on verified runs and handed out by admin) and every box opened so far.
  * Each DUPES_PER_BOX duplicates add a free box; what's left over is the meter.
  */
-export function wardrobeFrom(earned: number, opened: readonly Opened[], equipped: unknown): Wardrobe {
+export function wardrobeFrom(earned: number, opened: readonly Opened[], equipped: unknown, runs = 0): Wardrobe {
   const dupes = opened.filter(o => o.dupe).length;
   return parseWardrobe({
     boxes: Math.max(0, earned + Math.floor(dupes / DUPES_PER_BOX) - opened.length),
-    owned: opened.filter(o => !o.dupe).map(o => o.item), equipped, dupes: dupes % DUPES_PER_BOX,
+    // special items are never stored: they are owned exactly while enough runs are finished
+    owned: [...opened.filter(o => !o.dupe).map(o => o.item), ...CATALOG.filter(c => c.unlock && c.unlock.runs <= runs).map(c => c.id)],
+    equipped, dupes: dupes % DUPES_PER_BOX, runs,
   });
 }
 
@@ -47,7 +55,8 @@ export function parseWardrobe(raw: unknown): Wardrobe {
   const eq = (r.equipped && typeof r.equipped === 'object' ? r.equipped : {}) as Record<string, unknown>;
   for (const slot of SLOTS) { const id = eq[slot]; if (typeof id === 'string' && owned.includes(id) && BY_ID.get(id)!.slot === slot) equipped[slot] = id; }
   const dupes = typeof r.dupes === 'number' && r.dupes >= 0 ? Math.floor(r.dupes) % DUPES_PER_BOX : 0;
-  return { boxes, owned, equipped, dupes };
+  const runs = typeof r.runs === 'number' && r.runs > 0 ? Math.floor(r.runs) : 0;
+  return { boxes, owned, equipped, dupes, ...runs && { runs } };
 }
 
 export const addBox = (w: Wardrobe, n = 1): Wardrobe => ({ ...w, boxes: w.boxes + n });
@@ -63,7 +72,7 @@ export function openBox(w: Wardrobe, random: () => number): { wardrobe: Wardrobe
   if (w.boxes < 1) return null;
   let roll = random() * RARITIES.reduce((s, r) => s + RARITY_WEIGHT[r], 0), rarity = RARITIES[RARITIES.length - 1]!;
   for (const r of RARITIES) { if ((roll -= RARITY_WEIGHT[r]) < 0) { rarity = r; break; } }
-  const pool = CATALOG.filter(c => c.rarity === rarity), item = pool[Math.floor(random() * pool.length)]!;
+  const pool = BOX_POOL.filter(c => c.rarity === rarity), item = pool[Math.floor(random() * pool.length)]!;
   if (!w.owned.includes(item.id)) return { wardrobe: { ...w, boxes: w.boxes - 1, owned: [...w.owned, item.id] }, pull: { item, dupe: false, free: false } };
   const free = w.dupes + 1 >= DUPES_PER_BOX;
   return { wardrobe: { ...w, boxes: w.boxes - 1 + (free ? 1 : 0), dupes: free ? 0 : w.dupes + 1 }, pull: { item, dupe: true, free } };

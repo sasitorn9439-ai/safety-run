@@ -93,7 +93,7 @@ export async function tournament(store: Store, tours: TourStore, b: Json, now = 
     await store.init();
     const avatar = await store.avatarOf(id), token = newToken();
     // what they wear in the main game's wardrobe, as it is now (joining again picks up a change)
-    const w = await store.wardrobe(id), look = wardrobeFrom(w.earned, w.opened, w.equipped).equipped as Record<string, string>;
+    const w = await store.wardrobe(id), look = wardrobeFrom(w.earned, w.opened, w.equipped, w.runs).equipped as Record<string, string>;
     const slot = await tours.join(code, { empId: id, avatar, look, tokenHash: sha(token) });
     if (slot == null) return reply(409, { error: 'full' });
     return reply(200, { slot, token, avatar });

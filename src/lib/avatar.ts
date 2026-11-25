@@ -48,13 +48,14 @@ const FX_Y = -.5;
 
 /** an effect plays as a strip of this many frames, one loop of the effect, cycled by CSS (.av-fx in styles.css) */
 export const FX_FRAMES = 16;
+const TAU_A = Math.PI * 2;
 
 /**
  * The dressed avatar at moment `t` (0…1) of its effect's loop: the mascot's head from the front in what the player wears, on
  * the player's own colour and frame (so two players in the same outfit still look different). The effect plays small behind
  * the head, inside the circle.
  */
-function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number, t: number) {
+function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number, t: number, portrait?: HTMLImageElement) {
   const inner = p?.f ? R * .86 : R;
   if (p) { c.fillStyle = ringColor(p); c.beginPath(); c.arc(0, 0, R, 0, 7); c.fill(); }
   c.fillStyle = p ? AV_C[p.c]![0] : '#3a3f48'; c.beginPath(); c.arc(0, 0, inner, 0, 7); c.fill();
@@ -72,12 +73,18 @@ function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number, t: number
   const twice = [t, (t + .5) % 1];
   // the effect around the whole body, made smaller, its middle at the chin (FX_Y). What sits behind the body goes behind the
   // mascot and what sits in front goes over it, so a ring wraps round it the way it wraps round the body in the game
-  if (fx?.avatar) fx.avatar(c, t);
+  if (fx?.avatar) fx.avatar(c, t, !!portrait);
   else { at(fx?.back, twice); at(fx?.ring?.back, [t]); }
-  c.save(); c.translate(0, -VIEW_Y); drawFrontShoulders(c, look.pal); drawFrontHead(c, look); c.restore();
+  // the subject: the mascot drawn in code, or a skin's own picture (head and shoulders, fitted to the circle, anchored at the top)
+  const pw = VIEW_R * 2.1, ph = portrait ? pw * portrait.naturalHeight / portrait.naturalWidth : 0, top = -VIEW_R - pw * .02;
+  if (portrait) c.drawImage(portrait, -pw / 2, top, pw, ph);
+  else { c.save(); c.translate(0, -VIEW_Y); drawFrontShoulders(c, look.pal); drawFrontHead(c, look); c.restore(); }
   // ...except over the face: particles floating up past the head pass behind it, so the face always shows. A ring still
   // crosses the face as it sweeps over the head
-  c.save(); c.translate(0, -VIEW_Y); c.beginPath(); c.rect(-1, -2, 2, 3); headPath(c, true, !!look.figure?.egg); c.clip('evenodd'); c.translate(0, VIEW_Y);
+  c.save(); c.beginPath(); c.rect(-1, -2, 2, 4);
+  if (portrait) c.ellipse(0, top + pw * .3, pw * .2, pw * .28, 0, 0, TAU_A);
+  else { c.translate(0, -VIEW_Y); headPath(c, true, !!look.figure?.egg); c.translate(0, VIEW_Y); }
+  c.clip('evenodd');
   if (!fx?.avatar) at(fx?.front, twice);
   c.restore();
   if (!fx?.avatar) at(fx?.ring?.front, [t]);
@@ -93,22 +100,26 @@ const cache = new WeakMap<Look, Map<string, AvatarArt>>();
  * with nothing on, the avatar is the plain badge; with anything on, it is the mascot's head dressed in it, and with an effect
  * on, a strip of FX_FRAMES frames of it.
  */
-export function avatarArt(n: number | null | undefined, size = 96, worn?: unknown): AvatarArt {
-  const look = lookOfWorn(worn), key = `${n}:${size}`;
+export const avatarArt = (n: number | null | undefined, size = 96, worn?: unknown): AvatarArt => avatarArtOf(n, size, lookOfWorn(worn));
+
+/** avatarArt for a look given directly (dev mode tries looks that are not in the catalog) */
+export function avatarArtOf(n: number | null | undefined, size: number, look: Look): AvatarArt {
+  const key = `${n}:${size}`;
   let byKey = cache.get(look);
   if (!byKey) cache.set(look, byKey = new Map());
   const hit = byKey.get(key);
   if (hit) return hit;
-  const frames = look.effect ? FX_FRAMES : 1, cv = document.createElement('canvas');
+  const frames = look.effect ? FX_FRAMES : 1, cv = document.createElement('canvas'), portrait = look.figure?.portrait?.img;
   cv.width = size * frames; cv.height = size;
   const c = cv.getContext('2d')!, R = size / 2, p = avParts(n);
   for (let f = 0; f < frames; f++) {
     c.setTransform(1, 0, 0, 1, f * size + R, R);
-    if (look.pal === DEFAULT_PALETTE && !look.hat && !look.effect) badge(c, p, R, size);
-    else dressed(c, p, look, R, f / frames);
+    if (look.pal === DEFAULT_PALETTE && !look.hat && !look.effect && !portrait) badge(c, p, R, size);
+    else dressed(c, p, look, R, f / frames, portrait ?? undefined);
   }
   const art = { url: cv.toDataURL(), frames };
-  byKey.set(key, art);
+  // a picture that has not loaded yet is drawn as the code's version for now: do not keep that
+  if (!look.figure?.portrait || portrait) byKey.set(key, art);
   return art;
 }
 

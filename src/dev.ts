@@ -1,10 +1,13 @@
 import { HAZARD_KINDS, HZ, PPE } from '../shared/hazards.js';
 import { LIFT_HEIGHT, POWER_SECONDS, SLIDE_SECONDS, SPARK_HALF_CYCLE, START_SPEED, STEP, createRun, type Action, type GameObject, type PowerType } from '../shared/sim.js';
 import { ZONES } from '../shared/zones.js';
+import { BOSS_SKIN_OPTIONS } from './cosmetics/characters.js';
+import { BOSS_FX_OPTIONS } from './cosmetics/effects.js';
+import type { Cosmetic, Look } from './cosmetics/types.js';
 import { CATALOG, lookOfWorn } from './cosmetics/wardrobe.js';
 import { SLOTS, type Slot } from './cosmetics/types.js';
 import { AV_N, avName } from '../shared/avatar.js';
-import { avImg } from './lib/avatar.js';
+import { avatarArtOf } from './lib/avatar.js';
 import { createRenderer, type SceneState } from './render/index.js';
 import './dev.css';
 
@@ -22,6 +25,12 @@ const assets: { label: string; objects: GameObject[] }[] = [
   { label: 'Bonus coin', objects: [{ k: 'bonus', l: 0, z: 0 }] },
 ];
 
+/** candidate cosmetics not in the catalog yet, to try on in the avatar panel */
+const TRY: readonly Cosmetic[] = [...BOSS_SKIN_OPTIONS, ...BOSS_FX_OPTIONS];
+/** `look` wearing candidate `c` in its slot */
+const tryOn = (look: Look, c: Cosmetic): Look =>
+  c.slot === 'skin' ? { ...look, pal: c.pal, figure: c.figure ?? null } : c.slot === 'hat' ? { ...look, hat: c } : { ...look, effect: c };
+
 export async function startDev() {
   document.title = 'Safety Run · Dev Mode';
   document.body.innerHTML = `
@@ -36,6 +45,7 @@ export async function startDev() {
           <output id="dev-av-name"></output>
           <label>Avatar number <input id="dev-av-n" type="number" min="0" max="${AV_N * 2}" value="5"></label>
           ${SLOTS.map(s => `<label>${s} <select id="dev-av-${s}"><option value="">—</option>${CATALOG.filter(c => c.slot === s).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></label>`).join('')}
+          <label>Big-boss style: try a new look <select id="dev-try"><option value="">— the outfit picked above —</option>${TRY.map((e, i) => `<option value="${i}">${e.name}</option>`).join('')}</select></label>
           <button id="dev-av-random" type="button">Random outfit</button>
         </fieldset>
         <label>Asset or scene <select id="dev-asset"></select></label>
@@ -111,12 +121,20 @@ export async function startDev() {
     const showAvatar = () => {
       const worn: Partial<Record<Slot, string>> = {};
       for (const s of SLOTS) if (avSlot(s).value) worn[s] = avSlot(s).value;
-      const n = Math.max(0, avN.valueAsNumber || 0);
-      document.querySelector<HTMLElement>('#dev-av')!.innerHTML = [160, 72, 36, 22].map(px => avImg(n, px, worn)).join('');
+      const n = Math.max(0, avN.valueAsNumber || 0), option = TRY[Number(tryIt.value)];
+      // a candidate replaces what is worn in its slot, in the avatar and on the mascot in the game
+      const look = tryIt.value && option ? tryOn(lookOfWorn(worn), option) : lookOfWorn(worn);
+      document.querySelector<HTMLElement>('#dev-av')!.innerHTML = [160, 72, 36, 22].map(px => {
+        const art = avatarArtOf(n, px * 2, look);
+        return `<img class="av${art.frames > 1 ? ' av-fx' : ''}" src="${art.url}" width="${px}" height="${px}" alt="">`;
+      }).join('');
       document.querySelector<HTMLOutputElement>('#dev-av-name')!.value = avName(n);
-      renderer.setLook(lookOfWorn(worn));
+      renderer.setLook(look);
     };
-    for (const control of [avN, ...SLOTS.map(avSlot)]) control.addEventListener('input', showAvatar);
+    const tryIt = document.querySelector<HTMLSelectElement>('#dev-try')!;
+    // a skin drawn as a picture shows once its sheet has loaded: redraw then
+    for (const c of [...TRY, ...CATALOG]) if (c.slot === 'skin') { void c.figure?.sprite?.ready.then(() => showAvatar()); void c.figure?.portrait?.ready.then(() => showAvatar()); }
+    for (const control of [avN, tryIt, ...SLOTS.map(avSlot)]) control.addEventListener('input', showAvatar);
     document.querySelector<HTMLButtonElement>('#dev-av-random')!.onclick = () => {
       for (const s of SLOTS) { const opts = avSlot(s).options; avSlot(s).selectedIndex = Math.floor(Math.random() * opts.length); }
       avN.value = String(Math.floor(Math.random() * AV_N));
