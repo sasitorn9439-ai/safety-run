@@ -44,11 +44,15 @@ const VIEW_Y = -.71, VIEW_R = .48;
 /** how big the effect is drawn next to the head: its orbits and rising particles land in the ring between the head and the edge */
 const FX_SCALE = .8;
 
+/** an effect plays as a strip of this many frames, one loop of the effect, cycled by CSS (.av-fx in styles.css) */
+export const FX_FRAMES = 16;
+
 /**
- * The dressed avatar: the mascot's head from the front in what the player wears, on the player's own colour and frame (so two
- * players in the same outfit still look different). The effect plays small behind the head, inside the circle.
+ * The dressed avatar at moment `t` (0…1) of its effect's loop: the mascot's head from the front in what the player wears, on
+ * the player's own colour and frame (so two players in the same outfit still look different). The effect plays small behind
+ * the head, inside the circle.
  */
-function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number) {
+function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number, t: number) {
   const inner = p?.f ? R * .86 : R;
   if (p) { c.fillStyle = ringColor(p); c.beginPath(); c.arc(0, 0, R, 0, 7); c.fill(); }
   c.fillStyle = p ? AV_C[p.c]![0] : '#3a3f48'; c.beginPath(); c.arc(0, 0, inner, 0, 7); c.fill();
@@ -56,13 +60,13 @@ function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number) {
   const k = inner / VIEW_R;
   c.scale(k, k);
   // a trail left under the feet would fall outside the circle: lift those effects so the trail shows over the chest
-  const fx = look.effect, phases = [.15, .65], lift = fx?.below ? fx.below * .7 : 0;
-  // the effect around the whole body, made smaller and centred on the head, at two moments of its loop so a sparse effect
-  // still shows; what sits behind the body is drawn first, then the shoulders, then what sits in front, then the head over it
+  const fx = look.effect, phases = [t, (t + .5) % 1], lift = fx?.below ? fx.below * .7 : 0;
+  // the effect around the whole body, made smaller and centred on the head, at two moments of its loop half a loop apart so a
+  // sparse effect still shows; what sits behind the body is drawn first, then the shoulders, then what sits in front, then the head
   const effect = (part: 'back' | 'front') => {
     const draw = fx?.[part];
     if (!draw) return;
-    for (const t of phases) { c.save(); c.scale(FX_SCALE, FX_SCALE); c.translate(0, .45 - lift); draw(c, t, -.45); c.restore(); }
+    for (const ph of phases) { c.save(); c.scale(FX_SCALE, FX_SCALE); c.translate(0, .45 - lift); draw(c, ph, -.45); c.restore(); }
   };
   effect('back');
   c.save(); c.translate(0, -VIEW_Y); drawFrontShoulders(c, look.pal); c.restore();
@@ -72,28 +76,41 @@ function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number) {
   c.restore();
 }
 
-const cache = new WeakMap<Look, Map<string, string>>();
+/** an avatar image: one frame, or `frames` frames side by side when its effect plays */
+export interface AvatarArt { url: string; frames: number }
+const cache = new WeakMap<Look, Map<string, AvatarArt>>();
 
 /**
  * Avatar as a PNG data URL (cached). `size` is in device pixels. `worn` is what the player wears (cosmetic slot → item id):
- * with nothing on, the avatar is the plain badge; with anything on, it is the mascot's head dressed in it.
+ * with nothing on, the avatar is the plain badge; with anything on, it is the mascot's head dressed in it, and with an effect
+ * on, a strip of FX_FRAMES frames of it.
  */
-export function avatarURL(n: number | null | undefined, size = 96, worn?: unknown): string {
+export function avatarArt(n: number | null | undefined, size = 96, worn?: unknown): AvatarArt {
   const look = lookOfWorn(worn), key = `${n}:${size}`;
   let byKey = cache.get(look);
   if (!byKey) cache.set(look, byKey = new Map());
   const hit = byKey.get(key);
   if (hit) return hit;
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = size;
+  const frames = look.effect ? FX_FRAMES : 1, cv = document.createElement('canvas');
+  cv.width = size * frames; cv.height = size;
   const c = cv.getContext('2d')!, R = size / 2, p = avParts(n);
-  c.translate(R, R);
-  if (look.pal === DEFAULT_PALETTE && !look.hat && !look.effect) badge(c, p, R, size);
-  else dressed(c, p, look, R);
-  const url = cv.toDataURL();
-  byKey.set(key, url);
-  return url;
+  for (let f = 0; f < frames; f++) {
+    c.setTransform(1, 0, 0, 1, f * size + R, R);
+    if (look.pal === DEFAULT_PALETTE && !look.hat && !look.effect) badge(c, p, R, size);
+    else dressed(c, p, look, R, f / frames);
+  }
+  const art = { url: cv.toDataURL(), frames };
+  byKey.set(key, art);
+  return art;
 }
 
-export const avImg = (n: number | null | undefined, size: number, worn?: unknown) =>
-  `<img class="av" src="${avatarURL(n, size * 2, worn)}" width="${size}" height="${size}" alt="">`;
+/** shows `art` in an <img>: a strip plays through its frames (styles.css .av-fx), a single frame just shows */
+export function setAvatarImg(img: HTMLImageElement, art: AvatarArt) {
+  img.src = art.url;
+  img.classList.toggle('av-fx', art.frames > 1);
+}
+
+export const avImg = (n: number | null | undefined, size: number, worn?: unknown) => {
+  const art = avatarArt(n, size * 2, worn);
+  return `<img class="av${art.frames > 1 ? ' av-fx' : ''}" src="${art.url}" width="${size}" height="${size}" alt="">`;
+};

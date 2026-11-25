@@ -2,7 +2,7 @@ import { PPE, type PpeType } from '../../shared/hazards.js';
 import { OFFICER_SCORE, type PowerType, type Surprise } from '../../shared/sim.js';
 import { ZONES } from '../../shared/zones.js';
 import { $ } from '../lib/dom.js';
-import { avatarURL } from '../lib/avatar.js';
+import { avatarArt, setAvatarImg } from '../lib/avatar.js';
 import { drawCoin, ppeIcon } from '../render/draw.js';
 import { drawPowerIcon } from '../render/power-icons.js';
 import { STEPS, type Tutorial } from '../game/tutorial.js';
@@ -100,7 +100,7 @@ export class Hud {
   /** `worn`: what the player wears (cosmetic slot → item id), which dresses the avatar */
   setAvatar(n: number | null, worn?: unknown) {
     this.el.av.style.display = n != null && n >= 0 ? 'block' : 'none';
-    if (n != null && n >= 0) this.el.av.src = avatarURL(n, 96, worn);
+    if (n != null && n >= 0) setAvatarImg(this.el.av, avatarArt(n, 96, worn));
     this.el.hud.classList.toggle('noav', !(n != null && n >= 0));
   }
 
