@@ -138,7 +138,7 @@ export function mountWardrobe(d: WardrobeDeps) {
     for (const s of SLOTS) if (trying[s] && w.owned.includes(trying[s].id)) delete trying[s];   // won it since: it's simply owned now
     look = tryOn(lookOf(w));
     showBoxes(w.boxes);
-    $('wardCount').textContent = note || (known ? `สะสมแล้ว ${w.owned.length}/${CATALOG.length} ชิ้น` : 'ใส่รหัสพนักงานแล้วเริ่มวิ่งก่อน · Enter your employee ID and play first');
+    $('wardCount').textContent = note || (known ? `สะสมแล้ว ${w.owned.length}/${CATALOG.length} ชิ้น` : 'ใส่รหัสพนักงานแล้วกดปุ่มกุญแจ · Enter your employee ID and tap the lock');
     meter($('wardMeter'), w.dupes);
     setOpenButtons($<HTMLButtonElement>('wardOpen'), $<HTMLButtonElement>('wardOpenMany'), 'เปิด ');
     for (const b of document.querySelectorAll<HTMLButtonElement>('#wardTabs button')) b.setAttribute('aria-selected', String(b.dataset.slot === tab));
