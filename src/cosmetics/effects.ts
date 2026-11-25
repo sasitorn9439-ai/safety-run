@@ -262,20 +262,25 @@ export const RING_MS = 1800;
 export const ringPhase = (now: number) => (now % RING_MS) / RING_MS;
 
 /**
- * Things raining down behind the mascot in an avatar (Effect.avatar), each `[x, size, falls per loop, phase]`, drifting `sway`
- * side to side and spinning. Every one falls a whole number of times per loop, so the loop never shows a seam.
+ * Things raining down (or, `up`, floating up) behind the mascot in an avatar (Effect.avatar), each `[x, size, passes per loop,
+ * phase]`, drifting `sway` side to side and spinning. Each passes a whole number of times per loop, so the loop never shows a
+ * seam. Rising things fade in and out (`fade`) like flames.
  */
 const RAIN = [
   [-.38, .065, 1, .0], [.33, .075, 2, .35], [-.24, .055, 2, .7], [.22, .06, 1, .55], [-.31, .05, 2, .15],
   [.4, .055, 1, .8], [-.42, .06, 2, .45], [.28, .05, 2, .9], [.08, .07, 1, .2], [-.08, .06, 1, .65],
 ] as const;
-const rain = (shape: Shape, colors: readonly string[], size = 1, sway = 0) => (c: Ctx, t: number) => {
-  RAIN.forEach(([x, r, falls, phase], k) => {
-    const v = t * falls + phase, u = v % 1, rr = r * size;
-    shape(c, x + Math.sin(v * TAU) * sway, -.58 - rr + u * (1.16 + 2 * rr), rr, colors[k % colors.length]!, v * TAU * 2);
+interface RainOpts { size?: number; sway?: number; up?: boolean; fade?: boolean }
+const rain = (shape: Shape, colors: readonly string[], { size = 1, sway = 0, up = false, fade: fades = false }: RainOpts = {}) => (c: Ctx, t: number) => {
+  RAIN.forEach(([x, r, passes, phase], k) => {
+    const v = t * passes + phase, u = v % 1, rr = r * size, y = -.58 - rr + (up ? 1 - u : u) * (1.16 + 2 * rr);
+    c.save(); if (fades) c.globalAlpha *= fade(u);
+    shape(c, x + Math.sin(v * TAU) * sway, y, rr * (fades ? .6 + .4 * fade(u) : 1), colors[k % colors.length]!, up ? 0 : v * TAU * 2);
+    c.restore();
   });
 };
 
+const FIRE = ['#ff6d00', '#ffab00', '#ff3d00'];
 const BLOOM = ['#ffffff', '#f8bbd0', '#b3e5fc', '#fff59d'];
 const PARTY = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb'];
 export const EFFECTS: readonly Effect[] = [
@@ -288,11 +293,11 @@ export const EFFECTS: readonly Effect[] = [
   fx('confetti', 'กระดาษสี · Confetti', 'common', fall(confetti, PARTY, 8, .035)),
   { ...fx('coins', 'เหรียญทอง · Coin trail', 'common', trail(coin, ['#ffd400'], 3, COIN_R, .14, .5, 2)), avatar: rain(coin, ['#ffd400']) },
   fx('fireflies', 'หิ่งห้อย · Fireflies', 'common', orbit(glowDot, ['#f4ff81', '#ffe57f'], 6, .025, .5, .2)),
-  { ...fx('petals', 'ดอกไม้บานตามรอยเท้า · Blooming steps', 'common', bloom(BLOOM)), avatar: rain(flower, BLOOM, 1.5, .05) },   // id kept from 'Petals'
+  { ...fx('petals', 'ดอกไม้บานตามรอยเท้า · Blooming steps', 'common', bloom(BLOOM)), avatar: rain(flower, BLOOM, { size: 1.5, sway: .05 }) },   // id kept from 'Petals'
   fx('stars', 'ดาวหมุน · Star ring', 'common', orbit(star, ['#ffd400'], 5, .05)),
   fx('clouds', 'ปุยเมฆ · Cloud steps', 'common', trail(puff, ['#ffffff', '#eceff1'], 4, .07, .1)),
   // flames on the shoes and a trail of them left on the ground behind (toward the camera), burning out as they fall back
-  fx('flamefeet', 'เท้าไฟ · Fire feet', 'rare', feetFire(['#ff6d00', '#ffab00', '#ff3d00']), trail(flame, ['#ff6d00', '#ffab00', '#ff3d00'], 9, .1, .2, .55, 0)),
+  { ...fx('flamefeet', 'เท้าไฟ · Fire feet', 'rare', feetFire(FIRE), trail(flame, FIRE, 9, .1, .2, .55, 0)), avatar: rain(flame, FIRE, { size: 1.3, sway: .04, up: true, fade: true }) },
   fx('lightning', 'สายฟ้า · Lightning', 'rare', orbit(bolt, ['#ffea00', '#ffffff'], 4, .07, .46, .16)),
   fx('frost', 'เกล็ดน้ำแข็ง · Frost', 'rare', aura('#b3e5fc', .6, .45), orbit(snowflake, ['#e1f5fe', '#81d4fa'], 5, .05)),
   fx('rainbow', 'สายรุ้ง · Rainbow trail', 'rare', rainbow),
