@@ -84,8 +84,10 @@ start a rematch with the same players.
   costs about a second instead of ending the run, and the race ends on the clock. The normal power-ups and bonus coins are replaced
   by the tournament items, which draw from their own random streams so the track never changes.
 * **Safety Check.** A row of question cards across all three lanes every 650 m. The world slows down and three gates (A/B/C) come up
-  with the answers. Run through the right one for +500 (`GATE_SCORE`) and a Safety Sprint (2× speed for 3 s); the wrong one slows you down. A right
-  answer is worth far more than the pickups: the near-miss multiplier is off in a tournament. The questions are
+  with the answers. Run through the right one for points and a Safety Sprint (2× speed for 3 s); the wrong one slows you down. A right
+  answer pays 500 if you take your lane as soon as the gates come up, falling to 100 if you take it at the last moment (`gateScore`,
+  timed from your last lane change; a yellow bar shows the time left and what you would get). That is far more than the pickups: the
+  near-miss multiplier is off in a tournament. The questions are
   trick questions (`shared/trick-questions.ts`), the same ones in the same order for every player.
 * **Items:** LOTO Lock (moving hazards stop for 8 s), fire extinguisher (clears your lane ahead), Buddy System (auto-dodge for 5 s),
   Zero Accident (+100 for 15 s without a crash, lost on a crash) and Spot Audit (+30, and the player in the lead gets a question:

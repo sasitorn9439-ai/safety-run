@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AUDIT_PASS_SCORE, GATES, GATE_SCORE, STEP, createRun, replayScore, replayTour, type Action, type InputEntry, type Run, type TourOptions } from '../shared/sim.js';
+import { AUDIT_PASS_SCORE, GATES, GATE_SCORE, GATE_SCORE_MIN, STEP, gateScore, createRun, replayScore, replayTour, type Action, type InputEntry, type Run, type TourOptions } from '../shared/sim.js';
 import { think } from './bot.js';
 
 const TOUR: TourOptions = { stage: 'tour', durationTicks: 60 / STEP };
@@ -57,15 +57,15 @@ describe('tournament run', () => {
     for (const seed of [3, 11, 42]) {
       const right = race(seed, { answer: 'right' }), wrong = race(seed, { answer: 'wrong' });
       const { correct } = stats(right.run);
-      expect(right.run.view().earned.extra).toBeGreaterThanOrEqual(correct * GATE_SCORE);
-      expect(right.run.score() - wrong.run.score()).toBeGreaterThan(correct * GATE_SCORE);
+      expect(right.run.view().earned.extra).toBeGreaterThanOrEqual(correct * (GATE_SCORE - 50));
+      expect(right.run.score() - wrong.run.score()).toBeGreaterThan(correct * (GATE_SCORE - 50));
       expect(right.run.view().mult).toBe(1);
     }
   });
 
-  it('pays GATE_SCORE for a question card and AUDIT_PASS_SCORE for a Spot Audit, the moment the right gate is run through', () => {
+  it('pays gateScore for a question card and AUDIT_PASS_SCORE for a Spot Audit, the moment the right gate is run through', () => {
     const run = createRun(99, undefined, undefined, { tour: TOUR });
-    const paid: [boolean, number][] = [];
+    const paid: [boolean, number, number][] = [];
     let audited = false;
     while (!run.finished) {
       if (!audited && run.tick >= 300 && run.input('audit')) audited = true;
@@ -74,11 +74,38 @@ describe('tournament run', () => {
       else think(run);
       const before = run.view().tour!.correct, extra = run.view().earned.extra;
       run.step();
-      if (run.view().tour!.correct > before) paid.push([gate!.audit, run.view().earned.extra - extra]);
+      if (run.view().tour!.correct > before) paid.push([gate!.audit, run.view().earned.extra - extra, gate!.picked]);
     }
     expect(paid.some(([audit]) => audit)).toBe(true);
     expect(paid.some(([audit]) => !audit)).toBe(true);
-    for (const [audit, pts] of paid) expect(pts).toBe(audit ? AUDIT_PASS_SCORE : GATE_SCORE);
+    for (const [audit, pts, picked] of paid) expect(pts).toBe(audit ? AUDIT_PASS_SCORE : gateScore(picked));
+  });
+
+  it('a question card pays less the later the answer is picked', () => {
+    expect(gateScore(1)).toBe(GATE_SCORE);
+    expect(gateScore(0)).toBe(GATE_SCORE_MIN);
+    expect(gateScore(0.5)).toBe(300);
+    /** steers for the right gate only once `wait` of the gates' time has gone by */
+    const answerAfter = (wait: number) => {
+      const run = createRun(11, undefined, undefined, { tour: TOUR });
+      const paid: number[] = [];
+      while (!run.finished) {
+        const v = run.view(), gate = v.tour!.gate;
+        if (gate) {
+          const want = gate.correct - 1;
+          if (v.lane !== want && gate.z / gate.z0 <= 1 - wait) run.input(v.lane < want ? 'right' : 'left');
+        } else think(run);
+        const before = run.view().tour!.correct, extra = run.view().earned.extra;
+        run.step();
+        if (run.view().tour!.correct > before) paid.push(run.view().earned.extra - extra);
+      }
+      return paid;
+    };
+    const fast = answerAfter(0), slow = answerAfter(0.7);
+    expect(fast.length).toBeGreaterThanOrEqual(2);
+    expect(slow.length).toBeGreaterThanOrEqual(2);
+    for (const pts of fast) expect(pts).toBeGreaterThanOrEqual(GATE_SCORE - 20);
+    for (const pts of slow) expect(pts).toBeLessThanOrEqual(gateScore(0.3) + 10);
   });
 
   it('puts the three gates across the lanes and clears the way to them', () => {

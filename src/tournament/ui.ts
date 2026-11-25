@@ -1,9 +1,9 @@
-import type { Gate, PowerType, TourItem, TourView } from '../../shared/sim.js';
+import { AUDIT_PASS_SCORE, GATE_SCORE, GATE_SCORE_MIN, gateScore, type Gate, type PowerType, type TourItem, type TourView } from '../../shared/sim.js';
 import { esc } from '../lib/dom.js';
 import { GATE_COLORS, drawPowerIcon } from '../render/power-icons.js';
 
 export const ITEMS: readonly [TourItem, string, string][] = [
-  ['quiz', 'Safety Check', 'การ์ดเต็ม 3 เลน อ่านคำถามแล้ววิ่งเข้าประตู A/B/C ที่ถูก · ถูก = +500 และ Safety Sprint พุ่ง 2 เท่า 3 วินาที · ผิด = ช้าลงครู่หนึ่ง'],
+  ['quiz', 'Safety Check', 'การ์ดเต็ม 3 เลน อ่านคำถามแล้ววิ่งเข้าประตู A/B/C ที่ถูก · ถูก = +500 ถ้าตอบทันที ลดลงเรื่อยๆ ถึง +100 ถ้าตอบช้า (ดูหลอดสีเหลือง) และ Safety Sprint พุ่ง 2 เท่า 3 วินาที · ผิด = ช้าลงครู่หนึ่ง'],
   ['loto', 'LOTO Lock', 'ตัดพลังงาน 8 วินาที ควันหยุดลอย ของไม่ตก ประกายไฟดับ'],
   ['foam', 'ถังดับเพลิง', 'เคลียร์อันตรายในเลนของตัวเองไปข้างหน้าประมาณ 3 วินาที'],
   ['buddy', 'Buddy System', 'เพื่อนช่วยนำทาง หลบให้อัตโนมัติ 5 วินาที'],
@@ -48,22 +48,27 @@ export function gateHtml(g: Gate) {
   return GATE_COLORS.map((c, i) => `<div class="t-opt" style="--c:${c}"><b>${'ABC'[i]}</b><span>${esc(g.options[i])}</span></div>`).join('');
 }
 
-/** keeps one popup in step with the run's gate: fills it when a question comes up, empties it when it has gone by */
+/** keeps one popup in step with the run's gate: fills it when a question comes up, empties it when it has gone by.
+ * The yellow bar is the time left before the gates; on a question card it carries what a right answer picked now still pays. */
 export class GatePanel {
   private shown: Gate | null = null;
-  private max = 1;
-  constructor(private el: { root: HTMLElement; head: HTMLElement; q: HTMLElement; opts: HTMLElement; bar?: HTMLElement }) {}
+  private pts = -1;
+  constructor(private el: { root: HTMLElement; head: HTMLElement; q: HTMLElement; opts: HTMLElement; bar: HTMLElement; pts: HTMLElement }) {}
   update(g: Gate | null) {
     if (g !== this.shown) {
       this.shown = g;
+      this.pts = -1;
       this.el.root.classList.toggle('on', !!g);
       if (g) {
-        this.max = g.z;
-        this.el.head.textContent = g.audit ? 'Spot Audit! ตอบให้ถูก ไม่งั้นช้าลง' : 'Safety Check · วิ่งเข้าประตูคำตอบที่ถูก';
+        this.el.head.textContent = g.audit ? 'Spot Audit! ตอบให้ถูก ไม่งั้นช้าลง' : `Safety Check · ตอบเร็วได้ ${GATE_SCORE} ช้าสุด ${GATE_SCORE_MIN}`;
         this.el.q.textContent = g.prompt;
         this.el.opts.innerHTML = gateHtml(g);
       }
     }
-    if (g && this.el.bar) this.el.bar.style.transform = `scaleX(${Math.max(0, g.z / this.max)})`;
+    if (!g) return;
+    const left = Math.max(0, g.z / g.z0);
+    this.el.bar.style.transform = `scaleX(${left})`;
+    const pts = g.audit ? AUDIT_PASS_SCORE : gateScore(left);
+    if (pts !== this.pts) { this.pts = pts; this.el.pts.textContent = `+${pts}`; }
   }
 }
