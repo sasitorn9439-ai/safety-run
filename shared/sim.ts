@@ -120,9 +120,10 @@ export const BONUS_SECONDS = 7;
 /**
  * A cosmetic loot box: pure collectible, it never touches the score, so a run with or without one replays to the same points.
  * A checkpoint every LOOT_GAP metres arms one with LOOT_CHANCE (its own random stream), so about one turns up every
- * LOOT_GAP / LOOT_CHANCE metres of running: rare on purpose, so the cosmetics stay worth having.
+ * LOOT_GAP / LOOT_CHANCE metres of running (about 2 000 m): often enough that a player can collect a good part of the
+ * 100 cosmetics during the event, while the legendaries stay rare.
  */
-export const LOOT_GAP = 1000, LOOT_CHANCE = 0.06;
+export const LOOT_GAP = 500, LOOT_CHANCE = 0.25;
 
 /** Things the renderer may want to react to (particles, shake). Purely cosmetic: never feeds back into the sim. */
 export type SimEvent =
