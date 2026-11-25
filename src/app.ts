@@ -38,6 +38,7 @@ export async function startApp() {
       coin: { row: $('sCoinRow'), pts: $('sCoinPts') }, ppe: { row: $('sPpeRow'), pts: $('sPpePts') },
       near: { row: $('sNearRow'), pts: $('sNearPts') }, extra: { row: $('sExtraRow'), pts: $('sExtraPts') },
     },
+    loot: { row: $('sLootRow'), n: $('sLoot') },
   }, sfx.beep);
   const pauseBtn = $('pauseBtn'), skipTut = $('skipTut');
 
@@ -99,7 +100,7 @@ export async function startApp() {
     $('chanceBtn').textContent = `ตอบคำถามให้ถูก รักษา ${s} คะแนนไว้ แล้ววิ่งต่อ (ได้ 1 ครั้ง)`;
     $('chanceBtn').style.display = game.revives || !game.lastHit ? 'none' : 'block';
     if (game.sess && game.run) LS.set('srPending', { ...game.sess, score: s, ticks: game.run.tick, inputs: game.inputs } satisfies Pending);
-    const run = { score: s, dist: game.dist, coins: game.coins, earned: game.earned, coinSrc: $<HTMLImageElement>('hudCoinImg').src };
+    const run = { score: s, dist: game.dist, coins: game.coins, earned: game.earned, coinSrc: $<HTMLImageElement>('hudCoinImg').src, loot: game.loot };
     setTimeout(() => { show('over'); tally.play(run); }, 350);
   }
 
