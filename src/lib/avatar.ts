@@ -63,10 +63,9 @@ function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number, t: number
   c.scale(k, k);
   // a trail left under the feet would fall outside the circle: lift those effects so the trail shows over the chest
   const fx = look.effect, lift = fx?.below ? fx.below * .7 : 0;
-  // a ring sweeps from the top of the head down to the bottom of the circle (the feet are below it) and back, once a loop;
-  // anything else is drawn at two moments of its loop half a loop apart, so a sparse effect still shows
-  const sweep = .5 - .5 * Math.cos(t * Math.PI * 2), moments = fx?.ring ? [t] : [t, (t + .5) % 1];
-  const cy = fx?.ring ? -.96 + .74 * sweep : -.45;
+  // a ring (it sweeps up and down by itself) is drawn once; anything else at two moments of its loop half a loop apart, so a
+  // sparse effect still shows
+  const moments = fx?.ring ? [t] : [t, (t + .5) % 1], cy = -.45;
   // the effect around the whole body, made smaller, its middle at the chin (FX_Y). What sits behind the body goes behind the
   // mascot and what sits in front goes over it, so a ring wraps round it the way it wraps round the body in the game
   const effect = (part: 'back' | 'front') => {

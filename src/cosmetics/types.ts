@@ -50,7 +50,7 @@ export interface Effect extends Base {
   slot: 'effect'; back?(c: Ctx, t: number, cy: number): void; front?(c: Ctx, t: number, cy: number): void;
   /** how far below the feet it draws, when that is more than the usual 0.34 (a trail that reaches toward the camera) */
   below?: number;
-  /** a ring round the body: an avatar sweeps it from the head down to the feet and back (it draws at height `cy`) */
+  /** a ring round the body that sweeps up and down it: an avatar draws it once per frame and lets it cross the face */
   ring?: true;
 }
 export type Cosmetic = Skin | Hat | Effect;
