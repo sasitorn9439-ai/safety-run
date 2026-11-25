@@ -191,21 +191,26 @@ const mist = (rgb: string, n = 4): Part => {
     },
   };
 };
-/** a pair of wings at the shoulders, flapping gently */
-const wings = (fill: string, edge: string, feathers = 4): Part => ({
-  back(c, t, cy) {
-    const flap = .12 * Math.sin(t * TAU);
-    for (const s of [-1, 1]) {
-      c.save(); c.translate(s * .12, cy - .08); c.rotate(s * (-.25 + flap)); c.scale(s, 1);
-      for (let i = 0; i < feathers; i++) {
-        const len = .5 - i * .08, y = i * .07;
-        c.fillStyle = i % 2 ? edge : fill; c.beginPath(); c.moveTo(0, y);
-        c.quadraticCurveTo(len * .6, y - .22 + i * .02, len, y - .12 + i * .05); c.quadraticCurveTo(len * .6, y + .04, 0, y + .07); c.closePath(); c.fill();
-      }
-      c.restore();
+/** a pair of wings flapping gently, their roots `root` out to each side at height `dy` from the body's centre, raised `tilt` */
+const drawWings = (fill: string, edge: string, feathers: number, root = .12, dy = -.08, tilt = -.25, size = 1): Draw => (c, t, cy) => {
+  const flap = .12 * Math.sin(t * TAU);
+  for (const s of [-1, 1]) {
+    c.save(); c.translate(s * root, cy + dy); c.rotate(s * (tilt + flap)); c.scale(s * size, size);
+    for (let i = 0; i < feathers; i++) {
+      const len = .5 - i * .08, y = i * .07;
+      c.fillStyle = i % 2 ? edge : fill; c.beginPath(); c.moveTo(0, y);
+      c.quadraticCurveTo(len * .6, y - .22 + i * .02, len, y - .12 + i * .05); c.quadraticCurveTo(len * .6, y + .04, 0, y + .07); c.closePath(); c.fill();
     }
-  },
-});
+    c.restore();
+  }
+};
+/** a pair of wings at the shoulders, behind the body */
+const wings = (fill: string, edge: string, feathers = 4): Part => ({ back: drawWings(fill, edge, feathers) });
+/**
+ * Wings growing from the upper back. The camera sees the mascot's back, so they are nearer to it than the cape: their roots sit
+ * on the cape between the shoulders and they spread out over it.
+ */
+const backWings = (fill: string, edge: string, feathers = 4): Part => ({ front: drawWings(fill, edge, feathers, .07, .07, -.05, .85) });
 /** where the sky beam starts, high above the head (the mascot is about 1.1 tall) */
 const BEAM_TOP = -3.1;
 /**
@@ -392,6 +397,13 @@ const meteors = (n = 4): Part => ({
 /** the comet tail in an avatar: only the meteors, streaking across the circle behind the mascot */
 const meteorBackdrop = (c: Ctx, t: number) => { c.save(); c.scale(.9, .9); c.translate(.02, .45); meteors().back!(c, t, -.45); c.restore(); };
 
+/** the angel wings in an avatar: the wings behind the mascot's shoulders, sparkles rising round it (avatar coordinates, see Effect.avatar) */
+const angelBackdrop = (c: Ctx, t: number) => {
+  c.save(); c.translate(0, .21); c.scale(.8, .8); c.translate(0, .45);
+  drawWings('#ffffff', '#e3f2fd', 4)(c, t, -.45); rise(sparkle, ['#ffffff'], 4, .04).front!(c, t, -.45);
+  c.restore();
+};
+
 const FIRE = ['#ff6d00', '#ffab00', '#ff3d00'];
 const BLOOM = ['#ffffff', '#f8bbd0', '#b3e5fc', '#fff59d'];
 const PARTY = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb'];
@@ -425,7 +437,8 @@ export const EFFECTS: readonly Effect[] = [
   fx('galaxy', 'กาแล็กซี · Galaxy', 'epic', aura('#7c4dff', .7, .55), orbit(star, ['#ffffff', '#e1bee7'], 6, .035, .5, .14), orbit(dot, ['#80d8ff', '#ff80ab'], 4, .018, .36, .2, -.15)),
   // meteors streak past behind, and a tail of fireballs leaves the shoes and runs to the bottom of the screen
   { ...fx('comet', 'ดาวหาง · Comet tail', 'epic', meteors(), trail(glowDot, ['#ffd740', '#ff6e40', '#ffab40'], 16, .065, .08, 1.25, 1, .03, -.02)), avatar: meteorBackdrop },
-  fx('angel', 'ปีกนางฟ้า · Angel wings', 'epic', wings('#ffffff', '#e3f2fd'), rise(sparkle, ['#ffffff'], 4, .04)),
+  // over the cape in the game; in the avatar (seen from the front) behind the mascot, with the sparkles
+  { ...fx('angel', 'ปีกนางฟ้า · Angel wings', 'epic', backWings('#ffffff', '#e3f2fd'), rise(sparkle, ['#ffffff'], 4, .04)), avatar: angelBackdrop },
   fx('phoenix', 'ปีกฟีนิกซ์ · Phoenix wings', 'legendary', aura('#ff6d00', .7, .5), wings('#ff6d00', '#ffd600', 5), feetFire(['#ff3d00', '#ffab00', '#ffd600'])),
   fx('holy', 'แสงศักดิ์สิทธิ์ · Holy light', 'legendary', skyBeam('255, 245, 180'), aura('#fff59d', .6, .5), rise(sparkle, ['#ffffff', '#fff176'], 7, .05, .3)),
   fx('safetyhero', 'ฮีโร่ความปลอดภัย · Safety hero', 'legendary', aura('#00e676', .7, .5), orbit(cross, ['#2e9e47'], 4, .06, .5, .16), rise(star, ['#ffd400', '#ffffff'], 5, .04)),
