@@ -264,11 +264,15 @@ const rainbow: Part = {
   },
   below: TRAIL_START + .26 + .03,
 };
-/** a tilted ring circling the body (both halves, so it passes in front and behind) */
-const hoop = (color: string, rx = .46, ry = .12): Part => {
+/**
+ * A tilted ring circling the body (both halves, so it passes in front and behind), sweeping from the top of the head down to
+ * the ankles and back up once a loop. `lag` delays it (a fraction of the loop), so two rings can trail one another.
+ */
+const hoop = (color: string, rx = .46, ry = .12, lag = 0): Part => {
   const half = (front: boolean): Draw => (c, t, cy) => {
+    const y = cy - .5 + .8 * (.5 - .5 * Math.cos((t - lag) * TAU));
     c.save(); c.strokeStyle = color; c.lineWidth = .03; c.globalAlpha *= .85; c.beginPath();
-    c.ellipse(0, cy + .05 * Math.sin(t * TAU), rx, ry, 0, front ? 0 : Math.PI, front ? Math.PI : TAU); c.stroke(); c.restore();
+    c.ellipse(0, y, rx, ry, 0, front ? 0 : Math.PI, front ? Math.PI : TAU); c.stroke(); c.restore();
   };
   return { back: half(false), front: half(true), ring: true };
 };
@@ -302,7 +306,7 @@ export const EFFECTS: readonly Effect[] = [
   fx('rainbow', 'สายรุ้ง · Rainbow trail', 'rare', rainbow),
   fx('smoke', 'หมอกนินจา · Ninja mist', 'rare', mist('214, 220, 228')),       // id kept from 'Ninja smoke' so players who own it keep it
   fx('pixels', 'พิกเซล · Pixels', 'rare', rise(square, ['#00e676', '#00b0ff', '#ff4081', '#ffea00'], 8, .03, .45)),
-  fx('hoop', 'วงแหวนพลัง · Power ring', 'rare', hoop('#40c4ff'), hoop('#b388ff', .38, .1)),
+  fx('hoop', 'วงแหวนพลัง · Power ring', 'rare', hoop('#40c4ff'), hoop('#b388ff', .38, .1, .06)),
   fx('butterflies', 'ผีเสื้อ · Butterflies', 'rare', orbit(butterfly, ['#ff80ab', '#80d8ff', '#ffd180'], 3, .07, .5, .22, -.1)),
   fx('toxic', 'ฟองพิษ · Toxic bubbles', 'rare', aura('#76ff03', .55, .35), rise(ring, ['#76ff03', '#c6ff00'], 6, .04)),
   fx('goldaura', 'ออร่าทองคำ · Golden aura', 'epic', aura('#ffd54f', .7, .7), rise(sparkle, ['#fff59d', '#ffffff'], 5, .045)),
