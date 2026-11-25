@@ -77,7 +77,7 @@ function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number, t: number
   c.save(); c.translate(0, -VIEW_Y); drawFrontShoulders(c, look.pal); drawFrontHead(c, look); c.restore();
   // ...except over the face: particles floating up past the head pass behind it, so the face always shows. A ring still
   // crosses the face as it sweeps over the head
-  c.save(); c.translate(0, -VIEW_Y); c.beginPath(); c.rect(-1, -2, 2, 3); headPath(c, true); c.clip('evenodd'); c.translate(0, VIEW_Y);
+  c.save(); c.translate(0, -VIEW_Y); c.beginPath(); c.rect(-1, -2, 2, 3); headPath(c, true, !!look.figure?.egg); c.clip('evenodd'); c.translate(0, VIEW_Y);
   if (!fx?.avatar) at(fx?.front, twice);
   c.restore();
   if (!fx?.avatar) at(fx?.ring?.front, [t]);

@@ -148,6 +148,7 @@ const dragon: Figure = {
 
 /** a monk: shaved head with a soft shine, and the robe's fold draped over one shoulder and across the back */
 const monk: Figure = {
+  egg: true,
   head(c) { ell(c, -.08, -.74, .07, .035, 'rgba(255,255,255,.35)', -.5); },
   back(c) {
     c.fillStyle = '#b85a10'; c.beginPath();

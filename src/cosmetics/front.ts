@@ -5,7 +5,7 @@
  * Head coordinates, the same as the back view (drawMascotHead): the head spans y −0.865…−0.44 and x ±0.27, the crystal
  * reaches up to y −0.995. A hat's `front` (or its `draw`, when it looks the same from both sides) is drawn last.
  */
-import { rr, type Ctx } from '../render/draw.js';
+import { eggPath, rr, type Ctx } from '../render/draw.js';
 import type { FrontFigure, Look, Palette } from './types.js';
 
 const TAU = Math.PI * 2;
@@ -16,9 +16,10 @@ const tri = (c: Ctx, pts: readonly (readonly [number, number])[], fill: string) 
   c.fillStyle = fill; c.beginPath(); c.moveTo(pts[0]![0], pts[0]![1]); for (const p of pts.slice(1)) c.lineTo(p[0], p[1]); c.closePath(); c.fill();
 };
 
-/** the onigiri outline, the same path as the back view (added to the current path, which it starts unless `keep`) */
-export function headPath(c: Ctx, keep = false) {
+/** the head's outline, the same path as the back view: the onigiri, or an egg (Figure.egg); added to the current path, which it starts unless `keep` */
+export function headPath(c: Ctx, keep = false, egg = false) {
   if (!keep) c.beginPath();
+  if (egg) { eggPath(c); return; }
   c.moveTo(0, -.865); c.bezierCurveTo(.08, -.86, .24, -.74, .26, -.575);
   c.quadraticCurveTo(.28, -.46, 0, -.44);
   c.quadraticCurveTo(-.28, -.46, -.26, -.575);
@@ -71,10 +72,10 @@ export function drawFrontShoulders(c: Ctx, pal: Palette) {
 
 /** the head from the front in `look`: face, crystal (or the custom skin's parts) and the front of the hat */
 export function drawFrontHead(c: Ctx, look: Look) {
-  const pal = look.pal, f = look.figure?.front;
+  const pal = look.pal, f = look.figure?.front, egg = !!look.figure?.egg;
   f?.behind?.(c);
-  c.fillStyle = pal.head; c.strokeStyle = pal.headEdge; c.lineWidth = .013; headPath(c); c.fill(); c.stroke();
-  if (f?.skin) { c.save(); headPath(c); c.clip(); f.skin(c); c.restore(); }
+  c.fillStyle = pal.head; c.strokeStyle = pal.headEdge; c.lineWidth = .013; headPath(c, false, egg); c.fill(); c.stroke();
+  if (f?.skin) { c.save(); headPath(c, false, egg); c.clip(); f.skin(c); c.restore(); }
   face(c, f);
   if (!look.figure) gem(c, pal);
   f?.over?.(c);

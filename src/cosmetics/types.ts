@@ -27,7 +27,7 @@ interface Base { id: string; name: string; rarity: Rarity }
  * `head` is in head coordinates (like a hat, drawn before the hat); `back` is in body coordinates over the cape (the camera
  * sees the mascot's back, so a tail points toward it). `t` is the frame's place in its animation.
  */
-export interface Figure { head?(c: Ctx, t: number): void; back?(c: Ctx, t: number): void; front?: FrontFigure }
+export interface Figure { head?(c: Ctx, t: number): void; back?(c: Ctx, t: number): void; front?: FrontFigure; /** a round, egg-shaped head instead of the onigiri */ egg?: true }
 /** a custom skin's head seen from the front (avatars only; the game shows the back) */
 export interface FrontFigure {
   /** behind the head (spikes, ears, a mane) */
