@@ -3,14 +3,17 @@ import { createMemoryStore } from '../server/memory-store.js';
 import { createMemoryTourStore } from '../server/tour-store.js';
 import { COUNTDOWN_MS, RESULT_GRACE_MS, STAGES, tournament } from '../server/tournament.js';
 import { STEP, TOUR_DURATION, createRun } from '../shared/sim.js';
+import { CATALOG } from '../src/cosmetics/wardrobe.js';
 
 type Body = Record<string, any>;
 let call: (b: Body, now?: number) => Promise<{ status: number; body: Body }>;
+let store: ReturnType<typeof createMemoryStore>;
 const T0 = Date.UTC(2026, 11, 1, 9);
 
 beforeEach(() => {
   process.env.ADMIN_KEY = 'k';
-  const store = createMemoryStore(), tours = createMemoryTourStore();
+  store = createMemoryStore();
+  const tours = createMemoryTourStore();
   call = async (b, now = T0) => (await tournament(store, tours, b, now)) as never;
 });
 afterEach(() => { delete process.env.ADMIN_KEY; });
@@ -43,6 +46,21 @@ describe('tournament rooms', () => {
     expect((await call({ action: 'join', code, id: '2004' })).body.error).toBe('full');
     expect((await call({ action: 'join', code, id: ' 2002 ' })).body.slot).toBe(1);
     expect((await call({ action: 'join', code: 'ZZZZ', id: '2005' })).status).toBe(404);
+  });
+
+  it('shows what each player wears, as of their latest join, and only what they own', async () => {
+    const { code } = await room();
+    const hat = CATALOG.find(c => c.slot === 'hat')!.id, skin = CATALOG.find(c => c.slot === 'skin')!.id;
+    await store.avatarOf('2001');
+    await store.addCosmetic('2001', 1, hat, false);
+    await store.setEquipped('2001', { hat, skin });          // the skin isn't theirs
+    await call({ action: 'join', code, id: '2001' });
+    await call({ action: 'join', code, id: '2002' });
+    const players = (await call({ action: 'state', code })).body.players;
+    expect(players.map((p: Body) => p.look)).toEqual([{ hat }, {}]);
+    await store.setEquipped('2001', {});
+    await call({ action: 'join', code, id: '2001' });
+    expect((await call({ action: 'state', code })).body.players[0].look).toEqual({});
   });
 
   it('lets only the host start, and no one picks the stage or the time', async () => {

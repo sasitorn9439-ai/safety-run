@@ -3,6 +3,7 @@ import { STEP, TOUR_DURATION, replayTour, type StageId } from '../shared/sim.js'
 import { tourTopic } from '../shared/tour-channels.js';
 import { ZONES } from '../shared/zones.js';
 import { idOk, normId, sha, timingSafeKey, type Reply } from './handlers.js';
+import { wardrobeFrom } from '../src/cosmetics/wardrobe.js';
 import type { Store } from './store.js';
 import { SLOTS, type Slot, type TourRoom, type TourStore } from './tour-store.js';
 
@@ -32,7 +33,7 @@ function view(room: TourRoom, now: number) {
   return {
     code: room.code, phase: finished ? 'finished' : room.status, stage: room.stage, duration: room.duration,
     startAt: room.startAt, now, seed: room.status === 'running' ? room.seed : null,
-    players: room.players.map(p => ({ slot: p.slot, avatar: p.avatar, score: p.score, correct: p.correct })),
+    players: room.players.map(p => ({ slot: p.slot, avatar: p.avatar, look: p.look, score: p.score, correct: p.correct })),
   };
 }
 export type RoomView = ReturnType<typeof view>;
@@ -91,7 +92,9 @@ export async function tournament(store: Store, tours: TourStore, b: Json, now = 
     if (!await idOk(store, id)) return reply(400, { error: 'bad_id' });
     await store.init();
     const avatar = await store.avatarOf(id), token = newToken();
-    const slot = await tours.join(code, { empId: id, avatar, tokenHash: sha(token) });
+    // what they wear in the main game's wardrobe, as it is now (joining again picks up a change)
+    const w = await store.wardrobe(id), look = wardrobeFrom(w.earned, w.opened, w.equipped).equipped as Record<string, string>;
+    const slot = await tours.join(code, { empId: id, avatar, look, tokenHash: sha(token) });
     if (slot == null) return reply(409, { error: 'full' });
     return reply(200, { slot, token, avatar });
   }

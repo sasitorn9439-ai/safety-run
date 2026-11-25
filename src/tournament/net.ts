@@ -5,7 +5,8 @@ import { api, type ApiResult } from '../lib/api.js';
 
 export type Slot = 0 | 1 | 2;
 export type RoomPhase = 'lobby' | 'running' | 'finished';
-export interface RoomPlayer { slot: Slot; avatar: number; score: number | null; correct: number | null }
+/** `look`: what the player wears (cosmetic slot → item id); missing in rooms made before it was sent */
+export interface RoomPlayer { slot: Slot; avatar: number; look?: Record<string, string>; score: number | null; correct: number | null }
 export interface Room {
   code: string; phase: RoomPhase; stage: StageId; duration: number;
   startAt: number | null; now: number; seed: number | null; players: RoomPlayer[];

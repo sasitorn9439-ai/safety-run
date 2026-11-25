@@ -7,6 +7,7 @@ import { zoneIndexAt } from '../../shared/zones.js';
 import { HZ, type HazardKind, type PpeType } from '../../shared/hazards.js';
 import { LIFT_HEIGHT, POWER_SECONDS, SLIDE_SECONDS, START_SPEED, STEP, ZMAX, isItem, type GameObject, type PowerType, type SimEvent } from '../../shared/sim.js';
 import { Camera, type Pt } from './camera.js';
+import type { Look } from '../cosmetics/types.js';
 import type { Frame, Ghost, SceneState } from './types.js';
 
 const JUMP_GUIDE_RADIUS = 5.1;
@@ -127,6 +128,8 @@ export interface DrawItem {
   fall: number;
   /** ghost: its own scene, for picking its pose with the player's rules */
   gf: Frame | null;
+  /** ghost: what that runner wears */
+  look: Look | null;
 }
 
 /** how much bigger a pickup is drawn at the far end of the corridor (0 = true perspective size) */
@@ -153,7 +156,7 @@ export class DrawList {
   }
 
   private next(): DrawItem {
-    if (this.n === this.items.length) this.items.push({ kind: 'hazard', z: 0, x: 0, y: 0, u: 0, fade: 1, k: 'spill', p: 'helmet', pw: 'toolbox', blink: false, sx: 1, halo: 0, gy: 0, fall: -1, gf: null });
+    if (this.n === this.items.length) this.items.push({ kind: 'hazard', z: 0, x: 0, y: 0, u: 0, fade: 1, k: 'spill', p: 'helmet', pw: 'toolbox', blink: false, sx: 1, halo: 0, gy: 0, fall: -1, gf: null, look: null });
     return this.items[this.n++]!;
   }
 
@@ -179,7 +182,7 @@ export class DrawList {
     const addPlayer = () => { const it = this.next(); it.kind = 'player'; it.z = 0; player = true; };
     const addGhost = (z: number, g: Ghost) => {
       const p = cam.project(g.px, z, 0, this.pt), it = this.next();
-      it.kind = 'ghost'; it.z = z; it.x = p.x; it.y = p.y; it.u = cam.lw * p.s; it.gf = ghostFrame(g);
+      it.kind = 'ghost'; it.z = z; it.x = p.x; it.y = p.y; it.u = cam.lw * p.s; it.gf = ghostFrame(g); it.look = g.look ?? null;
       it.fade = GHOST_ALPHA * clamp((ZMAX - z) / 22, 0, 1) * clamp((z - GHOST_BEHIND) / 1.5, 0, 1);
     };
     /** everything nearer than the objects so far, down to depth `z`, in back-to-front order */

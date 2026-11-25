@@ -1,7 +1,11 @@
 import { renderSVG } from 'uqr';
 import { STEP } from '../../shared/sim.js';
 import { avName, avImg } from '../lib/avatar.js';
+import { Sfx } from '../lib/audio.js';
 import { $, esc } from '../lib/dom.js';
+import { lookOfWorn } from '../cosmetics/wardrobe.js';
+import { Music } from '../lib/music.js';
+import { LS } from '../lib/storage.js';
 import type { GameRenderer } from '../render/index.js';
 import { Clock, DELAY_TICKS, STAGE_NAMES, errText, fmtTime, openChannel, tourApi, type Channel, type Msg, type Room, type Slot } from './net.js';
 import { Race } from './race.js';
@@ -60,6 +64,29 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
   $('hAgain').onclick = () => void call('reset');
   $('hNew').onclick = () => { sessionStorage.removeItem(hostKey(code)); location.href = '/tournament?newhost'; };
   $('hAuto').onclick = () => setAuto(!auto);
+
+  /* ---------- lobby music ---------- */
+  // Plays by itself: the click that logged the host in lets this page play sound. After a reload the browser may still
+  // hold it back until the first click, which the button says.
+  const sfx = new Sfx(), music = new Music(() => sfx.ctx, LS.get<boolean>('srTourMute') ?? false);
+  const showMute = () => {
+    const locked = sfx.ctx?.state !== 'running';
+    $('hMute').setAttribute('aria-pressed', String(music.muted));
+    $('hMuteText').textContent = music.muted ? 'เพลง: ปิด' : locked ? 'คลิกเพื่อเปิดเพลง' : 'เพลง: เปิด';
+  };
+  const unlock = () => {
+    if (sfx.ctx?.state === 'running') return;
+    sfx.unlock();
+    if (sfx.ctx) sfx.ctx.onstatechange = () => { showMute(); music.setMuted(music.muted); };
+    showMute();
+  };
+  unlock();
+  addEventListener('pointerdown', unlock);
+  $('hMute').onclick = () => {
+    // a click that only unlocks the audio starts the music rather than muting it
+    if (music.muted || sfx.ctx?.state === 'running') { music.setMuted(!music.muted); LS.set('srTourMute', music.muted); }
+    unlock(); showMute();
+  };
   $('hCards').onclick = e => { const b = (e.target as HTMLElement).closest<HTMLElement>('[data-slot]'); if (b) { setAuto(false); look(+b.dataset.slot! as Slot, 'เลือกเอง'); } };
 
   function setAuto(on: boolean) {
@@ -85,6 +112,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
     $('hCam').classList.toggle('on', running);
     $('hPodium').classList.toggle('on', finished);
     document.body.classList.toggle('h-podium-on', finished);
+    if (lobby) music.play(); else music.stop();
     if (lobby) {
       stopRace();
       $('hCount').textContent = String(r.players.length);
@@ -175,10 +203,13 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
         left = Math.min(left, race.run.view().tour!.ticksLeft * STEP);
       }
       camera(now);
-      const seen = races.get(focus) ?? races.values().next().value!;
+      const [seenSlot, seen] = races.has(focus) ? [focus, races.get(focus)!] : races.entries().next().value!;
       const el = seen.elapsed(serverNow);
       count(el < 0 ? Math.ceil(-el * STEP) : 0);
-      renderer.render({ ...seen.frame(), ghosts: [...races.values()].filter(r => r !== seen).map(r => r.ghost()) }, now);
+      // everyone in what they wear: the runner the camera follows, and the others as ghosts
+      const worn = (s: Slot) => lookOfWorn(room!.players.find(x => x.slot === s)?.look);
+      renderer.setLook(worn(seenSlot));
+      renderer.render({ ...seen.frame(), ghosts: [...races].filter(([s]) => s !== seenSlot).map(([s, r]) => ({ ...r.ghost(), look: worn(s) })) }, now);
       gatePanel.update(seen.run.view().tour!.gate);
       $('hClock').textContent = fmtTime(el < 0 ? room.duration : left);
       const p = room.players.find(x => x.slot === focus);

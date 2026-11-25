@@ -39,6 +39,8 @@ export class Canvas2DRenderer implements GameRenderer {
   private fogGrad!: CanvasGradient;
   private builtKey = '';
   private pxSprites: Record<PixelAnim, Sprite[]> | null = null;
+  /** each look's mascot frames (the player's own and the ghosts'), for the current screen size */
+  private looks = new Map<Look, Record<PixelAnim, Sprite[]>>();
   private lastNow = 0;
   private slowFrames = 0;
   private env: EnvItem[] = [];
@@ -71,7 +73,26 @@ export class Canvas2DRenderer implements GameRenderer {
   setLook(look: Look) {
     if (this.pixel?.style !== 'flat' || this.pixel.look === look) return;
     this.pixel.look = look;
-    this.build(true);
+    if (this.pxSprites) this.pxSprites = this.mascotFor(look);
+  }
+
+  /** the mascot's frames in `look`, drawn the first time they are asked for */
+  private mascotFor(look: Look | null): Record<PixelAnim, Sprite[]> | null {
+    const m = this.pixel;
+    if (!m) return null;
+    const key = m.style === 'flat' && look ? look : m.look;
+    let px = this.looks.get(key);
+    if (!px) {
+      // a host sees new players every round: past a few looks, drop the ones nobody is wearing on screen
+      if (this.looks.size >= 6) for (const l of this.looks.keys()) if (l !== m.look) this.looks.delete(l);
+      const base = this.cam.lw * this.dpr, scale = m.scaleFor(base);
+      px = {} as Record<PixelAnim, Sprite[]>;
+      for (const anim of ['idle', 'run', 'jump', 'slide'] as const) {
+        px[anim] = Array.from({ length: m.count(anim) }, (_, i) => { const art = m.art(anim, i, scale, key); return new Sprite(art.box, art, base * scale, 1); });
+      }
+      this.looks.set(key, px);
+    }
+    return px;
   }
 
   private build(force: boolean) {
@@ -80,15 +101,9 @@ export class Canvas2DRenderer implements GameRenderer {
     if (!force && key === this.builtKey) return;
     this.builtKey = key;
     this.sprites = new SpriteSet(cam.lw, dpr);
-    if (this.pixel) {
-      // the mascot: vector frames rasterised at the size the screen needs
-      const m = this.pixel, base = cam.lw * dpr, scale = m.scaleFor(base);
-      const px = {} as Record<PixelAnim, Sprite[]>;
-      for (const anim of ['idle', 'run', 'jump', 'slide'] as const) {
-        px[anim] = Array.from({ length: m.count(anim) }, (_, i) => { const art = m.art(anim, i, scale); return new Sprite(art.box, art, base * scale, 1); });
-      }
-      this.pxSprites = px;
-    }
+    // the mascot: vector frames rasterised at the size the screen needs
+    this.looks.clear();
+    this.pxSprites = this.mascotFor(this.pixel?.look ?? null);
     this.backdrops = ZONES.map((_, z) => makeBackdrop(cam, dpr, z));
     this.props = PROPS.map(p => p.art ? new Sprite(p.art.box, p.art, cam.lw * dpr * p.art.scale, 5) : null);
     this.greenRoad = ctx.createLinearGradient(0, cam.hy, 0, cam.H);
@@ -274,7 +289,8 @@ export class Canvas2DRenderer implements GameRenderer {
         ctx.globalAlpha = it.fade / (1 + gI.py);
         sprites.shadow.draw(ctx, it.x, it.y, it.u * .5 / (1 + gI.py * .3), dpr);
         ctx.globalAlpha = it.fade;
-        if (this.pxSprites) { const pick = pixelFrame(gf, gI, GHOST_FX, now, this.pixel!.cfg); this.pxSprites[pick.anim][pick.frame]!.draw(ctx, it.x, it.y - up, it.u, dpr); }
+        const worn = this.pxSprites && this.mascotFor(it.look);
+        if (worn) { const pick = pixelFrame(gf, gI, GHOST_FX, now, this.pixel!.cfg); worn[pick.anim][pick.frame]!.draw(ctx, it.x, it.y - up, it.u, dpr); }
         else { const P = pose(gf, cam, gI, GHOST_FX, now, this.c); (P.sliding ? sprites.slide : sprites.run)[P.frame]!.draw(ctx, it.x, it.y - up, it.u, dpr); }
         ctx.globalAlpha = 1;
         continue;

@@ -3,7 +3,8 @@ import type { StageId } from '../shared/sim.js';
 export type Slot = 0 | 1 | 2;
 export const SLOTS: readonly Slot[] = [0, 1, 2];
 
-export interface TourPlayer { slot: Slot; empId: string; avatar: number; tokenHash: string; score: number | null; correct: number | null }
+/** `look`: the cosmetics the player wore when they joined (slot → item id), so everyone sees them dressed that way */
+export interface TourPlayer { slot: Slot; empId: string; avatar: number; look: Record<string, string>; tokenHash: string; score: number | null; correct: number | null }
 export interface TourRoom {
   code: string; hostHash: string; seed: number; stage: StageId; duration: number;
   /** `lobby` until the host starts; startAt (ms since epoch) is set with `running` */
@@ -17,8 +18,8 @@ export interface TourStore {
   /** false if the code is taken */
   create(r: { code: string; hostHash: string; seed: number; stage: StageId; duration: number }): Promise<boolean>;
   get(code: string): Promise<TourRoom | null>;
-  /** the player's slot (the same one again if this employee already joined, with the new token); null when the room is full */
-  join(code: string, p: { empId: string; avatar: number; tokenHash: string }): Promise<Slot | null>;
+  /** the player's slot (the same one again if this employee already joined, with the new token and look); null when the room is full */
+  join(code: string, p: { empId: string; avatar: number; look: Record<string, string>; tokenHash: string }): Promise<Slot | null>;
   kick(code: string, slot: Slot): Promise<void>;
   config(code: string, stage: StageId, duration: number): Promise<void>;
   /** lobby → running; false if it was not in the lobby */
@@ -46,7 +47,7 @@ export function createMemoryTourStore(): TourStore {
     async join(code, p) {
       const r = rooms.get(code)!;
       const have = r.players.find(x => x.empId === p.empId);
-      if (have) { have.tokenHash = p.tokenHash; return have.slot; }
+      if (have) { have.tokenHash = p.tokenHash; have.look = p.look; return have.slot; }
       const slot = SLOTS.find(s => !r.players.some(x => x.slot === s));
       if (slot == null) return null;
       r.players.push({ slot, ...p, score: null, correct: null });

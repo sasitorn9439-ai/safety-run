@@ -1,4 +1,5 @@
 import { STEP, type Action } from '../../shared/sim.js';
+import { lookOfWorn } from '../cosmetics/wardrobe.js';
 import { avName, avImg } from '../lib/avatar.js';
 import type { Sfx } from '../lib/audio.js';
 import { $, digitsOnly, esc } from '../lib/dom.js';
@@ -23,6 +24,8 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
   const gatePanel = new GatePanel({ root: $('tGate'), head: $('tGateHead'), q: $('tGateQ'), opts: $('tGateOpts'), bar: $('tGateBar') });
   let seat = LS.get<Seat>('srTourSeat'), room: Room | null = null, race: Race | null = null, channel: Channel | null = null;
   let board: Board = [], ghosts = new Ghosts(), audits = 0, submitted = false, finishing = false, poll = 0;
+  /** the player left the results for the lobby, to wait there until the host opens the next round */
+  let waiting = false;
 
   const q = new URLSearchParams(location.search);
   $<HTMLInputElement>('roomCode').value = q.get('room') ?? seat?.code ?? '';
@@ -62,7 +65,8 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
         return;
       }
       const mine = room.players.find(p => p.slot === seat!.slot)!;
-      if (room.phase === 'lobby') { if (race) stopRace(); lobby(); }
+      if (room.phase === 'lobby') { if (race) stopRace(); waiting = false; lobby(); }
+      else if (waiting && room.phase === 'finished') lobby();
       else if (!race && mine.score != null) { submitted = true; results(); }
       else if (!race && room.seed != null && room.startAt != null && !submitted) await beginRace(room);
       else if (submitted) results();
@@ -77,6 +81,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
     $('lobbyAv').innerHTML = avImg(seat!.avatar, 72);
     $('lobbyName').textContent = `${avName(seat!.avatar)} · ช่อง ${seat!.slot + 1}`;
     $('lobbyInfo').textContent = `ด่านสุ่มตอนเริ่มแข่ง · ${fmtTime(room!.duration)} นาที`;
+    $('lobbyWait').textContent = room!.phase === 'finished' ? 'รอ Host เปิดรอบใหม่' : 'รอ Host กดเริ่ม';
     $('lobbySeats').innerHTML = [0, 1, 2].map(s => {
       const p = room!.players.find(x => x.slot === s);
       return `<li class="${p?.slot === seat!.slot ? 'me' : ''}">${p ? `${avImg(p.avatar, 36)}<span>${esc(avName(p.avatar))}</span>` : '<span class="empty">ว่าง</span>'}</li>`;
@@ -86,6 +91,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
   async function beginRace(r: Room) {
     showScreen(null);
     hud.reset(); hud.setAvatar(seat!.avatar); hud.show(true);
+    renderer.setLook(lookOfWorn(r.players.find(p => p.slot === seat!.slot)?.look));
     $('tRace').classList.add('on');
     audits = 0; board = []; ghosts = new Ghosts(); finishing = false;
     race = new Race({ seed: r.seed!, stage: r.stage, duration: r.duration, startAt: r.startAt! }, sfx.beep, e => {
@@ -141,12 +147,14 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
     $('resRetry').style.display = 'block';
   }
   $('resRetry').onclick = () => void submit();
+  $('resLobby').onclick = () => { stopRace(); waiting = true; lobby(); };
 
   function results() {
     showScreen('tResult');
     const done = room!.phase === 'finished';
     const me = room!.players.find(p => p.slot === seat!.slot);
     $('resHead').textContent = done ? 'ผลการแข่งขัน' : 'หมดเวลา! รอผลของทุกคน…';
+    $('resLobby').style.display = done ? 'block' : 'none';
     $('resScore').textContent = me?.score != null ? `${me.score} คะแนน` : '';
     $('resInfo').textContent = me?.correct != null ? `ตอบถูก ${me.correct} ข้อ` : '';
     const ranked = [...room!.players].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || (b.correct ?? 0) - (a.correct ?? 0));
@@ -189,6 +197,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
       }
       const v = race.run.view(), t = v.tour!;
       const others = ghosts.place(seat!.slot, Math.max(0, el), dt);
+      for (const g of others) g.look = lookOfWorn(room?.players.find(p => p.slot === g.slot)?.look);
       renderer.render({ ...race.frame(), ghosts: others }, now);
       hud.update({
         score: race.run.score(), coins: v.coins, dbl: v.dbl, got: v.got, shield: v.shield, toast: v.toast, toastT: v.toastT, sur: v.sur,
