@@ -375,6 +375,23 @@ const sunburstBackdrop = (c: Ctx, t: number) => {
   raysDraw(c, t, 0, .55, .8);
 };
 
+/** meteors: small comets streak diagonally down past the mascot, behind it */
+const meteors = (n = 4): Part => ({
+  back(c, t) {
+    for (let k = 0; k < n; k++) {
+      const u = ((k + t) / n) % 1, sx = .45 - (k % 2) * .2, x = sx - u * .95, y = -1.1 + u * 1.45 + (k % 3) * .06;
+      const g = c.createLinearGradient(x, y, x + .24, y - .28);
+      g.addColorStop(0, 'rgba(255,215,64,.9)'); g.addColorStop(1, 'rgba(255,110,64,0)');
+      c.save(); c.globalAlpha *= fade(u); c.strokeStyle = g; c.lineWidth = .03; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + .24, y - .28); c.stroke();
+      glowDot(c, x, y, .03, '#fff59d', 0); c.restore();
+    }
+  },
+});
+
+/** the comet tail in an avatar: only the meteors, streaking across the circle behind the mascot */
+const meteorBackdrop = (c: Ctx, t: number) => { c.save(); c.scale(.9, .9); c.translate(.02, .45); meteors().back!(c, t, -.45); c.restore(); };
+
 const FIRE = ['#ff6d00', '#ffab00', '#ff3d00'];
 const BLOOM = ['#ffffff', '#f8bbd0', '#b3e5fc', '#fff59d'];
 const PARTY = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb'];
@@ -406,7 +423,8 @@ export const EFFECTS: readonly Effect[] = [
   fx('shadow', 'ออร่าเงามืด · Shadow aura', 'epic', aura('#4a148c', .7, .75), rise(puff, ['#311b92', '#4a148c', '#1a1a2e'], 6, .06, .35)),
   fx('electric', 'ไฟฟ้าแรงสูง · High voltage', 'epic', aura('#18ffff', .62, .5), orbit(bolt, ['#18ffff', '#ffffff'], 6, .06, .44, .18)),
   fx('galaxy', 'กาแล็กซี · Galaxy', 'epic', aura('#7c4dff', .7, .55), orbit(star, ['#ffffff', '#e1bee7'], 6, .035, .5, .14), orbit(dot, ['#80d8ff', '#ff80ab'], 4, .018, .36, .2, -.15)),
-  fx('comet', 'ดาวหาง · Comet tail', 'epic', trail(glowDot, ['#ffd740', '#ff6e40', '#ffab40'], 16, .065, .08, 1.25, 1, .03, -.02), feetFire(['#ff6e40', '#ffd740'])),
+  // meteors streak past behind, and a tail of fireballs leaves the shoes and runs to the bottom of the screen
+  { ...fx('comet', 'ดาวหาง · Comet tail', 'epic', meteors(), trail(glowDot, ['#ffd740', '#ff6e40', '#ffab40'], 16, .065, .08, 1.25, 1, .03, -.02)), avatar: meteorBackdrop },
   fx('angel', 'ปีกนางฟ้า · Angel wings', 'epic', wings('#ffffff', '#e3f2fd'), rise(sparkle, ['#ffffff'], 4, .04)),
   fx('phoenix', 'ปีกฟีนิกซ์ · Phoenix wings', 'legendary', aura('#ff6d00', .7, .5), wings('#ff6d00', '#ffd600', 5), feetFire(['#ff3d00', '#ffab00', '#ffd600'])),
   fx('holy', 'แสงศักดิ์สิทธิ์ · Holy light', 'legendary', skyBeam('255, 245, 180'), aura('#fff59d', .6, .5), rise(sparkle, ['#ffffff', '#fff176'], 7, .05, .3)),
