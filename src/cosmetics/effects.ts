@@ -361,7 +361,8 @@ const raysDraw = (c: Ctx, t: number, cy: number, R: number, alpha: number, rays 
   }
   c.restore();
 };
-const sunburst: Part = { front: (c, t, cy) => raysDraw(c, t, cy, .68, .45) };
+// shorter rays when a crouch or slide lowers the body, so they never reach past the bottom of the frame (y 0.32)
+const sunburst: Part = { front: (c, t, cy) => raysDraw(c, t, cy, Math.min(.68, .31 - cy), .45) };
 /** the golden aura in an avatar: the glow and the rays behind the mascot, filling the circle */
 const sunburstBackdrop = (c: Ctx, t: number) => {
   const g = c.createRadialGradient(0, 0, .02, 0, 0, .48);
