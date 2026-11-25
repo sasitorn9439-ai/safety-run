@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { admin, finish, start, wardrobe } from '../server/handlers.js';
 import { createMemoryStore } from '../server/memory-store.js';
 import type { Store } from '../server/store.js';
-import { STEP, createRun, type Action, type InputEntry } from '../shared/sim.js';
+import { LOOT_GAP, STEP, createRun, type Action, type InputEntry } from '../shared/sim.js';
 import { CATALOG } from '../src/cosmetics/wardrobe.js';
 import { think } from './bot.js';
 
@@ -178,7 +178,7 @@ describe('wardrobe API', () => {
     const players = ((await admin(store, { key: 'secret', action: 'players' })).body as Body).players as Body[];
     const one = players.find(p => p.id === '1001')!, two = players.find(p => p.id === '1002')!;
     expect(one).toMatchObject({ plays: 2, best: score, loot: 1, granted: 2, opened: 1, free: 0, hidden: false });
-    expect(one.maxDist).toBeGreaterThan(1000);                                  // the run went past the first chest checkpoint
+    expect(one.maxDist).toBeGreaterThan(LOOT_GAP);                                 // the run went past the first chest checkpoint
     expect(two).toMatchObject({ plays: 1, best: null, maxDist: null, loot: 0, granted: 0, free: 0, opened: 0 });
   });
 });
