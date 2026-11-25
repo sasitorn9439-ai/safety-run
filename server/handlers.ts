@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { replayRun, STEP } from '../shared/sim.js';
-import { equip, openBox, parseWardrobe, remaining } from '../src/cosmetics/wardrobe.js';
+import { equip, openBox, wardrobeFrom, type Pull } from '../src/cosmetics/wardrobe.js';
 import { SLOTS, type Slot } from '../src/cosmetics/types.js';
 import type { Store } from './store.js';
 
@@ -110,7 +110,7 @@ export const OPEN_MAX = 10;
 /**
  * The player's cosmetics. Everything is decided here, never on the device: boxes are only those picked up on runs whose replay
  * verified or that an admin handed out, the server rolls what a box gives, and only owned items can be worn.
- * Actions: get (default), open { n = 1 } (up to OPEN_MAX boxes, fewer if fewer are left), equip { slot, item }.
+ * Actions: get (default), open { n = 1 } (up to OPEN_MAX boxes, fewer if fewer are left; items: { id, dupe, free }), equip { slot, item }.
  */
 export async function wardrobe(store: Store, b: Json): Promise<Reply> {
   const id = normId(b.id);
@@ -118,7 +118,7 @@ export async function wardrobe(store: Store, b: Json): Promise<Reply> {
   await store.init();
   const read = async () => {
     const s = await store.wardrobe(id);
-    return { opened: s.owned.length, w: parseWardrobe({ boxes: Math.max(0, s.earned - s.owned.length), owned: s.owned, equipped: s.equipped }) };
+    return { opened: s.opened.length, w: wardrobeFrom(s.earned, s.opened, s.equipped) };
   };
   let { opened, w } = await read();
   if (b.action === undefined || b.action === 'get') return reply(200, w);
@@ -132,15 +132,15 @@ export async function wardrobe(store: Store, b: Json): Promise<Reply> {
   if (b.action === 'open') {
     const n = b.n === undefined ? 1 : Number(b.n);
     if (!Number.isInteger(n) || n < 1 || n > OPEN_MAX) return reply(400, { error: 'n' });
-    const items: string[] = [];
-    for (let clashes = 0; items.length < n && clashes < 3;) {
+    const pulls: Pull[] = [];
+    for (let clashes = 0; pulls.length < n && clashes < 3;) {
       const r = openBox(w, random);
       if (!r) break;
-      if (await store.addCosmetic(id, opened + 1, r.item.id)) { items.push(r.item.id); opened++; w = r.wardrobe; }
+      if (await store.addCosmetic(id, opened + 1, r.pull.item.id, r.pull.dupe)) { pulls.push(r.pull); opened++; w = r.wardrobe; }
       else { clashes++; ({ opened, w } = await read()); }        // another device opened a box at the same moment: re-read, roll again
     }
-    if (!items.length) return reply(409, { error: w.boxes ? (remaining(w).length ? 'busy' : 'complete') : 'no_box' });
-    return reply(200, { ...w, items });
+    if (!pulls.length) return reply(409, { error: w.boxes ? 'busy' : 'no_box' });
+    return reply(200, { ...w, items: pulls.map(p => ({ id: p.item.id, dupe: p.dupe, free: p.free })) });
   }
   return reply(400, { error: 'action' });
 }

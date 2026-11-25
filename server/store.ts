@@ -35,10 +35,10 @@ export interface Store {
   adminPlayers(): Promise<AdminPlayer[]>;
   /** hides or shows the player's scores on the leaderboard; returns how many players matched (0 or 1) */
   adminHide(id: string, hidden: boolean): Promise<number>;
-  /** the player's cosmetics: loot boxes picked up on finished runs, items won (in the order the boxes were opened), items worn */
+  /** the player's cosmetics: boxes earned (verified runs + admin grants), every box opened in order, items worn */
   wardrobe(id: string): Promise<StoredWardrobe>;
-  /** records that box number `boxNo` (from 1) gave `item`; false if that box was already opened or the item is already owned */
-  addCosmetic(id: string, boxNo: number, item: string): Promise<boolean>;
+  /** records that box number `boxNo` (from 1) gave `item` (`dupe`: the player had it already); false if that box was already opened */
+  addCosmetic(id: string, boxNo: number, item: string, dupe: boolean): Promise<boolean>;
   setEquipped(id: string, equipped: Record<string, string>): Promise<void>;
   /** admin hands `n` loot boxes to each of `ids`, or to every player so far ('all'). Returns who got them, and which ids have never played. */
   grantBoxes(ids: string[] | 'all', n: number): Promise<{ granted: number; unknown: string[] }>;
@@ -50,8 +50,8 @@ export interface FinishedRun { score: number; secs: number; dist: number; loot: 
 export interface AdminPlayer {
   id: string; avatar: number | null; hidden: boolean;
   plays: number; best: number | null; maxDist: number | null; lastPlayed: string | Date | null;
-  /** treasure chests: picked up on verified runs, handed out by admin, opened */
-  loot: number; granted: number; opened: number;
+  /** treasure chests: picked up on verified runs, handed out by admin, won by filling the duplicate meter, opened */
+  loot: number; granted: number; free: number; opened: number;
 }
 
-export interface StoredWardrobe { earned: number; owned: string[]; equipped: Record<string, string> }
+export interface StoredWardrobe { earned: number; opened: { item: string; dupe: boolean }[]; equipped: Record<string, string> }

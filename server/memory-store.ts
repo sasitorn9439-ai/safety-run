@@ -1,3 +1,4 @@
+import { DUPES_PER_BOX } from '../src/cosmetics/wardrobe.js';
 import type { AdminRow, Store } from './store.js';
 
 interface Run {
@@ -8,7 +9,7 @@ interface Run {
 /** In-memory Store for local development. Same rules as the Postgres one, gone on restart. */
 export function createMemoryStore(): Store {
   const runs: Run[] = [];
-  const opened = new Map<string, string[]>(), worn = new Map<string, Record<string, string>>(), granted = new Map<string, number>();
+  const opened = new Map<string, { item: string; dupe: boolean }[]>(), worn = new Map<string, Record<string, string>>(), granted = new Map<string, number>();
   const avatars = new Map<string, number>();
   const hidden = new Set<string>();
   let nextId = 1;
@@ -97,6 +98,7 @@ export function createMemoryStore(): Store {
           best: done.length ? Math.max(...done.map(r => r.score!)) : null, maxDist: dists.length ? Math.max(...dists) : null,
           lastPlayed: mine.length ? new Date(Math.max(...mine.map(r => r.startedAt))).toISOString() : null,
           loot: mine.reduce((n, r) => n + r.loot, 0), granted: granted.get(id) ?? 0, opened: opened.get(id)?.length ?? 0,
+          free: Math.floor((opened.get(id) ?? []).filter(o => o.dupe).length / DUPES_PER_BOX),
         };
       });
     },
@@ -107,12 +109,12 @@ export function createMemoryStore(): Store {
     },
     async wardrobe(id) {
       const earned = runs.reduce((n, r) => n + (r.empId === id ? r.loot : 0), granted.get(id) ?? 0);
-      return { earned, owned: [...opened.get(id) ?? []], equipped: { ...worn.get(id) } };
+      return { earned, opened: [...opened.get(id) ?? []], equipped: { ...worn.get(id) } };
     },
-    async addCosmetic(id, boxNo, item) {
+    async addCosmetic(id, boxNo, item, dupe) {
       const mine = opened.get(id) ?? [];
-      if (mine.length !== boxNo - 1 || mine.includes(item)) return false;
-      opened.set(id, [...mine, item]);
+      if (mine.length !== boxNo - 1) return false;
+      opened.set(id, [...mine, { item, dupe }]);
       return true;
     },
     async setEquipped(id, equipped) { worn.set(id, { ...equipped }); },

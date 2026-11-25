@@ -285,7 +285,7 @@ document.querySelectorAll<HTMLButtonElement>('[role=tab]').forEach(btn => {
 if (location.hash === '#players') showTab('players');
 
 /* ---------- players ---------- */
-const chests = (p: AdminPlayer) => ({ total: p.loot + p.granted, left: Math.max(0, p.loot + p.granted - p.opened) });
+const chests = (p: AdminPlayer) => { const total = p.loot + p.granted + p.free; return { total, left: Math.max(0, total - p.opened) }; };
 const playerValues = {
   id: (p: AdminPlayer) => p.id,
   avatar: (p: AdminPlayer) => avName(p.avatar),
@@ -303,7 +303,7 @@ function playerRow(p: AdminPlayer) {
   const c = chests(p);
   return `<tr${p.hidden ? ' class="hid"' : ''}><td>${esc(p.id)}${p.hidden ? ' · ซ่อน' : ''}</td><td>${esc(avName(p.avatar))}</td>`
     + `<td class="n">${p.maxDist == null ? '—' : fmt(p.maxDist) + ' ม.'}</td><td class="n">${fmt(p.best)}</td><td class="n">${fmt(p.plays)}</td>`
-    + `<td class="n" title="เก็บจากการวิ่ง ${p.loot} · แอดมินให้ ${p.granted} · เปิดแล้ว ${p.opened}">${fmt(c.left)} / ${fmt(c.total)} <span class="sub">(วิ่ง ${fmt(p.loot)} + ให้ ${fmt(p.granted)})</span></td>`
+    + `<td class="n" title="เก็บจากการวิ่ง ${p.loot} · แอดมินให้ ${p.granted} · ฟรีจากของซ้ำ ${p.free} · เปิดแล้ว ${p.opened}">${fmt(c.left)} / ${fmt(c.total)} <span class="sub">(วิ่ง ${fmt(p.loot)} + ให้ ${fmt(p.granted)}${p.free ? ` + ฟรี ${fmt(p.free)}` : ''})</span></td>`
     + `<td>${date(p.lastPlayed)}</td><td><button type="button" class="alt" data-grant="${esc(p.id)}">ให้หีบ</button></td></tr>`;
 }
 
@@ -341,8 +341,8 @@ $('pb').onclick = e => {
 };
 $('p-export').onclick = () => {
   const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const lines = shownPlayers.map(p => { const c = chests(p); return [p.id, avName(p.avatar), p.maxDist, p.best, p.plays, p.loot, p.granted, p.opened, c.left, p.lastPlayed, p.hidden ? 'hidden' : '']; });
-  const csv = '\ufeffemployee_id,avatar_name,max_distance_m,best_score,plays,chests_from_runs,chests_granted,chests_opened,chests_left,last_played,hidden\n' + lines.map(l => l.map(q).join(',')).join('\n');
+  const lines = shownPlayers.map(p => { const c = chests(p); return [p.id, avName(p.avatar), p.maxDist, p.best, p.plays, p.loot, p.granted, p.free, p.opened, c.left, p.lastPlayed, p.hidden ? 'hidden' : '']; });
+  const csv = '\ufeffemployee_id,avatar_name,max_distance_m,best_score,plays,chests_from_runs,chests_granted,chests_free,chests_opened,chests_left,last_played,hidden\n' + lines.map(l => l.map(q).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const d = new Date(), p2 = (n: number) => String(n).padStart(2, '0');

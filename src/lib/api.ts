@@ -7,7 +7,7 @@ export interface AdminRun { id: string; avatar: number | null; runNo: number; st
 /** a player on the admin's Players tab; chests are picked up on runs (loot), handed out by admin (granted) and opened */
 export interface AdminPlayer {
   id: string; avatar: number | null; hidden: boolean; plays: number; best: number | null; maxDist: number | null;
-  lastPlayed: string | null; loot: number; granted: number; opened: number;
+  lastPlayed: string | null; loot: number; granted: number; free: number; opened: number;
 }
 
 export type ApiResult<T> = Partial<T> & { ok: boolean; status: number; error?: string };

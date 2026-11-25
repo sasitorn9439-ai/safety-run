@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LOOT_CHANCE, LOOT_GAP, createRun, type SimEvent } from '../shared/sim.js';
-import { CATALOG, EMPTY_WARDROBE, RARITY_WEIGHT, addBox, equip, lookOf, openBox, parseWardrobe, type Wardrobe } from '../src/cosmetics/wardrobe.js';
+import { CATALOG, DUPES_PER_BOX, EMPTY_WARDROBE, RARITY_WEIGHT, addBox, equip, lookOf, openBox, parseWardrobe, wardrobeFrom, type Wardrobe } from '../src/cosmetics/wardrobe.js';
 import { RARITIES, SLOTS, type Look } from '../src/cosmetics/types.js';
 import { DEFAULT_LOOK } from '../src/cosmetics/skins.js';
 import type { Ctx } from '../src/render/draw.js';
@@ -23,34 +23,48 @@ describe('catalog', () => {
 });
 
 describe('opening boxes', () => {
-  it('needs a box, uses it up and never gives a duplicate until everything is owned', () => {
+  it('needs a box; a duplicate fills the meter, and every DUPES_PER_BOX duplicates give a free box', () => {
     expect(openBox(EMPTY_WARDROBE, Math.random)).toBeNull();
-    let w: Wardrobe = addBox(EMPTY_WARDROBE, CATALOG.length + 3);
+    const start = 400;
+    let w: Wardrobe = addBox(EMPTY_WARDROBE, start), opened = 0, dupes = 0, frees = 0;
     const random = rng(7);
-    for (let i = 0; i < CATALOG.length; i++) {
+    while (w.boxes > 0) {
       const r = openBox(w, random)!;
-      expect(w.owned).not.toContain(r.item.id);
-      expect(r.wardrobe.boxes).toBe(w.boxes - 1);
+      expect(r.pull.dupe).toBe(w.owned.includes(r.pull.item.id));         // a duplicate is exactly an item already owned
+      opened++;
+      if (r.pull.dupe) {
+        dupes++;
+        expect(r.pull.free).toBe(dupes % DUPES_PER_BOX === 0);              // the 5th, 10th, … duplicate fills the meter
+        if (r.pull.free) frees++;
+      } else expect(r.pull.free).toBe(false);
+      expect(r.wardrobe.dupes).toBe(dupes % DUPES_PER_BOX);
+      expect(r.wardrobe.boxes).toBe(start + frees - opened);
       w = r.wardrobe;
     }
-    expect(new Set(w.owned).size).toBe(CATALOG.length);
-    expect(openBox(w, random)).toBeNull();                 // nothing left to win: the remaining boxes are kept
-    expect(w.boxes).toBe(3);
+    expect(dupes).toBeGreaterThan(DUPES_PER_BOX);                            // 400 boxes over 100 items: duplicates do happen
+    expect(opened).toBe(start + frees);                                       // every free box was opened too
+    expect(new Set(w.owned).size).toBe(w.owned.length);
+  });
+
+  it('agrees with the stored history: earned boxes, opened boxes and duplicates give the same wardrobe', () => {
+    let w: Wardrobe = addBox(EMPTY_WARDROBE, 60);
+    const random = rng(11), history: { item: string; dupe: boolean }[] = [];
+    for (let i = 0; i < 45; i++) { const r = openBox(w, random)!; history.push({ item: r.pull.item.id, dupe: r.pull.dupe }); w = r.wardrobe; }
+    expect(wardrobeFrom(60, history, {})).toEqual(w);
   });
 
   it('pays out rarities close to their weights', () => {
     const random = rng(42), n = 20000, seen = Object.fromEntries(RARITIES.map(r => [r, 0]));
-    for (let i = 0; i < n; i++) seen[openBox(addBox(EMPTY_WARDROBE), random)!.item.rarity]!++;
+    for (let i = 0; i < n; i++) seen[openBox(addBox(EMPTY_WARDROBE), random)!.pull.item.rarity]!++;
     const total = RARITIES.reduce((s, r) => s + RARITY_WEIGHT[r], 0);
     for (const r of RARITIES) expect(Math.abs(seen[r]! / n - RARITY_WEIGHT[r] / total)).toBeLessThan(.015);
   });
 
-  it('skips a rarity the player has completed', () => {
-    const legendaries = CATALOG.filter(c => c.rarity === 'legendary').map(c => c.id);
-    const w: Wardrobe = { boxes: 500, owned: legendaries, equipped: {} };
+  it('a player who owns everything still opens boxes: all duplicates, still filling the meter', () => {
+    let w: Wardrobe = { boxes: 10, owned: CATALOG.map(c => c.id), equipped: {}, dupes: 0 };
     const random = rng(3);
-    let cur = w;
-    for (let i = 0; i < 40; i++) { const r = openBox(cur, random)!; expect(r.item.rarity).not.toBe('legendary'); cur = r.wardrobe; }
+    for (let i = 0; i < 10; i++) { const r = openBox(w, random)!; expect(r.pull.dupe).toBe(true); w = r.wardrobe; }
+    expect([w.boxes, w.dupes]).toEqual([2, 0]);                              // 10 duplicates: two free boxes, meter empty
   });
 });
 
@@ -59,11 +73,11 @@ describe('wardrobe', () => {
     expect(parseWardrobe(null)).toEqual(EMPTY_WARDROBE);
     expect(parseWardrobe('junk')).toEqual(EMPTY_WARDROBE);
     const w = parseWardrobe({ boxes: 2.7, owned: ['hat-crown', 'hat-crown', 'nope', 5], equipped: { hat: 'hat-crown', skin: 'skin-gold', effect: 'hat-crown' } });
-    expect(w).toEqual({ boxes: 2, owned: ['hat-crown'], equipped: { hat: 'hat-crown' } });
+    expect(w).toEqual({ boxes: 2, owned: ['hat-crown'], equipped: { hat: 'hat-crown' }, dupes: 0 });
   });
 
   it('wears only what is owned, in its own slot, and can take it off', () => {
-    const w: Wardrobe = { boxes: 0, owned: ['hat-crown', 'skin-gold'], equipped: {} };
+    const w: Wardrobe = { boxes: 0, owned: ['hat-crown', 'skin-gold'], equipped: {}, dupes: 0 };
     expect(equip(w, 'hat', 'hat-wizard')).toBe(w);
     expect(equip(w, 'skin', 'hat-crown')).toBe(w);
     const worn = equip(equip(w, 'hat', 'hat-crown'), 'skin', 'skin-gold');
@@ -111,7 +125,7 @@ const looks: [string, Look][] = [
   ...CATALOG.filter(c => c.slot === 'hat').map(h => [h.id, { ...DEFAULT_LOOK, hat: h }] as [string, Look]),
   ...CATALOG.filter(c => c.slot === 'effect').map(e => [e.id, { ...DEFAULT_LOOK, effect: e }] as [string, Look]),
   // custom skins add parts to the body: they must stay inside the cell too, and with a hat on
-  ...CATALOG.flatMap(c => c.slot === 'skin' && c.figure ? [[c.id, lookOf({ boxes: 0, owned: [c.id, 'hat-wizard'], equipped: { skin: c.id, hat: 'hat-wizard' } })] as [string, Look]] : []),
+  ...CATALOG.flatMap(c => c.slot === 'skin' && c.figure ? [[c.id, lookOf({ boxes: 0, owned: [c.id, 'hat-wizard'], equipped: { skin: c.id, hat: 'hat-wizard' }, dupes: 0 })] as [string, Look]] : []),
 ];
 
 describe('cosmetics on the flat mascot', async () => {
@@ -130,7 +144,7 @@ describe('cosmetics on the flat mascot', async () => {
   });
 
   it('wearing anything leaves the animations themselves alone: same frames, same tags, feet at the same anchor', () => {
-    for (const [, look] of looks.concat(CATALOG.filter(c => c.slot === 'skin').map(s => [s.id, lookOf({ boxes: 0, owned: [s.id], equipped: { skin: s.id } })]))) {
+    for (const [, look] of looks.concat(CATALOG.filter(c => c.slot === 'skin').map(s => [s.id, lookOf({ boxes: 0, owned: [s.id], equipped: { skin: s.id }, dupes: 0 })]))) {
       m.look = look;
       expect(ANIMS.map(a => m.count(a))).toEqual(counts);
       expect(JSON.stringify(m.cfg)).toBe(cfg);

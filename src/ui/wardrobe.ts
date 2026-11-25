@@ -5,7 +5,7 @@
 import type { Beep } from '../../shared/sim.js';
 import { DEFAULT_LOOK } from '../cosmetics/skins.js';
 import { SLOTS, type Cosmetic, type Look, type Rarity, type Slot } from '../cosmetics/types.js';
-import { CATALOG, EMPTY_WARDROBE, RARITY_LABEL, lookOf, type Wardrobe } from '../cosmetics/wardrobe.js';
+import { CATALOG, DUPES_PER_BOX, EMPTY_WARDROBE, RARITY_LABEL, lookOf, type Pull, type Wardrobe } from '../cosmetics/wardrobe.js';
 import { $, esc } from '../lib/dom.js';
 import { animsWith } from '../render/flat/anims.js';
 import { drawPuppet } from '../render/flat/puppet.js';
@@ -47,8 +47,8 @@ const SHOW_BOX = [-.78, -1.55, .78, .4] as const;
 export interface WardrobeDeps {
   /** what the server last said; null until the player has given an employee id */
   current(): Wardrobe | null;
-  /** opens up to `n` boxes: the items the server rolled, or null when nothing could be opened */
-  open(n: number): Promise<Cosmetic[] | null>;
+  /** opens up to `n` boxes: what the server rolled (new or duplicate), or null when nothing could be opened */
+  open(n: number): Promise<Pull[] | null>;
   wear(slot: Slot, id: string | null): Promise<void>;
   beep: Beep;
 }
@@ -89,6 +89,12 @@ function marquee(root: HTMLElement) {
   }
 }
 
+/** the duplicate meter: DUPES_PER_BOX segments, `n` filled; a full meter is a free box */
+function meter(el: HTMLElement, n: number, label = `ของซ้ำ ${n}/${DUPES_PER_BOX} · ครบ ${DUPES_PER_BOX} ได้กล่องฟรี`) {
+  el.innerHTML = `<span class="ward-meter-bar">${Array.from({ length: DUPES_PER_BOX }, (_, i) => `<i${i < n ? ' class="on"' : ''}></i>`).join('')}</span><small>${esc(label)}</small>`;
+  el.setAttribute('aria-label', label);
+}
+
 /** paints the loot chest (the same art as on the track) into every canvas.chest-art */
 function paintChests() {
   const dpr = Math.min(2, devicePixelRatio || 1);
@@ -117,7 +123,7 @@ export function mountWardrobe(d: WardrobeDeps) {
   void document.fonts?.ready.then(paintChests);                           // the lock's "?" is in Kanit
 
   const boxesLeft = () => d.current()?.boxes ?? 0;
-  const canOpen = () => boxesLeft() > 0 && (d.current()?.owned.length ?? 0) < CATALOG.length;
+  const canOpen = () => boxesLeft() > 0;
   /** "open N" buttons: one box, or as many as are left up to ten */
   function setOpenButtons(one: HTMLButtonElement, many: HTMLButtonElement, more: string) {
     const n = Math.min(OPEN_MAX, boxesLeft());
@@ -126,13 +132,14 @@ export function mountWardrobe(d: WardrobeDeps) {
   }
 
   function refresh() {
+    // while a box is being opened the wardrobe behind it keeps showing what it had: it catches up when the opening closes
+    if (stage.classList.contains('on')) return;
     const known = d.current(), w = known ?? EMPTY_WARDROBE;
     for (const s of SLOTS) if (trying[s] && w.owned.includes(trying[s].id)) delete trying[s];   // won it since: it's simply owned now
     look = tryOn(lookOf(w));
-    $('wardBoxes').textContent = String(w.boxes);
+    showBoxes(w.boxes);
     $('wardCount').textContent = note || (known ? `สะสมแล้ว ${w.owned.length}/${CATALOG.length} ชิ้น` : 'ใส่รหัสพนักงานแล้วเริ่มวิ่งก่อน · Enter your employee ID and play first');
-    const badge = $('wardBadge');
-    badge.textContent = w.boxes ? String(w.boxes) : ''; badge.hidden = !w.boxes;
+    meter($('wardMeter'), w.dupes);
     setOpenButtons($<HTMLButtonElement>('wardOpen'), $<HTMLButtonElement>('wardOpenMany'), 'เปิด ');
     for (const b of document.querySelectorAll<HTMLButtonElement>('#wardTabs button')) b.setAttribute('aria-selected', String(b.dataset.slot === tab));
     const items = CATALOG.filter(c => c.slot === tab);
@@ -188,7 +195,7 @@ export function mountWardrobe(d: WardrobeDeps) {
   };
 
   /* ---------- opening: a big box in the middle; tap it to shake it, it bursts open, then a card with what came out ---------- */
-  let taps = 0, count = 1, won: Cosmetic[] | null | undefined, picked: Cosmetic | null = null, opening: Promise<unknown> = Promise.resolve();
+  let taps = 0, count = 1, won: Pull[] | null | undefined, picked: Cosmetic | null = null, opening: Promise<unknown> = Promise.resolve();
   const roll = () => { won = undefined; opening = d.open(count).then(r => { won = r; }, () => { won = null; }); };
 
   const restart = (el: HTMLElement, cls: string) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
@@ -244,10 +251,29 @@ export function mountWardrobe(d: WardrobeDeps) {
     c.save(); c.translate(cv.width / 2, cv.height / 2 + .045 * u); drawLootBox(c, u); c.restore();
   }
 
+  /** the box count in the wardrobe and on the menu button */
+  function showBoxes(n: number) {
+    $('wardBoxes').textContent = String(n);
+    const badge = $('wardBadge');
+    badge.textContent = n ? String(n) : ''; badge.hidden = !n;
+  }
+  /**
+   * While boxes are being opened the count behind only goes down, one per box opened; free boxes from duplicates join it when
+   * the opening closes (refresh then shows the server's count). Null when nothing is being opened.
+   */
+  let held: number | null = null;
+  /** free boxes won while this opening is up and not opened yet: the next opening spends these before the count behind */
+  let freeBank = 0;
+
   function startOpening(n: number) {
     n = Math.min(n, boxesLeft());
     if (n < 1 || !canOpen()) return;
-    note = ''; taps = 0; count = n; picked = null;
+    const fromFree = Math.min(freeBank, n);
+    freeBank -= fromFree;
+    held = Math.max(0, (held ?? boxesLeft()) - (n - fromFree));
+    showBoxes(held);
+    note = ''; taps = 0; count = n; picked = null; fxRun++;
+    result.querySelectorAll('.ward-fly, .ward-star').forEach(e => e.remove());
     stage.classList.add('on');
     result.hidden = true; bigBox.hidden = false; $('wardStageClose').hidden = false;
     bigBox.className = 'ward-bigbox idle';
@@ -267,7 +293,7 @@ export function mountWardrobe(d: WardrobeDeps) {
     bigBox.style.setProperty('--k', String(6 + taps * 5));                // harder every tap
     restart(bigBox, 'shake');
     d.beep([523, 659, 784][taps - 1] ?? 784, .09, 'triangle');
-    const best = won?.length ? [...won].sort((a, b) => RANK[a.rarity] - RANK[b.rarity])[0]! : null;
+    const best = won?.length ? [...won].sort((a, b) => RANK[a.item.rarity] - RANK[b.item.rarity])[0]!.item : null;
     sprinkle(8 + taps * 6, 420 + taps * 110, taps >= 2 && best ? [...GOLD, RARITY_COLOR[best.rarity]] : GOLD);
     // from the second tap the box glows in the colour of the best thing inside
     if (taps >= 2 && best) { bigBox.style.setProperty('--r', RARITY_COLOR[best.rarity]); bigBox.style.setProperty('--glow', `${taps * 10}px`); }
@@ -283,8 +309,10 @@ export function mountWardrobe(d: WardrobeDeps) {
     burst(won);
   };
 
-  function burst(items: Cosmetic[]) {
-    const sorted = [...items].sort((a, b) => RANK[a.rarity] - RANK[b.rarity]), best = sorted[0]!;
+  function burst(pulls: Pull[]) {
+    // new items first, rarest first: that is what the card leads with
+    const sorted = [...pulls].sort((a, b) => Number(a.dupe) - Number(b.dupe) || RANK[a.item.rarity] - RANK[b.item.rarity]);
+    const best = [...pulls].sort((a, b) => RANK[a.item.rarity] - RANK[b.item.rarity])[0]!.item;
     flash.style.setProperty('--r', RARITY_COLOR[best.rarity]);
     restart(flash, 'go');
     sprinkle(70, 1000, [...GOLD, RARITY_COLOR[best.rarity], RARITY_COLOR[best.rarity]]);
@@ -295,39 +323,150 @@ export function mountWardrobe(d: WardrobeDeps) {
     setTimeout(() => { bigBox.hidden = true; showResult(sorted); }, 450);
   }
 
-  function showResult(items: Cosmetic[]) {
-    const won = $('wardWon');
-    $('wardResultTitle').textContent = items.length > 1 ? `ได้ของใหม่ ${items.length} ชิ้น! · ${items.length} new items` : 'ได้ของใหม่! · New item';
-    won.classList.toggle('one', items.length === 1);
-    won.innerHTML = items.map(c => `<button type="button" data-id="${c.id}" style="--r:${RARITY_COLOR[c.rarity]}" aria-pressed="false" aria-label="${esc(c.name)}"><canvas></canvas>${nameTag(short(c))}</button>`).join('');
-    won.querySelectorAll('button').forEach((b, i) => drawThumb(b.querySelector('canvas')!, items[i]!, false));
-    pick(items[0]!);
+  /* ---------- the result card: new items to look at and wear; duplicates fly into the meter one by one ---------- */
+  let shown: Pull[] = [], fxRun = 0;
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+  function showResult(pulls: Pull[]) {
+    const run = ++fxRun;
+    const fresh = pulls.filter(p => !p.dupe), dupes = pulls.filter(p => p.dupe), free = pulls.filter(p => p.free).length;
+    shown = fresh;
+    const won = $('wardWon'), motion = !still.matches && dupes.length > 0;
+    $('wardResultTitle').textContent = !dupes.length ? (fresh.length > 1 ? `ได้ของใหม่ ${fresh.length} ชิ้น! · ${fresh.length} new items` : 'ได้ของใหม่! · New item')
+      : !fresh.length ? `ได้ของซ้ำ ${dupes.length} ชิ้น · ${dupes.length} duplicate${dupes.length > 1 ? 's' : ''}`
+      : `ของใหม่ ${fresh.length} ชิ้น · ของซ้ำ ${dupes.length} ชิ้น`;
+    // everything that came out is laid out first (new ones first); the duplicates then fly out of the grid into the meter
+    const tiles = motion ? [...fresh, ...dupes] : fresh;
+    won.hidden = !tiles.length;
+    $('wardPick').hidden = !fresh.length;
+    won.classList.toggle('one', tiles.length === 1);
+    won.innerHTML = tiles.map((p, i) => p.dupe
+      ? `<button type="button" class="dupe" tabindex="-1" aria-hidden="true" style="--r:${RARITY_COLOR[p.item.rarity]}"><canvas></canvas>${nameTag(short(p.item))}</button>`
+      : `<button type="button" data-i="${i}" style="--r:${RARITY_COLOR[p.item.rarity]}" aria-pressed="false" aria-label="${esc(p.item.name)}"><canvas></canvas>${nameTag(short(p.item))}</button>`).join('');
+    won.querySelectorAll('button').forEach((b, i) => drawThumb(b.querySelector('canvas')!, tiles[i]!.item, false));
+    if (fresh.length) pick(0); else picked = null;
+    $<HTMLButtonElement>('wardWear').disabled = !fresh.length;
+
+    // the meter as it was before these duplicates, then each one flies in
+    const m = $('wardResultMeter'), after = d.current()?.dupes ?? 0, before = after - dupes.length + free * DUPES_PER_BOX, bank = freeBank;
+    freeBank += free;                                                    // counted now, shown as each one lands
+    m.hidden = !dupes.length && !freeBank;
+    resultMeter(m, before, bank);
     result.hidden = false; $('wardStageClose').hidden = true;
     requestAnimationFrame(() => marquee(won));
     setOpenButtons($<HTMLButtonElement>('wardMore1'), $<HTMLButtonElement>('wardMoreMany'), 'เปิดต่อ ');
-    $('wardWear').focus({ preventScroll: true });
-    refresh();
+    (fresh.length ? $('wardWear') : $('wardKeep')).focus({ preventScroll: true });
+    if (dupes.length) void flyIntoMeter(run, dupes, before, bank);
   }
 
-  /** the item the Wear button puts on (the best one first; tap another to choose it) */
-  function pick(item: Cosmetic) {
+  /** the result card's meter: `filled` segments lit, and the free boxes won so far in this batch */
+  function resultMeter(m: HTMLElement, filled: number, freeWon: number) {
+    meter(m, filled);
+    const f = document.createElement('b'); f.className = 'ward-free';
+    f.textContent = `ได้กล่องฟรี ${freeWon} กล่อง · ${freeWon} free box${freeWon > 1 ? 'es' : ''}`; f.hidden = !freeWon;
+    m.append(f);
+  }
+
+  /**
+   * Each duplicate leaves its place in the grid and is pulled into the next segment of the meter; a full meter bursts into stars
+   * and adds a free box. Then the new items close ranks in the middle.
+   */
+  async function flyIntoMeter(run: number, dupes: Pull[], start: number, bank: number) {
+    const m = $('wardResultMeter'), won = $('wardWon');
+    let filled = start, freeWon = bank;
+    const live = () => run === fxRun && stage.classList.contains('on');
+    if (still.matches) {                                                 // no motion: just the end state
+      for (const p of dupes) { if (p.free) freeWon++; filled = p.free ? 0 : filled + 1; }
+      resultMeter(m, filled, freeWon); return;
+    }
+    const speed = Math.max(.45, 1 - dupes.length * .05);                 // a long batch plays faster
+    const tiles = [...won.querySelectorAll<HTMLElement>('button.dupe')];
+    await sleep(600);                                                    // a moment to see everything that came out
+    for (const [k, p] of dupes.entries()) {
+      if (!live()) return;
+      const tile = tiles[k]!, box = result.getBoundingClientRect(), t = tile.getBoundingClientRect();
+      const seg = m.querySelectorAll<HTMLElement>('.ward-meter-bar i')[Math.min(filled, DUPES_PER_BOX - 1)]!, to = seg.getBoundingClientRect();
+      const fly = document.createElement('div'); fly.className = 'ward-fly'; fly.style.setProperty('--r', RARITY_COLOR[p.item.rarity]);
+      Object.assign(fly.style, { left: `${t.left - box.left}px`, top: `${t.top - box.top}px`, width: `${t.width}px`, height: `${t.height}px` });
+      const cv = tile.querySelector('canvas')!.cloneNode() as HTMLCanvasElement;
+      cv.getContext('2d')!.drawImage(tile.querySelector('canvas')!, 0, 0);
+      fly.append(cv); result.append(fly); tile.style.visibility = 'hidden';
+      const dx = to.left + to.width / 2 - (t.left + t.width / 2), dy = to.top + to.height / 2 - (t.top + t.height / 2);
+      await fly.animate([{ transform: 'translate(0,0) scale(1)' }, { transform: 'translate(0,-8px) scale(1.08)', offset: .25 }, { transform: `translate(${dx}px,${dy}px) scale(.12)`, opacity: .4 }],
+        { duration: 480 * speed, easing: 'cubic-bezier(.5,0,.85,.45)' }).finished;
+      fly.remove();
+      if (!live()) return;
+      filled++;
+      seg.classList.add('on'); restart(seg, 'pop');
+      d.beep(660 + filled * 110, .06, 'triangle');
+      m.querySelector('small')!.textContent = `ของซ้ำ ${filled}/${DUPES_PER_BOX} · ครบ ${DUPES_PER_BOX} ได้กล่องฟรี`;
+      if (p.free) {                                                      // full: stars, one more free box, and the meter starts over
+        stars(m.querySelector('.ward-meter-bar')!);
+        d.beep(1568, .18, 'triangle'); setTimeout(() => d.beep(2093, .22, 'triangle'), 120);
+        freeWon++;
+        const f = m.querySelector<HTMLElement>('.ward-free')!;
+        f.hidden = false; f.textContent = `ได้กล่องฟรี ${freeWon} กล่อง · ${freeWon} free box${freeWon > 1 ? 'es' : ''}`; restart(f, 'pop');
+        await sleep(420 * speed);
+        if (!live()) return;
+        filled = 0;
+        m.querySelectorAll('.ward-meter-bar i').forEach(i => i.classList.remove('on'));
+        m.querySelector('small')!.textContent = `ของซ้ำ 0/${DUPES_PER_BOX} · ครบ ${DUPES_PER_BOX} ได้กล่องฟรี`;
+      } else await sleep(90 * speed);
+    }
+    if (live()) gather();
+  }
+
+  /** the duplicates have gone: the new items slide together into the middle (or the grid closes when nothing new came out) */
+  function gather() {
+    const won = $('wardWon'), keep = [...won.querySelectorAll<HTMLElement>('button:not(.dupe)')];
+    const first = keep.map(b => b.getBoundingClientRect());
+    won.querySelectorAll('button.dupe').forEach(b => b.remove());
+    if (!keep.length) { won.hidden = true; return; }
+    won.classList.toggle('one', keep.length === 1);
+    keep.forEach((b, i) => {                                             // FLIP: from where it was to where it now sits
+      const last = b.getBoundingClientRect(), f = first[i]!;
+      b.animate([{ transform: `translate(${f.left - last.left}px,${f.top - last.top}px) scale(${f.width / last.width})`, transformOrigin: 'top left' }, { transform: 'none', transformOrigin: 'top left' }],
+        { duration: 420, easing: 'cubic-bezier(.2,.8,.3,1)' });
+    });
+    if (keep.length === 1) drawThumb(keep[0]!.querySelector('canvas')!, shown[0]!.item, false);   // bigger tile: redraw sharp
+    requestAnimationFrame(() => marquee(won));
+  }
+
+  /** a burst of little stars out of `el`, inside the result card */
+  function stars(el: HTMLElement) {
+    const box = result.getBoundingClientRect(), r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2 - box.left, y = r.top + r.height / 2 - box.top;
+    for (let i = 0; i < 14; i++) {
+      const s = document.createElement('span'); s.className = 'ward-star';
+      s.style.left = `${x + (Math.random() - .5) * r.width}px`; s.style.top = `${y}px`;
+      s.style.background = ['#ffd400', '#ffffff', '#fff6b0'][i % 3]!;
+      result.append(s);
+      const a = -Math.PI / 2 + (Math.random() - .5) * Math.PI * 1.3, v = 40 + Math.random() * 50;
+      s.animate([{ transform: 'translate(0,0) scale(.4) rotate(0)', opacity: 1 }, { transform: `translate(${Math.cos(a) * v}px,${Math.sin(a) * v}px) scale(1) rotate(${(Math.random() - .5) * 300}deg)`, opacity: 0 }],
+        { duration: 650 + Math.random() * 250, easing: 'cubic-bezier(.2,.7,.4,1)' }).finished.then(() => s.remove(), () => s.remove());
+    }
+  }
+
+  /** the item the Wear button puts on (rarest first; tap another to choose it) */
+  function pick(i: number) {
+    const item = shown[i]!.item;
     picked = item;
-    $('wardWon').querySelectorAll<HTMLButtonElement>('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === item.id)));
-    const p = $('wardPick');
-    p.style.setProperty('--r', RARITY_COLOR[item.rarity]);
-    p.innerHTML = `<small>${esc(RARITY_LABEL[item.rarity])}</small><b>${esc(item.name)}</b><span>${esc(SLOT_LABEL[item.slot])}</span>`;
+    $('wardWon').querySelectorAll<HTMLButtonElement>('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.i === String(i))));
+    const el = $('wardPick');
+    el.style.setProperty('--r', RARITY_COLOR[item.rarity]);
+    el.innerHTML = `<small>${esc(RARITY_LABEL[item.rarity])}</small><b>${esc(item.name)}</b><span>${esc(SLOT_LABEL[item.slot])}</span>`;
   }
 
-  function closeStage() { stopDust(); stage.classList.remove('on'); $<HTMLButtonElement>('wardOpen').focus({ preventScroll: true }); }
+  function closeStage() { fxRun++; held = null; freeBank = 0; stopDust(); stage.classList.remove('on'); refresh(); $<HTMLButtonElement>('wardOpen').focus({ preventScroll: true }); }
 
   $('wardWon').onclick = e => {
-    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-id]'), item = b && CATALOG.find(c => c.id === b.dataset.id);
-    if (item) pick(item);
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-i]');
+    if (b) pick(Number(b.dataset.i));
   };
   $('wardWear').onclick = () => { if (!picked) return; tab = picked.slot; void wear(picked.slot, picked.id); closeStage(); };
-  $('wardKeep').onclick = () => { if (picked) tab = picked.slot; closeStage(); refresh(); };
+  $('wardKeep').onclick = () => { if (picked) tab = picked.slot; closeStage(); };
   // leaving mid-shake is fine: whatever the server already opened is in the grid
-  $('wardStageClose').onclick = () => { closeStage(); refresh(); };
+  $('wardStageClose').onclick = () => closeStage();
   $('wardMore1').onclick = () => startOpening(1);
   $('wardMoreMany').onclick = () => startOpening(OPEN_MAX);
   $('wardOpen').onclick = () => startOpening(1);
@@ -336,7 +475,7 @@ export function mountWardrobe(d: WardrobeDeps) {
   return {
     refresh,
     open() { stopDust(); trying = {}; stage.classList.remove('on'); refresh(); paintChests(); cancelAnimationFrame(timer); animate(); },
-    close() { stopDust(); stage.classList.remove('on'); cancelAnimationFrame(timer); },
+    close() { held = null; freeBank = 0; stopDust(); stage.classList.remove('on'); refresh(); cancelAnimationFrame(timer); },
     /** Escape while opening: keep what came out (or leave mid-shake). True when the stage used the key. */
     escape() {
       if (!stage.classList.contains('on')) return false;

@@ -51,7 +51,7 @@ async function startOn(id: string, seed: number) {
 
 describe('wardrobe API', () => {
   it('a new player has nothing, and cannot open a box they never picked up', async () => {
-    expect((await ward({ id: 'EMP1' })).body).toEqual({ boxes: 0, owned: [], equipped: {} });
+    expect((await ward({ id: 'EMP1' })).body).toEqual({ boxes: 0, owned: [], equipped: {}, dupes: 0 });
     const r = await ward({ id: 'EMP1', action: 'open' });
     expect([r.status, r.body.error]).toEqual([409, 'no_box']);
     expect((await ward({ id: 'x' })).status).toBe(400);
@@ -78,8 +78,9 @@ describe('wardrobe API', () => {
     expect(opened.status).toBe(200);
     expect(random).not.toHaveBeenCalled();
     expect(opened.body.items).toHaveLength(1);
-    expect(CATALOG.some(c => c.id === opened.body.items[0])).toBe(true);
-    expect(opened.body).toMatchObject({ boxes: 0, owned: opened.body.items });
+    const [first] = opened.body.items;
+    expect(CATALOG.some(c => c.id === first.id)).toBe(true);
+    expect(opened.body).toMatchObject({ boxes: 0, owned: [first.id], dupes: 0, items: [{ id: first.id, dupe: false, free: false }] });
     expect((await ward({ id: 'EMP1', action: 'open' })).body.error).toBe('no_box');
   });
 
@@ -93,7 +94,7 @@ describe('wardrobe API', () => {
   it('wears only what was won', async () => {
     await store.grantBoxes(['EMP1'], 1);
     const [won] = (await ward({ id: 'EMP1', action: 'open' })).body.items;
-    const item = CATALOG.find(c => c.id === won)!;
+    const item = CATALOG.find(c => c.id === won.id)!;
     const other = CATALOG.find(c => c.slot === item.slot && c.id !== item.id)!;
     expect((await ward({ id: 'EMP1', action: 'equip', slot: item.slot, item: other.id })).status).toBe(400);
     expect((await ward({ id: 'EMP1', action: 'equip', slot: 'cape', item: item.id })).status).toBe(400);
@@ -126,15 +127,32 @@ describe('wardrobe API', () => {
     expect((await grant({ ids: ['EMP2'], n: 1 })).body.bad).toEqual(['EMP2']);
   });
 
-  it('opens up to ten at once, fewer when fewer are left, all different', async () => {
+  it('opens up to ten at once, fewer when fewer are left; duplicates fill the meter and pay out free boxes', async () => {
     await store.grantBoxes(['EMP1'], 13);
     expect((await ward({ id: 'EMP1', action: 'open', n: 11 })).status).toBe(400);
     expect((await ward({ id: 'EMP1', action: 'open', n: 0 })).status).toBe(400);
     const ten = (await ward({ id: 'EMP1', action: 'open', n: 10 })).body;
-    expect([ten.items.length, new Set(ten.items).size, ten.boxes]).toEqual([10, 10, 3]);
-    const rest = (await ward({ id: 'EMP1', action: 'open', n: 10 })).body;
-    expect([rest.items.length, rest.boxes, rest.owned.length]).toEqual([3, 0, 13]);
+    const free = (b: Body) => (b.items as Body[]).filter(i => i.free).length;
+    expect(ten.items).toHaveLength(10);
+    expect(ten.boxes).toBe(3 + free(ten));
+    const all: Body[] = [...ten.items];
+    for (let left = ten.boxes; left > 0;) {
+      const more = (await ward({ id: 'EMP1', action: 'open', n: 10 })).body;
+      all.push(...more.items); left = more.boxes;
+    }
     expect((await ward({ id: 'EMP1', action: 'open', n: 10 })).body.error).toBe('no_box');
+    const end = (await ward({ id: 'EMP1' })).body, dupes = all.filter(i => i.dupe).length;
+    expect(all.length).toBe(13 + all.filter(i => i.free).length);              // every box, free ones included, was opened
+    expect(end.owned).toEqual([...new Set(all.filter(i => !i.dupe).map(i => i.id))]);
+    expect(end.dupes).toBe(dupes % 5);
+  });
+
+  it('a player who owns everything keeps opening: every box is a duplicate, and 5 of them give a free box', async () => {
+    await store.grantBoxes(['EMP1'], CATALOG.length + 10);
+    for (let left = 1; left > 0;) left = (await ward({ id: 'EMP1', action: 'open', n: 10 })).body.boxes;   // opens until none are left
+    const w = (await ward({ id: 'EMP1' })).body;
+    expect(w.boxes).toBe(0);
+    expect(w.owned.length).toBeLessThanOrEqual(CATALOG.length);
   });
 
   it('admin sees each player: plays, best score, farthest run and chests', async () => {
@@ -151,8 +169,8 @@ describe('wardrobe API', () => {
     expect((await admin(store, { key: 'wrong', action: 'players' })).status).toBe(401);
     const players = ((await admin(store, { key: 'secret', action: 'players' })).body as Body).players as Body[];
     const one = players.find(p => p.id === 'EMP1')!, two = players.find(p => p.id === 'EMP2')!;
-    expect(one).toMatchObject({ plays: 2, best: score, loot: 1, granted: 2, opened: 1, hidden: false });
+    expect(one).toMatchObject({ plays: 2, best: score, loot: 1, granted: 2, opened: 1, free: 0, hidden: false });
     expect(one.maxDist).toBeGreaterThan(1000);                                  // the run went past the first chest checkpoint
-    expect(two).toMatchObject({ plays: 1, best: null, maxDist: null, loot: 0, granted: 0, opened: 0 });
+    expect(two).toMatchObject({ plays: 1, best: null, maxDist: null, loot: 0, granted: 0, free: 0, opened: 0 });
   });
 });

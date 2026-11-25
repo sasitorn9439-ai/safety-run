@@ -227,8 +227,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--y);outline-offs
 @keyframes ward-flash{0%{opacity:.95;transform:scale(.2)}100%{opacity:0;transform:scale(14)}}
 .ward-result{position:relative;z-index:2;animation:coin-pop .35s ease-out;text-align:center}
 .ward-result[hidden]{display:none}
-.ward-won{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:8px 0}
-.ward-won.one{grid-template-columns:minmax(0,1fr);justify-items:center}
+/* what came out, centred: five to a row */
+.ward-won{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:8px 0}
+.ward-won>button{flex:0 0 calc((100% - 24px) / 5);min-width:0}
+.ward-won.one>button{flex:0 0 150px}
+.ward-won button.dupe{opacity:.8;cursor:default;pointer-events:none}
 .ward-won button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:10px;border:2px solid var(--r);background:#1b1e23;color:var(--ink);cursor:pointer;font:inherit}
 .ward-won button canvas{position:static;width:100%;aspect-ratio:1;height:auto}
 .ward-won.one button{width:150px;cursor:default}
@@ -244,6 +247,22 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--y);outline-offs
 .ward-actions .btn{min-height:44px;font-size:15px}
 .ward-actions .btn:disabled{opacity:.4}
 @media (prefers-reduced-motion:reduce){.ward-bigbox.idle,.ward-bigbox.shake{animation:none}.ward-bigbox.open{animation-duration:.01s}.ward-flash.go{animation:none}}
+/* the duplicate meter: five segments; full = a free box */
+.ward-meter{margin:6px 0 0;text-align:center}
+.ward-meter[hidden]{display:none}
+.ward-meter-bar{display:inline-grid;grid-template-columns:repeat(5,18px);gap:3px;vertical-align:middle}
+.ward-meter-bar i{height:8px;border-radius:4px;background:#3a3d36}
+.ward-meter-bar i.on{background:var(--y)}
+.ward-meter small{display:block;margin-top:2px;color:var(--muted);font-size:12px}
+.ward-meter-bar i.pop{animation:coin-pop .25s ease-out}
+.ward-won[hidden],.ward-pick[hidden]{display:none}
+.ward-free{display:block;margin-top:4px;color:var(--y);font-weight:600;font-size:15px}
+.ward-free[hidden]{display:none}
+.ward-free.pop{animation:coin-pop .35s ease-out}
+/* a duplicate on its way into the meter, and the stars when the meter fills */
+.ward-fly{position:absolute;z-index:3;border-radius:10px;border:2px solid var(--r);background:#1b1e23;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.45);overflow:hidden}
+.ward-fly canvas{position:static;width:100%;aspect-ratio:1;height:auto;margin-top:4px}
+.ward-star{position:absolute;z-index:3;width:12px;height:12px;margin:-6px;pointer-events:none;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
 .ward-how{text-align:left}
 .ward-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
 .ward-tabs button{min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:500 15px Kanit,sans-serif;cursor:pointer}

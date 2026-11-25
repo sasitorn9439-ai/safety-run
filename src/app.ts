@@ -10,7 +10,7 @@ import { createRenderer, type GameRenderer } from './render/index.js';
 import { Hud } from './ui/hud.js';
 import { Tally } from './ui/tally.js';
 import { mountWardrobe } from './ui/wardrobe.js';
-import { cosmetic, lookOf, parseWardrobe, type Wardrobe } from './cosmetics/wardrobe.js';
+import { EMPTY_WARDROBE, cosmetic, lookOf, parseWardrobe, type Wardrobe } from './cosmetics/wardrobe.js';
 
 /** this many places on the board win a prize */
 const PRIZE_RANKS = 7;
@@ -45,7 +45,7 @@ export async function startApp() {
      The server holds it all (boxes come from verified replays, the server rolls them), so nothing on the device can add a box or an item. */
   let wardState: Wardrobe | null = null, wardId = '';
   const wardCall = async (body: Record<string, unknown>) => {
-    const id = wardId, r = await api<Wardrobe & { items?: string[] }>('/api/wardrobe', { id, ...body });
+    const id = wardId, r = await api<Wardrobe & { items?: { id: string; dupe?: boolean; free?: boolean }[] }>('/api/wardrobe', { id, ...body });
     if (!r.ok || id !== wardId) return null;
     wardState = parseWardrobe(r);
     renderer.setLook(lookOf(wardState)); game.invalidate(); wardrobe.refresh();
@@ -56,8 +56,8 @@ export async function startApp() {
     current: () => wardState,
     open: async n => {
       const r = await wardCall({ action: 'open', n });
-      const items = (r?.items ?? []).map(cosmetic).filter(c => c !== undefined);
-      return items.length ? items : null;
+      const pulls = (r?.items ?? []).flatMap(p => { const item = cosmetic(p.id); return item ? [{ item, dupe: !!p.dupe, free: !!p.free }] : []; });
+      return pulls.length ? pulls : null;
     },
     wear: async (slot, item) => { await wardCall({ action: 'equip', slot, item }).catch(() => null); },
     beep: sfx.beep,
@@ -208,6 +208,21 @@ export async function startApp() {
 
   /* ---------- login / start ---------- */
   { const lp = LS.get<{ id?: string }>('srPlayer'); if (lp) ($('empId') as HTMLInputElement).value = lp.id || ''; if (lp?.id) void loadWardrobe(lp.id); }
+  // the wardrobe follows the employee ID typed in: a different ID shows that player's boxes, before any run (a blank or
+  // malformed ID shows none)
+  {
+    let typing = 0;
+    $('empId').addEventListener('input', () => {
+      clearTimeout(typing);
+      typing = window.setTimeout(() => {
+        const id = ($('empId') as HTMLInputElement).value.trim().toUpperCase().replace(/\s+/g, '');
+        if (id === wardId) return;
+        if (/^[A-Z0-9-]{3,15}$/.test(id)) { void loadWardrobe(id); return; }
+        wardId = ''; wardState = null;
+        renderer.setLook(lookOf(EMPTY_WARDROBE)); game.invalidate(); wardrobe.refresh();
+      }, 400);
+    });
+  }
 
   async function startRun(id: string, msg: HTMLElement, btn: HTMLButtonElement, label: string) {
     sfx.unlock();
