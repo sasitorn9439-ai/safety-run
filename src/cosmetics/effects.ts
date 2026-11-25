@@ -212,22 +212,24 @@ const pillar = (color: string): Part => ({
     c.save(); c.globalAlpha *= .4 + .08 * Math.sin(t * TAU); c.fillStyle = g; c.fillRect(-.3, -1.35, .6, 1.4); c.restore();
   },
 });
-/** rainbow bands streaming back from the feet toward the camera: in front of the mascot, starting below its feet, fading in */
+/** rainbow bands streaming from the feet toward the camera, down past the bottom of the screen, in front of the mascot */
+const RAINBOW_LEN = 1.25;
 const rainbow: Part = {
   front(c, t) {
-    const cols = ['#ff5252', '#ffab40', '#ffee58', '#69f0ae', '#40c4ff', '#b388ff'];
+    const cols = ['#ff5252', '#ffab40', '#ffee58', '#69f0ae', '#40c4ff', '#b388ff'], n = 20;
     cols.forEach((col, i) => {
       const base = c.globalAlpha;
-      c.save(); c.strokeStyle = col; c.lineWidth = .028; c.lineCap = 'round';
-      for (let k = 1; k <= 8; k++) {                                     // segment by segment, each as clear as its distance allows
-        const at = (q: number) => [(i - 2.5) * .03 + Math.sin(q * TAU + t * TAU) * .04 * q, TRAIL_START + q * .26] as const;
-        const [x0, y0] = at((k - 1) / 8), [x1, y1] = at(k / 8);
-        c.globalAlpha = base * .7 * emerge(k / 8); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+      c.save(); c.strokeStyle = col; c.lineWidth = .042; c.lineCap = 'round';
+      for (let k = 1; k <= n; k++) {                                     // segment by segment, each as clear as its distance allows
+        const at = (q: number) => [(i - 2.5) * .042 + Math.sin(q * TAU * 1.2 + t * TAU) * .07 * q, q * RAINBOW_LEN] as const;
+        const [x0, y0] = at((k - 1) / n), [x1, y1] = at(k / n), q = k / n;
+        c.globalAlpha = base * .75 * Math.min(1, q / .06) * (1 - q * .35); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
       }
       c.restore();
     });
   },
-  below: TRAIL_START + .26 + .03,
+  // long enough to run off the bottom of the screen on any phone
+  below: RAINBOW_LEN + .05,
 };
 /**
  * A tilted ring circling the body (both halves, so it passes in front and behind), sweeping from the top of the head down to

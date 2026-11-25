@@ -61,8 +61,9 @@ function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number, t: number
   c.save(); c.beginPath(); c.arc(0, 0, inner, 0, 7); c.clip();
   const k = inner / VIEW_R;
   c.scale(k, k);
-  // a trail left under the feet would fall outside the circle: lift those effects so the trail shows over the chest
-  const fx = look.effect, lift = fx?.below ? fx.below * .7 : 0;
+  // a trail left under the feet would fall outside the circle: lift those effects so the trail shows over the chest (a long one,
+  // like the rainbow, no further than a short one: it starts at the chest and runs off the bottom of the circle)
+  const fx = look.effect, lift = fx?.below ? Math.min(fx.below, .6) * .7 : 0;
   // drawn at two moments of the effect's loop half a loop apart, so a sparse effect still shows; a ring once, sweeping once a loop
   const at = (draw: ((c: Ctx, t: number, cy: number) => void) | undefined, moments: number[]) => {
     if (!draw) return;
