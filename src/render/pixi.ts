@@ -11,7 +11,8 @@ import { drawPropModel, BackdropFade, PROPS, sceneryOpacity, propItems, sideWall
 import { ZONES } from '../../shared/zones.js';
 import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
 import type { MascotSet } from './pixel-mascot.js';
-import { PAD, ON_KINDS, POWERS, bonusArt, coinArt, crateArt, dotArt, liftArt, powerArt, haloArt, hazardArt, lightArt, pillarArt, whitePillarArt, ppeArt, rasterize, runArt, shadowArt, shieldArt, slideArt, type Art } from './sprites.js';
+import type { Look } from '../cosmetics/types.js';
+import { PAD, ON_KINDS, POWERS, bonusArt, coinArt, lootArt, crateArt, dotArt, liftArt, powerArt, haloArt, hazardArt, lightArt, pillarArt, whitePillarArt, ppeArt, rasterize, runArt, shadowArt, shieldArt, slideArt, type Art } from './sprites.js';
 import type { Frame, GameRenderer } from './types.js';
 
 /** A texture plus the numbers needed to place it: anchor (normalised) and how many texture pixels one art unit is. */
@@ -62,7 +63,7 @@ function place(s: Sprite, t: Tex, x: number, y: number, u: number, alpha = 1, z 
 interface Textures {
   hazards: Record<HazardKind, Tex>; on: Partial<Record<HazardKind, Tex>>; crate: Tex; ppe: Record<PpeType, Tex>;
   power: Record<PowerType, Tex>; lift: Tex;
-  shadow: Tex; halo: Tex; coin: Tex; bonus: Tex; pillar: Tex; whitePillar: Tex; light: Tex; shield: Tex; dot: Tex; run: Tex[]; slide: Tex[]; mascot: Record<PixelAnim, Tex[]> | null;
+  shadow: Tex; halo: Tex; coin: Tex; bonus: Tex; loot: Tex; pillar: Tex; whitePillar: Tex; light: Tex; shield: Tex; dot: Tex; run: Tex[]; slide: Tex[]; mascot: Record<PixelAnim, Tex[]> | null;
   flame: Texture; drillSmoke: Texture; smoke: Texture; cloud: Texture; backdrops: Texture[]; fog: Texture; props: (Tex | null)[];
 }
 
@@ -187,6 +188,12 @@ export class PixiRenderer implements GameRenderer {
 
   rebuild() { this.build(true); }
 
+  setLook(look: Look) {
+    if (this.pixel?.style !== 'flat' || this.pixel.look === look) return;
+    this.pixel.look = look;
+    this.build(true);
+  }
+
   private build(force: boolean) {
     const { cam } = this;
     // keyed on the *maximum* density: stepping the render scale down later doesn't need new textures
@@ -202,7 +209,7 @@ export class PixiRenderer implements GameRenderer {
     for (const t of PPE) ppe[t] = mk(ppeArt(t));
     this.tx = {
       hazards, ppe, power, lift: mk(liftArt), on: Object.fromEntries(ON_KINDS.map(k => [k, mk(hazardArt(k, true))])) as Partial<Record<HazardKind, Tex>>, crate: mk(crateArt),
-      shadow: mk(shadowArt), halo: mk(haloArt), coin: mk(coinArt), bonus: mk(bonusArt), pillar: mk(pillarArt), whitePillar: mk(whitePillarArt), light: mk(lightArt), shield: mk(shieldArt), dot: mk(dotArt),
+      shadow: mk(shadowArt), halo: mk(haloArt), coin: mk(coinArt), bonus: mk(bonusArt), loot: mk(lootArt), pillar: mk(pillarArt), whitePillar: mk(whitePillarArt), light: mk(lightArt), shield: mk(shieldArt), dot: mk(dotArt),
       run: Array.from({ length: RUN_FRAMES }, (_, i) => mk(runArt(i))),
       slide: Array.from({ length: SLIDE_FRAMES }, (_, i) => mk(slideArt(i))),
       mascot: this.pixel ? this.pixelTextures(base) : null,
@@ -232,7 +239,7 @@ export class PixiRenderer implements GameRenderer {
     const t = this.tx;
     const all: Texture[] = [
       ...Object.values(t.hazards).map(x => x.tex), ...Object.values(t.ppe).map(x => x.tex), ...Object.values(t.power).map(x => x.tex), t.lift.tex, t.crate.tex, ...Object.values(t.on).map(x => x!.tex),
-      t.shadow.tex, t.halo.tex, t.coin.tex, t.pillar.tex, t.whitePillar.tex, t.light.tex, t.shield.tex, t.dot.tex, ...t.run.map(x => x.tex), ...t.slide.map(x => x.tex), ...t.backdrops, t.flame, t.drillSmoke, t.smoke, t.cloud, t.fog, ...t.props.flatMap(x => x ? [x.tex] : []),
+      t.shadow.tex, t.halo.tex, t.coin.tex, t.bonus.tex, t.loot.tex, t.pillar.tex, t.whitePillar.tex, t.light.tex, t.shield.tex, t.dot.tex, ...t.run.map(x => x.tex), ...t.slide.map(x => x.tex), ...t.backdrops, t.flame, t.drillSmoke, t.smoke, t.cloud, t.fog, ...t.props.flatMap(x => x ? [x.tex] : []),
       ...(t.mascot ? Object.values(t.mascot).flat().map(x => x.tex) : []),
     ];
     for (const x of all) x.destroy(true);
@@ -385,11 +392,11 @@ export class PixiRenderer implements GameRenderer {
         s.scale.x *= it.sx;
         continue;
       }
-      if (it.kind === 'bonus') {
+      if (it.kind === 'bonus' || it.kind === 'loot') {
         place(sh.get(), tx.halo, it.x, it.y, it.u * 2, it.fade * it.halo);
         place(sh.get(), tx.shadow, it.x, it.gy, it.u * .6, it.fade * .5);
         const s = ac.get();
-        place(s, tx.bonus, it.x, it.y, it.u, it.fade, -it.z);
+        place(s, tx[it.kind], it.x, it.y, it.u, it.fade, -it.z);
         s.scale.x *= it.sx;
         continue;
       }

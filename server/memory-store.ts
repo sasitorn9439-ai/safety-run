@@ -1,13 +1,15 @@
+import { DUPES_PER_BOX } from '../src/cosmetics/wardrobe.js';
 import type { AdminRow, Store } from './store.js';
 
 interface Run {
   id: number; empId: string; runNo: number; name: string; tokenHash: string; startedAt: number;
-  score: number | null; seed: number; finishedAt: number | null; secs: number | null;
+  score: number | null; seed: number; finishedAt: number | null; secs: number | null; loot: number; dist: number | null;
 }
 
 /** In-memory Store for local development. Same rules as the Postgres one, gone on restart. */
 export function createMemoryStore(): Store {
   const runs: Run[] = [];
+  const opened = new Map<string, { item: string; dupe: boolean }[]>(), worn = new Map<string, Record<string, string>>(), granted = new Map<string, number>();
   const avatars = new Map<string, number>();
   const hidden = new Set<string>();
   let nextId = 1;
@@ -35,7 +37,7 @@ export function createMemoryStore(): Store {
     },
     async createRun(r) {
       if (runs.some(x => x.empId === r.id && x.runNo === r.runNo)) return null;
-      const run: Run = { id: nextId++, empId: r.id, runNo: r.runNo, name: r.name, tokenHash: r.tokenHash, startedAt: Date.now(), score: null, seed: r.seed, finishedAt: null, secs: null };
+      const run: Run = { id: nextId++, empId: r.id, runNo: r.runNo, name: r.name, tokenHash: r.tokenHash, startedAt: Date.now(), score: null, seed: r.seed, finishedAt: null, secs: null, loot: 0, dist: null };
       runs.push(run);
       return run.id;
     },
@@ -43,11 +45,11 @@ export function createMemoryStore(): Store {
       const r = runs.find(x => String(x.id) === runId && x.empId === id);
       return r ? { tokenHash: r.tokenHash, score: r.score, seed: r.seed, secs: (Date.now() - r.startedAt) / 1000 } : null;
     },
-    async finishRun(runId, score, secs) {
+    async finishRun(runId, f) {
       const r = runs.find(x => String(x.id) === runId);
       if (!r || r.score != null) return null;
-      r.score = score; r.secs = secs; r.finishedAt = Date.now();
-      return score;
+      r.score = f.score; r.secs = f.secs; r.finishedAt = Date.now(); r.loot = f.loot; r.dist = f.dist;
+      return f.score;
     },
     async runScore(runId) {
       const r = runs.find(x => String(x.id) === runId);
@@ -87,10 +89,40 @@ export function createMemoryStore(): Store {
         legacy: false, hidden: hidden.has(r.empId),
       }));
     },
+    async adminPlayers() {
+      const ids = [...new Set([...avatars.keys(), ...runs.map(r => r.empId)])];
+      return ids.map(id => {
+        const mine = runs.filter(r => r.empId === id), done = mine.filter(r => r.score != null), dists = mine.flatMap(r => r.dist == null ? [] : [r.dist]);
+        return {
+          id, avatar: avatars.get(id) ?? null, hidden: hidden.has(id), plays: mine.length,
+          best: done.length ? Math.max(...done.map(r => r.score!)) : null, maxDist: dists.length ? Math.max(...dists) : null,
+          lastPlayed: mine.length ? new Date(Math.max(...mine.map(r => r.startedAt))).toISOString() : null,
+          loot: mine.reduce((n, r) => n + r.loot, 0), granted: granted.get(id) ?? 0, opened: opened.get(id)?.length ?? 0,
+          free: Math.floor((opened.get(id) ?? []).filter(o => o.dupe).length / DUPES_PER_BOX),
+        };
+      });
+    },
     async adminHide(id, hide) {
       if (!avatars.has(id) && !runs.some(r => r.empId === id)) return 0;
       if (hide) hidden.add(id); else hidden.delete(id);
       return 1;
+    },
+    async wardrobe(id) {
+      const earned = runs.reduce((n, r) => n + (r.empId === id ? r.loot : 0), granted.get(id) ?? 0);
+      return { earned, opened: [...opened.get(id) ?? []], equipped: { ...worn.get(id) } };
+    },
+    async addCosmetic(id, boxNo, item, dupe) {
+      const mine = opened.get(id) ?? [];
+      if (mine.length !== boxNo - 1) return false;
+      opened.set(id, [...mine, { item, dupe }]);
+      return true;
+    },
+    async setEquipped(id, equipped) { worn.set(id, { ...equipped }); },
+    async grantBoxes(ids, n) {
+      const known = new Set([...avatars.keys(), ...runs.map(r => r.empId)]);
+      const to = ids === 'all' ? [...known] : [...new Set(ids)];
+      for (const id of to) granted.set(id, (granted.get(id) ?? 0) + n);
+      return { granted: to.length, unknown: to.filter(id => !known.has(id)) };
     },
   };
 }

@@ -8,6 +8,7 @@ import { DrawList, Fx, GHOST_FX, TAU, entranceWires, envItems, interp, pose, typ
 import { drawPropModel, BackdropFade, ENTRANCE_YARD_EDGE, PROPS, sceneryOpacity, propItems, sideWall, type PropItem } from './scenery.js';
 import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
 import type { MascotSet } from './pixel-mascot.js';
+import type { Look } from '../cosmetics/types.js';
 import { Sprite, SpriteSet } from './sprites.js';
 import { ZONES } from '../../shared/zones.js';
 import type { Frame, GameRenderer } from './types.js';
@@ -66,6 +67,12 @@ export class Canvas2DRenderer implements GameRenderer {
   }
 
   rebuild() { this.build(true); }
+
+  setLook(look: Look) {
+    if (this.pixel?.style !== 'flat' || this.pixel.look === look) return;
+    this.pixel.look = look;
+    this.build(true);
+  }
 
   private build(force: boolean) {
     const { cam, dpr, ctx } = this;
@@ -287,11 +294,11 @@ export class Canvas2DRenderer implements GameRenderer {
         ctx.globalAlpha = it.fade * .45; sprites.shadow.draw(ctx, it.x, it.gy, it.u * .55, dpr);
         ctx.globalAlpha = it.fade;
         ctx.save(); ctx.translate(it.x, it.y); ctx.scale(it.sx, 1); sprites.ppe[it.p].draw(ctx, 0, 0, it.u, dpr); ctx.restore();
-      } else if (it.kind === 'bonus') {
+      } else if (it.kind === 'bonus' || it.kind === 'loot') {
         ctx.globalAlpha = it.fade * it.halo; sprites.halo.draw(ctx, it.x, it.y, it.u * 2, dpr);
         ctx.globalAlpha = it.fade * .5; sprites.shadow.draw(ctx, it.x, it.gy, it.u * .6, dpr);
         ctx.globalAlpha = it.fade;
-        ctx.save(); ctx.translate(it.x, it.y); ctx.scale(it.sx, 1); sprites.bonus.draw(ctx, 0, 0, it.u, dpr); ctx.restore();
+        ctx.save(); ctx.translate(it.x, it.y); ctx.scale(it.sx, 1); sprites[it.kind].draw(ctx, 0, 0, it.u, dpr); ctx.restore();
       } else {
         if (it.k !== 'drop') sprites.shadow.draw(ctx, it.x, it.y, it.u * .95, dpr);
         ((it.blink && sprites.on[it.k]) || sprites.hazards[it.k]).draw(ctx, it.x, it.y, it.u, dpr);

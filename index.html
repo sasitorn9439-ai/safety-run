@@ -46,6 +46,7 @@
 </header>
 <p class="sub">หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><strong>เล่นได้หลายรอบ นับคะแนนสูงสุด</strong><br>กรอกรหัสพนักงานเพื่อรับไอคอนบนตารางอันดับ</p>
 <button class="btn alt prize-btn" id="prizeBtn" type="button" aria-haspopup="dialog">🏆 ดูของรางวัล Top 7 · Prizes</button>
+<button class="btn alt ward-btn" id="wardBtn" type="button" aria-haspopup="dialog"><canvas class="ward-ico chest-art" aria-hidden="true"></canvas>กล่องสุ่ม &amp; ตู้เสื้อผ้า · Wardrobe <span class="ward-badge" id="wardBadge" hidden></span></button>
 <form id="login" autocomplete="off">
 <label class="field">รหัสพนักงาน · Employee ID<input id="empId" maxlength="15" required autocapitalize="characters"></label>
 <p class="msg" id="loginMsg"></p>
@@ -54,7 +55,7 @@
 <div class="row2"><button class="btn alt" id="boardBtn" type="button">ดูอันดับ<br><span class="en">Leaderboard</span></button>
 <button class="btn alt" id="howBtn" type="button" aria-haspopup="dialog">วิธีเล่น<br><span class="en">How to play</span></button></div>
 <p class="small">กดเริ่มแล้วนับเป็น 1 ครั้งทันที ห้ามปิดหน้าจอระหว่างเล่น</p>
-<button class="news-link" id="newsBtn" type="button" aria-haspopup="dialog">เวอร์ชัน 0.0.1 · มีอะไรใหม่</button>
+<button class="news-link" id="newsBtn" type="button" aria-haspopup="dialog">เวอร์ชัน 0.0.2 · มีอะไรใหม่</button>
 </div></div>
 
 <div class="ov how" id="howOv" role="dialog" aria-modal="true" aria-labelledby="howTitle"><div class="card scroll">
@@ -86,15 +87,58 @@
 <button class="btn" id="prizeClose" type="button">ปิด · Close</button>
 </div></div>
 
-<div class="ov how" id="newsOv" data-version="0.0.1" role="dialog" aria-modal="true" aria-labelledby="newsTitle"><div class="card scroll">
+<div class="ov how" id="newsOv" data-version="0.0.2" role="dialog" aria-modal="true" aria-labelledby="newsTitle"><div class="card scroll">
 <h2 id="newsTitle">มีอะไรใหม่ · What's new</h2>
-<p class="news-ver">เวอร์ชัน 0.0.1</p>
+<p class="news-ver">เวอร์ชัน 0.0.2</p>
+<ul>
+<li><b><canvas class="news-ico chest-art" aria-hidden="true"></canvas></b><span>หีบสมบัติ! หาได้ในแถวเหรียญ เปิดได้สกิน หมวก เอฟเฟกต์ <mark class="news-hi">ผู้เล่นเก่ารับฟรี 10 หีบ</mark><br><span class="en">Find treasure chests on your runs. <mark class="news-hi">Old players get 10 free chests.</mark></span></span></li>
+<li><b><svg class="news-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5a2 2 0 1 1 2 2c-.9 0-2 .6-2 1.8v.7m0 0L3.6 15.4A1.5 1.5 0 0 0 4.5 18h15a1.5 1.5 0 0 0 .9-2.6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></b><span>ตู้เสื้อผ้า แต่งตัวละคร ลองใส่ได้ก่อนปลดล็อก<br><span class="en">Dress up your mascot in the Wardrobe.</span></span></li>
+</ul>
+<p class="news-ver news-old">เวอร์ชัน 0.0.1</p>
 <ul>
 <li><b>🏆</b><span>ขยายรางวัลถึง Top 7 อันดับ 2 ถึง 5 ได้บัตรเติมน้ำมัน 500 บาท อันดับ 6 และ 7 ได้ร่มพับอัตโนมัติ<br><span class="en">Prizes now go to the top 7.</span></span></li>
 <li><b>⏱</b><span>ปลดลิมิตเวลาแล้ว เล่นได้เกิน 30 นาที วิ่งต่อได้จนกว่าจะชน<br><span class="en">No more 30-minute limit. Keep running until you crash.</span></span></li>
 </ul>
 <button class="btn" id="newsClose" type="button">รับทราบ · Got it</button>
 </div></div>
+
+<div class="ov how" id="wardOv" role="dialog" aria-modal="true" aria-labelledby="wardTitle"><div class="card scroll">
+<h2 id="wardTitle">ตู้เสื้อผ้า · Wardrobe</h2>
+<div class="ward-top">
+<canvas id="wardPreview" aria-label="ตัวละครกับชุดที่ใส่อยู่"></canvas>
+<div class="ward-box">
+<canvas class="ward-gift chest-art" aria-hidden="true"></canvas>
+<p><b id="wardBoxes">0</b> กล่องสุ่ม · loot boxes</p>
+<div class="row2"><button class="btn" id="wardOpen" type="button">เปิด 1</button><button class="btn alt" id="wardOpenMany" type="button">เปิด 10</button></div>
+<div class="ward-meter" id="wardMeter" role="img"></div>
+<p class="small" id="wardCount"></p>
+</div>
+</div>
+<p class="small ward-how">กล่องสุ่มหายากมาก วิ่งให้ไกลแล้วมองหาหีบสมบัติในแถวเหรียญ ได้ของซ้ำครบ 5 ชิ้น รับกล่องฟรี 1 กล่อง · Rare treasure chests hide in coin trails on long runs</p>
+<div class="ward-tabs" id="wardTabs" role="tablist"><button type="button" role="tab" data-slot="skin">สกิน</button><button type="button" role="tab" data-slot="hat">หมวก</button><button type="button" role="tab" data-slot="effect">เอฟเฟกต์</button></div>
+<div class="ward-grid" id="wardGrid"></div>
+<button class="btn alt" id="wardClose" type="button">ปิด · Close</button>
+</div></div>
+
+<div class="ov ward-stage" id="wardStage" role="dialog" aria-modal="true" aria-label="เปิดกล่องสุ่ม · Open loot box">
+<div class="ward-flash" id="wardFlash" aria-hidden="true"></div>
+<button class="ward-stage-x" id="wardStageClose" type="button" aria-label="ปิด · Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg></button>
+<button class="ward-bigbox" id="wardBigBox" type="button" aria-describedby="wardHint"><canvas id="wardBoxArt"></canvas><span class="ward-x" id="wardBoxX"></span></button>
+<canvas class="ward-dust" id="wardDust" aria-hidden="true"></canvas>
+<p class="ward-hint" id="wardHint" role="status"></p>
+<div class="card ward-result" id="wardResult" hidden>
+<h2 id="wardResultTitle"></h2>
+<div class="ward-won" id="wardWon"></div>
+<p class="ward-pick" id="wardPick"></p>
+<div class="ward-meter" id="wardResultMeter" role="img" hidden></div>
+<div class="ward-actions">
+<button class="btn" id="wardWear" type="button">ใส่ · Wear</button>
+<button class="btn alt" id="wardKeep" type="button">ปิด · Close</button>
+<button class="btn alt" id="wardMore1" type="button">เปิดต่อ 1</button>
+<button class="btn alt" id="wardMoreMany" type="button">เปิดต่อ 10</button>
+</div>
+</div>
+</div>
 
 <div class="ov" id="over"><div class="card">
 <p class="hit">เกิดอุบัติเหตุ · Accident</p>

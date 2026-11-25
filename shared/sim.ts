@@ -117,9 +117,16 @@ export const BONUS_MIN = 50, BONUS_MAX = 300, BONUS_STEP = 10;
 /** seconds the run waits for an answer before giving up on its own (keeps a replay from ever waiting forever) */
 export const BONUS_SECONDS = 7;
 
+/**
+ * A cosmetic loot box: pure collectible, it never touches the score, so a run with or without one replays to the same points.
+ * A checkpoint every LOOT_GAP metres arms one with LOOT_CHANCE (its own random stream), so about one turns up every
+ * LOOT_GAP / LOOT_CHANCE metres of running: rare on purpose, so the cosmetics stay worth having.
+ */
+export const LOOT_GAP = 1000, LOOT_CHANCE = 0.06;
+
 /** Things the renderer may want to react to (particles, shake). Purely cosmetic: never feeds back into the sim. */
 export type SimEvent =
-  | { type: 'pickup' } | { type: 'coin' } | { type: 'saved' } | { type: 'near' } | { type: 'bonus' }
+  | { type: 'pickup' } | { type: 'coin' } | { type: 'saved' } | { type: 'near' } | { type: 'bonus' } | { type: 'loot' }
   | { type: 'power'; t: PowerType }
   | { type: 'crash'; kind: HazardKind };
 export type Emit = (event: SimEvent) => void;
@@ -134,7 +141,12 @@ export interface Pickup { k: 'ppe'; p: PpeType; l: number; z: number; gone?: boo
 export interface Coin { k: 'coin'; l: number; z: number; gone?: boolean }
 export interface Power { k: 'power'; t: PowerType; l: number; z: number; gone?: boolean }
 export interface BonusToken { k: 'bonus'; l: number; z: number; gone?: boolean }
-export type GameObject = Obstacle | Pickup | Coin | Power | BonusToken;
+export interface LootBox { k: 'loot'; l: number; z: number; gone?: boolean }
+export type Item = Pickup | Coin | Power | BonusToken | LootBox;
+export type GameObject = Obstacle | Item;
+const ITEM_KINDS: ReadonlySet<GameObject['k']> = new Set(['coin', 'ppe', 'power', 'bonus', 'loot']);
+/** something to pick up (as opposed to a hazard) */
+export const isItem = (o: GameObject): o is Item => ITEM_KINDS.has(o.k);
 
 /**
  * Scoring: the distance run adds 1 point per
@@ -265,6 +277,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   const powerRandom = seededRandom(seed ^ 0x9e3779b9);
   const boxRandom = seededRandom(seed ^ 0x85ebca6b);
   const bonusRandom = seededRandom(seed ^ 0x27d4eb2f);
+  const lootRandom = seededRandom(seed ^ 0x7feb352d);
   const questions = QB.flat();
   const [prompt, choices] = questions[Math.floor(quizRandom() * questions.length)]!;
   const options = shuffle(choices.map((text, index) => ({ text, index })), quizRandom);
@@ -284,6 +297,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   let slow = 0, magnet = 0, lift = 0, hearts = 0, lastPower = dist;
   let combo = 0, comboT = 0, leftLane = 0, leftT = 9;
   let nextBonusCheck = (Math.floor(dist / BONUS_GAP) + 1) * BONUS_GAP, bonusArmed = false, pendingBonus: BonusQuiz | null = null, bonusTimer = 0;
+  let nextLootCheck = (Math.floor(dist / LOOT_GAP) + 1) * LOOT_GAP, lootArmed = false;
 
   // tournament: its own random streams, so the track (main stream) stays the same for every player whatever they answer
   const tour = opts.tour ?? null;
@@ -404,13 +418,18 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     }
     // a trail from the previous spawn may still be running into these hazards: clear the pickups right around them
     objs.push(...fresh);
-    for (const h of fresh) objs = objs.filter(o => !((o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus') && o.l === (h as Obstacle).l && Math.abs(o.z - (h as Obstacle).z) < 1.6));
+    for (const h of fresh) objs = objs.filter(o => !(isItem(o) && o.l === (h as Obstacle).l && Math.abs(o.z - (h as Obstacle).z) < 1.6));
     trail.forEach((c, i) => {
       if (i === powerAt && power) objs.push({ k: 'power', t: power, l: c.l, z: c.z });
       else if (i === at) objs.push({ k: 'ppe', p: ppePick, l: c.l, z: c.z });
       else if (i === bonusAt) objs.push({ k: 'bonus', l: c.l, z: c.z });
       else objs.push({ k: 'coin', l: c.l, z: c.z });
     });
+    // a loot box floats halfway between two coins in the middle of the trail, so it adds to the run and takes nothing away
+    if (lootArmed && trail.length >= 3) {
+      const a = trail[trail.length >> 1]!, b = trail[(trail.length >> 1) - 1]!;
+      if (a.l === b.l) { objs.push({ k: 'loot', l: a.l, z: (a.z + b.z) / 2 }); lootArmed = false; }
+    }
     openingPending = false;
     // a question card fills all three lanes just past the pattern: nobody misses a question
     if (quizRow) {
@@ -508,7 +527,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   /** Fire extinguisher: clears the hazards in your lane for the next few seconds of running */
   function foam() {
     const reach = speed * 3;
-    for (const o of objs) if (o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power' && o.k !== 'bonus' && Math.abs(o.l - lane) < 0.5 && o.z > -1 && o.z < reach) o.gone = true;
+    for (const o of objs) if (!isItem(o) && Math.abs(o.l - lane) < 0.5 && o.z > -1 && o.z < reach) o.gone = true;
   }
 
   /** a crash in a tournament: stumble and lose a little time, keep running */
@@ -526,12 +545,12 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   function buddyStep() {
     const ahead = speed * 0.45;
     for (const o of objs) {
-      if (o.gone || o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus' || o.z < 0 || o.z > ahead || Math.abs(o.l - lane) > 0.5) continue;
+      if (o.gone || isItem(o) || o.z < 0 || o.z > ahead || Math.abs(o.l - lane) > 0.5) continue;
       const t = HZ[o.k].t;
       if (t === 'low' && py === 0 && vy === 0) { vy = JUMP_VY; slide = 0; }
       else if (t === 'high') slide = SLIDE_SECONDS;
       else if (t === 'block') {
-        const blocked = (l: number) => objs.some(b => !b.gone && b.k !== 'coin' && b.k !== 'ppe' && b.k !== 'power' && b.k !== 'bonus' && b.z > -1 && b.z < ahead * 2 && Math.abs(b.l - l) < 0.6);
+        const blocked = (l: number) => objs.some(b => !b.gone && !isItem(b) && b.z > -1 && b.z < ahead * 2 && Math.abs(b.l - l) < 0.6);
         const free = [lane - 1, lane + 1].find(l => l >= -1 && l <= 1 && !blocked(l));
         if (free != null) { leftLane = lane; leftT = 0; lane = free; }
       }
@@ -562,7 +581,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       // a zig-zag of coins for the whole ride
       const len = Math.min(110, Math.floor((speed * POWER_SECONDS.lift) / COIN_GAP));
       const path = [-1, 0, 1, 0];
-      objs = objs.filter(o => o.z < 12 || (o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power' && o.k !== 'bonus'));
+      objs = objs.filter(o => o.z < 12 || !isItem(o));
       for (let i = 0; i < len; i++) objs.push({ k: 'coin', l: path[(i >> 2) % 4]!, z: 14 + i * COIN_GAP });
       next = Math.max(next, 14 + len * COIN_GAP);
     }
@@ -663,6 +682,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       }
       if (o.k === 'power') { o.gone = true; takePower(o.t); continue; }
       if (o.k === 'bonus') { o.gone = true; startBonus(); continue; }
+      if (o.k === 'loot') { o.gone = true; say('ได้กล่องสุ่ม! เปิดได้ที่เมนู · Loot box!', 2.2); beep(1568, 0.18, 'triangle'); emit({ type: 'loot' }); continue; }
       if (lift > 0) continue;                                // up on the lift: nothing on the floor can touch you
       const t = HZ[o.k].t, hit = (o.k !== 'sparks' || !!o.on) && (t === 'block' || (t === 'low' && py < 0.45) || (t === 'high' && slide <= 0));
       if (!hit || inv > 0) continue;
@@ -680,7 +700,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     }
     // a hazard that has just gone past: was it a late dodge? (a lane change, a jump or a slide just in time)
     for (const o of objs) {
-      if (o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus' || o.gone || o.chk || o.z > 0) continue;
+      if (isItem(o) || o.gone || o.chk || o.z > 0) continue;
       o.chk = true;
       if (lift > 0 || inv > 0) continue;
       const t = HZ[o.k].t;
@@ -689,9 +709,10 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
         : Math.abs(o.l - px) <= 0.5 && (t === 'low' ? py < 1.1 : slide < 0.22);
       if (near) nearMiss();
     }
-    objs = objs.filter(o => o.z > -3 && !(o.gone && (o.k === 'ppe' || o.k === 'coin' || o.k === 'power' || o.k === 'bonus')));
+    objs = objs.filter(o => o.z > -3 && !(o.gone && isItem(o)));
     if (!opts.movementOnly && dist >= nextSur) { nextSur += 1500; surprise(); }
     if (!tour && !opts.movementOnly && dist >= nextBonusCheck) { nextBonusCheck += BONUS_GAP; if (bonusRandom() < BONUS_CHANCE) bonusArmed = true; }
+    if (!tour && !opts.movementOnly && dist >= nextLootCheck) { nextLootCheck += LOOT_GAP; if (lootRandom() < LOOT_CHANCE) lootArmed = true; }
   }
 
   const isFinished = () => tour ? tick >= tour.durationTicks : !!hitKind;
@@ -763,11 +784,15 @@ export function replayTour(seed: number, tour: TourOptions, inputs: unknown): { 
   return replayInto(game, tour.durationTicks, inputs) ? { score: game.score(), correct: game.view().tour!.correct } : null;
 }
 
-/** Re-plays a submitted run. Returns the score, or null if the replay is malformed. */
-export function replayScore(seed: number, ticks: unknown, inputs: unknown): number | null {
-  const game = createRun(seed);
-  return replayInto(game, ticks, inputs) ? game.score() : null;
+/** Re-plays a submitted run: its score, how far it got (whole metres) and how many loot boxes were picked up; null if the replay is malformed. */
+export function replayRun(seed: number, ticks: unknown, inputs: unknown): { score: number; dist: number; loot: number } | null {
+  let loot = 0;
+  const game = createRun(seed, undefined, e => { if (e.type === 'loot') loot++; });
+  return replayInto(game, ticks, inputs) ? { score: game.score(), dist: Math.floor(game.view().dist), loot } : null;
 }
+
+/** Re-plays a submitted run. Returns the score, or null if the replay is malformed. */
+export const replayScore = (seed: number, ticks: unknown, inputs: unknown): number | null => replayRun(seed, ticks, inputs)?.score ?? null;
 
 function replayInto(game: Run, ticks: unknown, inputs: unknown): boolean {
   if (!Number.isInteger(ticks) || (ticks as number) < 1 ||

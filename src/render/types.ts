@@ -1,4 +1,5 @@
 import type { GameObject, SimEvent } from '../../shared/sim.js';
+import type { Look } from '../cosmetics/types.js';
 
 /** Everything a renderer needs to know about the world at one instant. */
 export interface SceneState {
@@ -35,4 +36,6 @@ export interface GameRenderer {
   render(f: Frame, now: number): void;
   /** Current render scale (device pixels per CSS pixel); drops on slow devices. */
   readonly renderScale: number;
+  /** Dress the mascot (flat set only; the others keep their look) and redraw its frames. */
+  setLook(look: Look): void;
 }
