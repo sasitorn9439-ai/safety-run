@@ -121,15 +121,16 @@ const emerge = (u: number) => Math.min(1, u / .25) ** 2;
  * Left behind as it runs: from the feet down the screen toward the camera, fading. Nearer the camera than the mascot, so drawn
  * in front of it. `len` is how far down it goes.
  */
-const trail = (shape: Shape, colors: readonly string[], n = 5, r = .05, wide = .2, len = .28, spin = 1): Part => ({
+const trail = (shape: Shape, colors: readonly string[], n = 5, r = .05, wide = .2, len = .28, spin = 1, fadeIn = len * .25, start = TRAIL_START): Part => ({
   front(c, t) {
     for (let k = 0; k < n; k++) {
       const u = ((k + t) / n) % 1, x = Math.sin(u * TAU * 2 + k) * wide * u;
-      c.save(); c.globalAlpha *= emerge(u) * (1 - u) * .85; shape(c, x, TRAIL_START + u * len, r * (1 - u * .4), pick(colors, u, n), u * TAU * spin); c.restore();
+      // fades in over its first `fadeIn` of distance (a quarter of the trail unless told), so it comes out from under the feet
+      c.save(); c.globalAlpha *= Math.min(1, u * len / fadeIn) ** 2 * (1 - u) * .85; shape(c, x, start + u * len, r * (1 - u * .4), pick(colors, u, n), u * TAU * spin); c.restore();
     }
   },
   // the lowest point: the last particle is fading out there, at 60% of its size
-  below: TRAIL_START + len + r * .6 + .02,
+  below: start + len + r * .6 + .02,
 });
 /**
  * A flower blooms under each step, alternating left and right foot, then drifts down toward the camera and fades. In front of
@@ -405,7 +406,7 @@ export const EFFECTS: readonly Effect[] = [
   fx('shadow', 'ออร่าเงามืด · Shadow aura', 'epic', aura('#4a148c', .7, .75), rise(puff, ['#311b92', '#4a148c', '#1a1a2e'], 6, .06, .35)),
   fx('electric', 'ไฟฟ้าแรงสูง · High voltage', 'epic', aura('#18ffff', .62, .5), orbit(bolt, ['#18ffff', '#ffffff'], 6, .06, .44, .18)),
   fx('galaxy', 'กาแล็กซี · Galaxy', 'epic', aura('#7c4dff', .7, .55), orbit(star, ['#ffffff', '#e1bee7'], 6, .035, .5, .14), orbit(dot, ['#80d8ff', '#ff80ab'], 4, .018, .36, .2, -.15)),
-  fx('comet', 'ดาวหาง · Comet tail', 'epic', trail(glowDot, ['#ffd740', '#ff6e40', '#ffab40'], 11, .065, .08, 1.2), feetFire(['#ff6e40', '#ffd740'])),
+  fx('comet', 'ดาวหาง · Comet tail', 'epic', trail(glowDot, ['#ffd740', '#ff6e40', '#ffab40'], 16, .065, .08, 1.25, 1, .03, -.02), feetFire(['#ff6e40', '#ffd740'])),
   fx('angel', 'ปีกนางฟ้า · Angel wings', 'epic', wings('#ffffff', '#e3f2fd'), rise(sparkle, ['#ffffff'], 4, .04)),
   fx('phoenix', 'ปีกฟีนิกซ์ · Phoenix wings', 'legendary', aura('#ff6d00', .7, .5), wings('#ff6d00', '#ffd600', 5), feetFire(['#ff3d00', '#ffab00', '#ffd600'])),
   fx('holy', 'แสงศักดิ์สิทธิ์ · Holy light', 'legendary', skyBeam('255, 245, 180'), aura('#fff59d', .6, .5), rise(sparkle, ['#ffffff', '#fff176'], 7, .05, .3)),
