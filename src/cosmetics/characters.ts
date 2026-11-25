@@ -151,7 +151,7 @@ const monk: Figure = {
   egg: true,
   head(c) { ell(c, -.08, -.74, .07, .035, 'rgba(255,255,255,.35)', -.5); },
   back(c) {
-    c.fillStyle = '#b85a10'; c.beginPath();
+    c.fillStyle = '#a5512c'; c.beginPath();
     c.moveTo(-.17, -.49); c.lineTo(-.05, -.49); c.lineTo(.17, -.3); c.lineTo(.17, -.2); c.closePath(); c.fill();
     c.strokeStyle = 'rgba(0,0,0,.12)'; c.lineWidth = .012;
     for (const d of [.05, .1]) { c.beginPath(); c.moveTo(-.15 + d, -.49); c.lineTo(.17, -.3 + d * .6); c.stroke(); }
@@ -163,7 +163,7 @@ const FRONT: Record<string, FrontFigure> = {
   monk: {
     over(c) {
       ell(c, -.09, -.76, .07, .035, 'rgba(255,255,255,.4)', -.5);                // the shine on the shaved head
-      tri(c, [[-.19, -.43], [-.08, -.43], [.19, -.27], [.19, -.19]], '#b85a10');  // the robe's fold across the chest
+      tri(c, [[-.19, -.43], [-.08, -.43], [.19, -.27], [.19, -.19]], '#a5512c');  // the robe's fold across the chest
     },
   },
   'dino': {
@@ -250,7 +250,7 @@ const s = (id: string, name: string, rarity: Rarity, colors: Parameters<typeof p
   ({ id: 'skin-' + id, slot: 'skin', name, rarity, pal: palette(colors), figure: { ...figure, front: FRONT[id] } });
 
 export const CUSTOM_SKINS: readonly Skin[] = [
-  s('monk', 'พระ · Monk', 'common', { body: '#e8892b', cape: '#d0701c', head: '#f2cba8', mitt: '#f2cba8', shoe: '#8d5524' }, monk),
+  s('monk', 'พระ · Monk', 'common', { body: '#cf6739', cape: '#cf6739', sleeve: '#cf6739', head: '#f2cba8', mitt: '#f2cba8', shoe: '#8d5524' }, monk),
   s('dino', 'ไดโนเสาร์ · Dino', 'legendary', { body: '#8fd16a', cape: '#4f9a3a', head: '#a5dc84', gem: '#ffca28' }, dino),
   s('robot', 'หุ่นยนต์ · Robot', 'legendary', { body: '#b0bec5', cape: '#607d8b', head: '#cfd8dc', mitt: '#455a64', shoe: '#455a64', gem: '#29b6f6' }, robot),
   s('ninja', 'นินจา · Ninja', 'epic', { body: '#2b2f3a', cape: '#1b1e25', head: '#3a3f4c', gem: '#e53935' }, ninja),
