@@ -52,6 +52,8 @@ export interface Effect extends Base {
   below?: number;
   /** how far above the feet it draws, when that is more than the usual 1.42 (a beam of light pouring down from the sky) */
   above?: number;
+  /** a ring round the body: an avatar sweeps it from the head down to the feet and back (it draws at height `cy`) */
+  ring?: true;
 }
 export type Cosmetic = Skin | Hat | Effect;
 

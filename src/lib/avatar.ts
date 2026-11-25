@@ -62,19 +62,24 @@ function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number, t: number
   const k = inner / VIEW_R;
   c.scale(k, k);
   // a trail left under the feet would fall outside the circle: lift those effects so the trail shows over the chest
-  const fx = look.effect, phases = [t, (t + .5) % 1], lift = fx?.below ? fx.below * .7 : 0;
-  // the effect around the whole body, made smaller, its middle at the chin (FX_Y), at two moments of its loop half a loop apart so
-  // a sparse effect still shows. What sits behind the body goes behind the mascot and what sits in front goes over it, so a ring
-  // wraps round the chest the way it wraps round the body in the game
+  const fx = look.effect, lift = fx?.below ? fx.below * .7 : 0;
+  // a ring sweeps from the top of the head down to the bottom of the circle (the feet are below it) and back, once a loop;
+  // anything else is drawn at two moments of its loop half a loop apart, so a sparse effect still shows
+  const sweep = .5 - .5 * Math.cos(t * Math.PI * 2), moments = fx?.ring ? [t] : [t, (t + .5) % 1];
+  const cy = fx?.ring ? -.96 + .74 * sweep : -.45;
+  // the effect around the whole body, made smaller, its middle at the chin (FX_Y). What sits behind the body goes behind the
+  // mascot and what sits in front goes over it, so a ring wraps round it the way it wraps round the body in the game
   const effect = (part: 'back' | 'front') => {
     const draw = fx?.[part];
     if (!draw) return;
-    for (const ph of phases) { c.save(); c.translate(0, FX_Y - VIEW_Y); c.scale(FX_SCALE, FX_SCALE); c.translate(0, .45 - lift); draw(c, ph, -.45); c.restore(); }
+    for (const ph of moments) { c.save(); c.translate(0, FX_Y - VIEW_Y); c.scale(FX_SCALE, FX_SCALE); c.translate(0, .45 - lift); draw(c, ph, cy); c.restore(); }
   };
   effect('back');
   c.save(); c.translate(0, -VIEW_Y); drawFrontShoulders(c, look.pal); drawFrontHead(c, look); c.restore();
-  // ...except over the face: particles floating up past the head pass behind it, so the face always shows
-  c.save(); c.translate(0, -VIEW_Y); c.beginPath(); c.rect(-1, -2, 2, 3); headPath(c, true); c.clip('evenodd'); c.translate(0, VIEW_Y);
+  // ...except over the face: particles floating up past the head pass behind it, so the face always shows (a ring still
+  // crosses the face as it sweeps over the head)
+  c.save();
+  if (!fx?.ring) { c.translate(0, -VIEW_Y); c.beginPath(); c.rect(-1, -2, 2, 3); headPath(c, true); c.clip('evenodd'); c.translate(0, VIEW_Y); }
   effect('front');
   c.restore();
   c.restore();

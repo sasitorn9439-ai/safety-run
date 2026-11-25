@@ -79,7 +79,7 @@ const cross: Shape = (c, x, y, r, col) => { dot(c, x, y, r * 1.1, '#ffffff', 0);
 
 /* ---------- motions ---------- */
 type Draw = (c: Ctx, t: number, cy: number) => void;
-interface Part { back?: Draw; front?: Draw; /** lowest y it reaches, when below the usual frame */ below?: number; /** how high it reaches, when above the usual frame */ above?: number }
+interface Part { back?: Draw; front?: Draw; /** lowest y it reaches, when below the usual frame */ below?: number; /** how high it reaches, when above the usual frame */ above?: number; /** a ring at height cy (Effect.ring) */ ring?: true }
 const fade = (u: number) => Math.sin(Math.PI * u);
 /** each particle's colour comes from its place on the path, so the colours travel with it */
 const pick = (colors: readonly string[], u: number, n: number) => colors[Math.floor(u * n + .001) % colors.length]!;
@@ -270,7 +270,7 @@ const hoop = (color: string, rx = .46, ry = .12): Part => {
     c.save(); c.strokeStyle = color; c.lineWidth = .03; c.globalAlpha *= .85; c.beginPath();
     c.ellipse(0, cy + .05 * Math.sin(t * TAU), rx, ry, 0, front ? 0 : Math.PI, front ? Math.PI : TAU); c.stroke(); c.restore();
   };
-  return { back: half(false), front: half(true) };
+  return { back: half(false), front: half(true), ring: true };
 };
 
 const fx = (id: string, name: string, rarity: Rarity, ...parts: Part[]): Effect => ({
@@ -279,6 +279,7 @@ const fx = (id: string, name: string, rarity: Rarity, ...parts: Part[]): Effect 
   front: (c, t, cy) => { for (const p of parts) p.front?.(c, t, cy); },
   ...(parts.some(p => p.below) ? { below: Math.max(...parts.map(p => p.below ?? 0)) } : {}),
   ...(parts.some(p => p.above) ? { above: Math.max(...parts.map(p => p.above ?? 0)) } : {}),
+  ...(parts.some(p => p.ring) && { ring: true as const }),
 });
 
 const PARTY = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb'];
