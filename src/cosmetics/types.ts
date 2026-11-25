@@ -56,6 +56,11 @@ export interface Effect extends Base {
    * height `cy` like the rest.
    */
   ring?: { back(c: Ctx, t: number, cy: number): void; front(c: Ctx, t: number, cy: number): void };
+  /**
+   * How it looks in an avatar, when that differs from the game: drawn behind the mascot's head and shoulders in place of the
+   * rest, `t` 0…1 over the avatar's loop. Coordinates: the avatar circle has radius 0.48 around (0, 0), in body units.
+   */
+  avatar?(c: Ctx, t: number): void;
 }
 export type Cosmetic = Skin | Hat | Effect;
 

@@ -71,14 +71,15 @@ function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number, t: number
   const twice = [t, (t + .5) % 1];
   // the effect around the whole body, made smaller, its middle at the chin (FX_Y). What sits behind the body goes behind the
   // mascot and what sits in front goes over it, so a ring wraps round it the way it wraps round the body in the game
-  at(fx?.back, twice); at(fx?.ring?.back, [t]);
+  if (fx?.avatar) fx.avatar(c, t);
+  else { at(fx?.back, twice); at(fx?.ring?.back, [t]); }
   c.save(); c.translate(0, -VIEW_Y); drawFrontShoulders(c, look.pal); drawFrontHead(c, look); c.restore();
   // ...except over the face: particles floating up past the head pass behind it, so the face always shows. A ring still
   // crosses the face as it sweeps over the head
   c.save(); c.translate(0, -VIEW_Y); c.beginPath(); c.rect(-1, -2, 2, 3); headPath(c, true); c.clip('evenodd'); c.translate(0, VIEW_Y);
-  at(fx?.front, twice);
+  if (!fx?.avatar) at(fx?.front, twice);
   c.restore();
-  at(fx?.ring?.front, [t]);
+  if (!fx?.avatar) at(fx?.ring?.front, [t]);
   c.restore();
 }
 

@@ -261,6 +261,21 @@ export const RING_MS = 1800;
 /** where a ring is in its sweep at time `now` (ms), 0…1 */
 export const ringPhase = (now: number) => (now % RING_MS) / RING_MS;
 
+/**
+ * The coin trail in an avatar: coins of different sizes raining down behind the mascot, each at its own place, speed and spin.
+ * Every coin falls a whole number of times per loop, so the loop never shows a seam.
+ */
+const COIN_RAIN = [
+  [-.38, .065, 1, .0], [.33, .075, 2, .35], [-.24, .055, 2, .7], [.22, .06, 1, .55], [-.31, .05, 2, .15],
+  [.4, .055, 1, .8], [-.42, .06, 2, .45], [.28, .05, 2, .9], [.08, .07, 1, .2], [-.08, .06, 1, .65],
+] as const;
+const coinRain = (c: Ctx, t: number) => {
+  for (const [x, r, falls, phase] of COIN_RAIN) {
+    const u = (t * falls + phase) % 1;
+    coin(c, x, -.58 - r + u * (1.16 + 2 * r), r, '', (t * falls + phase) * TAU * 2);
+  }
+};
+
 const PARTY = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb'];
 export const EFFECTS: readonly Effect[] = [
   fx('sparkle', 'ประกายวิบวับ · Sparkles', 'common', rise(sparkle, ['#ffffff', '#fff59d'], 6, .05)),
@@ -270,7 +285,7 @@ export const EFFECTS: readonly Effect[] = [
   fx('leaves', 'ใบไม้ปลิว · Leaves', 'common', fall(leaf, ['#66bb6a', '#9ccc65', '#ffb74d'], 5, .05)),
   fx('snow', 'หิมะ · Snowfall', 'common', fall(snowflake, ['#ffffff', '#e1f5fe'], 6, .045)),
   fx('confetti', 'กระดาษสี · Confetti', 'common', fall(confetti, PARTY, 8, .035)),
-  fx('coins', 'เหรียญทอง · Coin trail', 'common', trail(coin, ['#ffd400'], 3, COIN_R, .14, .5, 2)),
+  { ...fx('coins', 'เหรียญทอง · Coin trail', 'common', trail(coin, ['#ffd400'], 3, COIN_R, .14, .5, 2)), avatar: coinRain },
   fx('fireflies', 'หิ่งห้อย · Fireflies', 'common', orbit(glowDot, ['#f4ff81', '#ffe57f'], 6, .025, .5, .2)),
   fx('petals', 'ดอกไม้บานตามรอยเท้า · Blooming steps', 'common', bloom(['#ffffff', '#f8bbd0', '#b3e5fc', '#fff59d'])),   // id kept from 'Petals'
   fx('stars', 'ดาวหมุน · Star ring', 'common', orbit(star, ['#ffd400'], 5, .05)),
