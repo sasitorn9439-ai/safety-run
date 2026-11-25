@@ -262,20 +262,21 @@ export const RING_MS = 1800;
 export const ringPhase = (now: number) => (now % RING_MS) / RING_MS;
 
 /**
- * The coin trail in an avatar: coins of different sizes raining down behind the mascot, each at its own place, speed and spin.
- * Every coin falls a whole number of times per loop, so the loop never shows a seam.
+ * Things raining down behind the mascot in an avatar (Effect.avatar), each `[x, size, falls per loop, phase]`, drifting `sway`
+ * side to side and spinning. Every one falls a whole number of times per loop, so the loop never shows a seam.
  */
-const COIN_RAIN = [
+const RAIN = [
   [-.38, .065, 1, .0], [.33, .075, 2, .35], [-.24, .055, 2, .7], [.22, .06, 1, .55], [-.31, .05, 2, .15],
   [.4, .055, 1, .8], [-.42, .06, 2, .45], [.28, .05, 2, .9], [.08, .07, 1, .2], [-.08, .06, 1, .65],
 ] as const;
-const coinRain = (c: Ctx, t: number) => {
-  for (const [x, r, falls, phase] of COIN_RAIN) {
-    const u = (t * falls + phase) % 1;
-    coin(c, x, -.58 - r + u * (1.16 + 2 * r), r, '', (t * falls + phase) * TAU * 2);
-  }
+const rain = (shape: Shape, colors: readonly string[], size = 1, sway = 0) => (c: Ctx, t: number) => {
+  RAIN.forEach(([x, r, falls, phase], k) => {
+    const v = t * falls + phase, u = v % 1, rr = r * size;
+    shape(c, x + Math.sin(v * TAU) * sway, -.58 - rr + u * (1.16 + 2 * rr), rr, colors[k % colors.length]!, v * TAU * 2);
+  });
 };
 
+const BLOOM = ['#ffffff', '#f8bbd0', '#b3e5fc', '#fff59d'];
 const PARTY = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb'];
 export const EFFECTS: readonly Effect[] = [
   fx('sparkle', 'ประกายวิบวับ · Sparkles', 'common', rise(sparkle, ['#ffffff', '#fff59d'], 6, .05)),
@@ -285,9 +286,9 @@ export const EFFECTS: readonly Effect[] = [
   fx('leaves', 'ใบไม้ปลิว · Leaves', 'common', fall(leaf, ['#66bb6a', '#9ccc65', '#ffb74d'], 5, .05)),
   fx('snow', 'หิมะ · Snowfall', 'common', fall(snowflake, ['#ffffff', '#e1f5fe'], 6, .045)),
   fx('confetti', 'กระดาษสี · Confetti', 'common', fall(confetti, PARTY, 8, .035)),
-  { ...fx('coins', 'เหรียญทอง · Coin trail', 'common', trail(coin, ['#ffd400'], 3, COIN_R, .14, .5, 2)), avatar: coinRain },
+  { ...fx('coins', 'เหรียญทอง · Coin trail', 'common', trail(coin, ['#ffd400'], 3, COIN_R, .14, .5, 2)), avatar: rain(coin, ['#ffd400']) },
   fx('fireflies', 'หิ่งห้อย · Fireflies', 'common', orbit(glowDot, ['#f4ff81', '#ffe57f'], 6, .025, .5, .2)),
-  fx('petals', 'ดอกไม้บานตามรอยเท้า · Blooming steps', 'common', bloom(['#ffffff', '#f8bbd0', '#b3e5fc', '#fff59d'])),   // id kept from 'Petals'
+  { ...fx('petals', 'ดอกไม้บานตามรอยเท้า · Blooming steps', 'common', bloom(BLOOM)), avatar: rain(flower, BLOOM, 1.5, .05) },   // id kept from 'Petals'
   fx('stars', 'ดาวหมุน · Star ring', 'common', orbit(star, ['#ffd400'], 5, .05)),
   fx('clouds', 'ปุยเมฆ · Cloud steps', 'common', trail(puff, ['#ffffff', '#eceff1'], 4, .07, .1)),
   fx('flamefeet', 'เท้าไฟ · Fire feet', 'rare', feetFire(['#ff6d00', '#ffab00', '#ff3d00'])),
