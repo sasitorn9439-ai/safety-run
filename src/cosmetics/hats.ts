@@ -181,6 +181,15 @@ export const HATS: readonly Hat[] = [
     rr(c, -.18, -.86, .36, .05, .025, '#7cb342');
   }),
   h('miner', 'หมวกเหมืองทองคำ · Golden miner', 'legendary', c => {
+    // from behind: the lamp faces away, so what shows is its glow spilling past the top of the helmet, the elastic strap round
+    // the back and the battery pack clipped to it
+    c.fillStyle = 'rgba(255,250,200,.35)'; c.beginPath(); c.moveTo(-.1, -.95); c.lineTo(-.24, -1.28); c.lineTo(.24, -1.28); c.lineTo(.1, -.95); c.closePath(); c.fill();
+    hardHat(c, '#ffd700', '#c9a000');
+    rr(c, -.25, -.8, .5, .045, .02, '#3a3f48');
+    rr(c, -.07, -.83, .14, .1, .025, '#3a3f48'); rr(c, -.045, -.81, .09, .02, .01, '#ffd700');
+    star(c, -.18, -.68, .035, '#ffffff');
+  }, c => {
+    // from the front (avatars): the lamp and its beam
     hardHat(c, '#ffd700', '#c9a000');
     rr(c, -.08, -.92, .16, .12, .04, '#3a3f48');
     ell(c, 0, -.86, .05, .05, '#fffde7');
