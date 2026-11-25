@@ -35,6 +35,8 @@ export class Game {
   inputs: InputEntry[] = [];
   lastHit: HazardKind | null = null;
   runLabel = '';
+  /** loot boxes picked up this run (a revive keeps the count); the server counts its own from the replay */
+  loot = 0;
 
   private tutorial: Tutorial | null = null;
   /** best distance (m) on this device, set by the app; 0 = none yet */
@@ -88,6 +90,7 @@ export class Game {
     const startDist = import.meta.env.DEV ? Number(new URLSearchParams(location.search).get('start')) || 0 : 0;
     this.run = createRun(this.sess.seed, this.sfx.beep, e => this.onSimEvent(e), { startDist });
     this.inputs = [];
+    this.loot = 0;
     this.acc = 0; this.alpha = 1;
     this.snapshot();
     this.hud.setAvatar(this.sess.avatar);
@@ -126,6 +129,7 @@ export class Game {
   }
 
   private onSimEvent(e: SimEvent, px = this.run?.view().px ?? 0) {
+    if (e.type === 'loot' && !this.tutorial) this.loot++;
     this.renderer.onEvent(e, px);
   }
 

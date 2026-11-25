@@ -9,9 +9,11 @@ export interface TallyEls {
   /** the coin row: the pile (icon + count) and the points the coins earned */
   coins: HTMLElement; coinImg: HTMLImageElement;
   rows: Record<EarnKind, Row>;
+  /** the loot box row: how many chests this run picked up (they never add points) */
+  loot: { row: HTMLElement; n: HTMLElement };
 }
 
-export interface TallyRun { score: number; dist: number; coins: number; earned: Readonly<Record<EarnKind, number>>; coinSrc: string }
+export interface TallyRun { score: number; dist: number; coins: number; earned: Readonly<Record<EarnKind, number>>; coinSrc: string; loot: number }
 
 /** at most this many coin sprites fly per tally; with more coins, each sprite carries several */
 const MAX_FLYERS = 24;
@@ -47,6 +49,8 @@ export class Tally {
     const base = r.score - KINDS.reduce((s, k) => s + e[k], 0);
     el.coinImg.src = r.coinSrc;
     for (const k of KINDS) el.rows[k].row.hidden = e[k] === 0;
+    el.loot.row.hidden = r.loot === 0;
+    el.loot.n.textContent = '×' + r.loot;
 
     /** `walked` is how far the distance has rolled (0..1); `pile` the coins still to fly; `got` what each source has added so far */
     const set = (walked: number, pile: number, got: Record<EarnKind, number>) => {
