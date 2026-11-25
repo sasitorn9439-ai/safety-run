@@ -348,6 +348,28 @@ const fireTracks = (n = 8, len = .62): Part => ({
   below: TRAIL_START + len + .1,
 });
 
+/**
+ * Rays of gold light fanning out from `cy`, turning slowly (12-fold, so one ray's step a loop never shows a seam). In the game
+ * they are drawn over the mascot, faint enough to see it through them; `alpha` is the strength at the centre.
+ */
+const raysDraw = (c: Ctx, t: number, cy: number, R: number, alpha: number, rays = 12) => {
+  c.save(); c.translate(0, cy); c.rotate(t * TAU / rays);
+  for (let k = 0; k < rays; k++) {
+    const a = k / rays * TAU, g = c.createLinearGradient(0, 0, Math.cos(a) * R, Math.sin(a) * R);
+    g.addColorStop(0, `rgba(255,224,102,${alpha})`); g.addColorStop(1, 'rgba(255,224,102,0)');
+    c.fillStyle = g; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, R, a - .09, a + .09); c.closePath(); c.fill();
+  }
+  c.restore();
+};
+const sunburst: Part = { front: (c, t, cy) => raysDraw(c, t, cy, .68, .45) };
+/** the golden aura in an avatar: the glow and the rays behind the mascot, filling the circle */
+const sunburstBackdrop = (c: Ctx, t: number) => {
+  const g = c.createRadialGradient(0, 0, .02, 0, 0, .48);
+  g.addColorStop(0, 'rgba(255,213,79,.8)'); g.addColorStop(1, 'rgba(255,213,79,0)');
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, .48, 0, TAU); c.fill();
+  raysDraw(c, t, 0, .55, .8);
+};
+
 const FIRE = ['#ff6d00', '#ffab00', '#ff3d00'];
 const BLOOM = ['#ffffff', '#f8bbd0', '#b3e5fc', '#fff59d'];
 const PARTY = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb'];
@@ -374,7 +396,8 @@ export const EFFECTS: readonly Effect[] = [
   fx('hoop', 'วงแหวนพลัง · Power ring', 'rare', hoop('#40c4ff'), hoop('#b388ff', .38, .1, .06)),
   fx('butterflies', 'ผีเสื้อ · Butterflies', 'rare', orbit(butterfly, ['#ff80ab', '#80d8ff', '#ffd180'], 3, .07, .5, .22, -.1)),
   fx('toxic', 'ฟองพิษ · Toxic bubbles', 'rare', aura('#76ff03', .55, .35), rise(ring, ['#76ff03', '#c6ff00'], 6, .04)),
-  fx('goldaura', 'ออร่าทองคำ · Golden aura', 'epic', aura('#ffd54f', .7, .7), rise(sparkle, ['#fff59d', '#ffffff'], 5, .045)),
+  // a glow behind the mascot and rays of gold light turning over it
+  { ...fx('goldaura', 'ออร่าทองคำ · Golden aura', 'epic', aura('#ffd54f', .7, .5), sunburst), avatar: sunburstBackdrop },
   fx('shadow', 'ออร่าเงามืด · Shadow aura', 'epic', aura('#4a148c', .7, .75), rise(puff, ['#311b92', '#4a148c', '#1a1a2e'], 6, .06, .35)),
   fx('electric', 'ไฟฟ้าแรงสูง · High voltage', 'epic', aura('#18ffff', .62, .5), orbit(bolt, ['#18ffff', '#ffffff'], 6, .06, .44, .18)),
   fx('galaxy', 'กาแล็กซี · Galaxy', 'epic', aura('#7c4dff', .7, .55), orbit(star, ['#ffffff', '#e1bee7'], 6, .035, .5, .14), orbit(dot, ['#80d8ff', '#ff80ab'], 4, .018, .36, .2, -.15)),
