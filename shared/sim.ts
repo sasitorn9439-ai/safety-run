@@ -79,13 +79,21 @@ const QUIZ_ROW_GAP = 9;
 export const ITEM_GAP = 300;
 /** the gates come up this many seconds after the card, with the world slowed to GATE_FACTOR meanwhile */
 export const GATE_SECONDS = 4.5, GATE_FACTOR = 0.5;
+/** while a question is up nothing to pick up lies before the gates or this many metres past them: no coins to chase or to read as a hint */
+export const GATE_CLEAR = 30;
 export const TOUR_SECONDS = { sprint: 3, think: 1.5, auditThink: 2.5, stun: 1.2, loto: 8, buddy: 5, streak: 15 } as const;
 /** speed multipliers: Safety Sprint, Stop & Think, the stumble after a crash */
 export const SPRINT_FACTOR = 2, THINK_FACTOR = 0.5, STUN_FACTOR = 0.35;
 /** points the sender of a Spot Audit gets */
 export const AUDIT_SCORE = 30;
-/** points for running through the right gate: a question card, or a Spot Audit someone sent you */
-export const GATE_SCORE = 500, AUDIT_PASS_SCORE = 150;
+/**
+ * points for running through the right gate. A question card pays GATE_SCORE if you pick your lane the moment the gates come up,
+ * down to GATE_SCORE_MIN if you pick it at the last moment (see gateScore); a Spot Audit someone sent you pays a flat AUDIT_PASS_SCORE
+ */
+export const GATE_SCORE = 500, GATE_SCORE_MIN = 100, AUDIT_PASS_SCORE = 150;
+/** what a right question card pays when the answer was picked with `left` (1..0) of the gates' time still to go; steps of 10 */
+export const gateScore = (left: number) =>
+  GATE_SCORE_MIN + Math.round((GATE_SCORE - GATE_SCORE_MIN) * Math.max(0, Math.min(1, left)) / 10) * 10;
 /** points for getting through a whole Zero Accident streak without a crash */
 export const STREAK_SCORE = 100;
 const ITEM_WEIGHTS: Record<Exclude<TourItem, 'quiz'>, number> = { loto: 24, foam: 26, buddy: 18, streak: 18, audit: 14 };
@@ -184,7 +192,8 @@ export interface RunView {
 }
 
 /** a question whose answer gates are on their way: options[i] is the gate in lane i - 1 */
-export interface Gate { prompt: string; options: string[]; correct: number; audit: boolean; z: number }
+/** `z0` how far off the gates came up; `picked` how much of their time was left (z / z0) when the lane was last changed, 0 if never */
+export interface Gate { prompt: string; options: string[]; correct: number; audit: boolean; z: number; z0: number; picked: number }
 export interface TourView {
   ticksLeft: number;
   gate: Gate | null;
@@ -209,6 +218,8 @@ export interface Run {
   view(): RunView;
   score(): number;
 }
+
+const isPickup = (o: GameObject) => o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus';
 
 function seededRandom(seed: number) {
   let value = seed >>> 0;
@@ -468,20 +479,28 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     const n = audit ? auditDeck[auditN++ % auditDeck.length]! : quizDeck[quizN++ % quizDeck.length]!;
     const [prompt, choices] = TRICK[n]!;
     const order = shuffle([0, 1, 2], gateRandom);
-    // the right answer rarely sits in the lane you are already in: you have to move for it
+    // the right answer never sits in the lane you are already in: you have to move for it, and how soon you do is what it pays
     const here = lane + 1, right = order.indexOf(0), swapR = gateRandom();
-    if (right === here && swapR < 0.75) {
+    if (right === here) {
       const other = (here + 1 + (swapR < 0.375 ? 0 : 1)) % 3;
       [order[here], order[other]] = [order[other]!, order[here]!];
     }
     const z = speed * GATE_FACTOR * GATE_SECONDS;
-    gate = { prompt, options: order.map(i => choices[i]!), correct: order.indexOf(0), audit, z };
-    // nothing in the way of the gates, and nothing new until they have gone by
-    objs = objs.filter(o => o.k === 'coin' || o.k === 'ppe' || o.z < 6 || o.z > z + 8);
+    gate = { prompt, options: order.map(i => choices[i]!), correct: order.indexOf(0), audit, z, z0: z, picked: 0 };
+    // no hazard in the way of the gates (one already on top of you stays rather than vanish), and nothing new until they have gone by
+    objs = objs.filter(o => o.z > z + 8 || (o.z < 6 && !isPickup(o)));
     GATES.forEach((t, i) => objs.push({ k: 'power', t, l: i - 1, z }));
+    clearForGate();
     next = Math.max(next, z + 10);
     say(audit ? 'Spot Audit! มีคนส่งผู้ตรวจมาหาคุณ' : 'Safety Check! วิ่งเข้าประตูคำตอบที่ถูก', 2);
     beep(1400, 0.1, 'triangle'); beep(1800, 0.12, 'triangle');
+  }
+
+  /** the question is all there is: nothing to pick up before the gates or GATE_CLEAR past them (run again every step, as new rows
+   * and a Coin Rain land behind them) */
+  function clearForGate() {
+    const end = gate!.z + GATE_CLEAR;
+    objs = objs.filter(o => !isPickup(o) || o.z >= end || (o.k === 'power' && GATES.includes(o.t as GateType)));
   }
 
   /** `lane` the gate run through, or null if the gates went by untouched */
@@ -492,7 +511,10 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     if (at === g.correct) {
       correctN++;
       if (g.audit) { earn('extra', AUDIT_PASS_SCORE); say(`ผ่าน Audit! +${AUDIT_PASS_SCORE}`, 1.6); }
-      else { earn('extra', GATE_SCORE); sprint = TOUR_SECONDS.sprint; inv = Math.max(inv, TOUR_SECONDS.sprint + 0.5); say(`ถูกต้อง! +${GATE_SCORE} · Safety Sprint 🚀`, 1.8); }
+      else {
+        const pts = gateScore(g.picked);
+        earn('extra', pts); sprint = TOUR_SECONDS.sprint; inv = Math.max(inv, TOUR_SECONDS.sprint + 0.5); say(`ถูกต้อง! +${pts} · Safety Sprint 🚀`, 1.8);
+      }
       beep(1200, 0.16, 'triangle'); beep(1600, 0.18, 'triangle');
     } else {
       wrongN++;
@@ -639,6 +661,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       // at least ROW_SECONDS'-worth of running between two patterns, more when the zone is calm
       next = length + Math.max(13 + random() * 9 - Math.min(3, dist / 800), speed * 0.6 + random() * 3);
     }
+    if (gate) clearForGate();
     px += (lane - px) * Math.min(1, dt * 14);
     if (lift > 0) {
       lift = Math.max(0, lift - dt);
@@ -710,6 +733,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
         if (lane === nextLane) return false;
         leftLane = lane; leftT = 0;
         lane = nextLane;
+        if (gate) gate.picked = Math.max(0, gate.z / gate.z0);
         beep(380, 0.04);
       } else if (lift > 0 && (action === 'up' || action === 'down')) {
         return false;                                         // the lift is carrying you
