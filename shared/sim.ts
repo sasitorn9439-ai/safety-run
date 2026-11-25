@@ -57,7 +57,7 @@ export type Beep = (freq: number, dur?: number, type?: OscillatorType, vol?: num
 /** Power-ups, each a piece of everyday Safety: they work for a few seconds the moment they are picked up */
 export type PowerType = 'estop' | 'broom' | 'lift' | 'firstaid' | 'toolbox' | TourItem | GateType;
 /** Tournament-only items (see TOUR_ITEMS) */
-export type TourItem = 'quiz' | 'loto' | 'foam' | 'buddy' | 'streak' | 'audit';
+export type TourItem = 'quiz' | 'loto' | 'foam' | 'buddy' | 'audit';
 /** the three answer gates of a tournament question, left to right */
 export type GateType = 'gate0' | 'gate1' | 'gate2';
 export const GATES: readonly GateType[] = ['gate0', 'gate1', 'gate2'];
@@ -66,6 +66,8 @@ export const GATES: readonly GateType[] = ['gate0', 'gate1', 'gate2'];
  * Tournament: a timed race, every player on the same seed (so the same track). A crash costs time instead of ending the run,
  * the usual power-ups and bonus coins give way to the tournament items, and a question card puts three answer gates across
  * the lanes: run through the right one for a Safety Sprint.
+ * The score is the questions and picking up a Spot Audit, plus the metres run and the coins (1 point each): PPE, near misses and the
+ * surprises pay nothing here.
  */
 export type StageId = Zone['id'] | 'tour';
 export interface TourOptions { stage: StageId; durationTicks: number }
@@ -81,7 +83,7 @@ export const ITEM_GAP = 300;
 export const GATE_SECONDS = 4.5, GATE_FACTOR = 0.5;
 /** while a question is up nothing to pick up lies before the gates or this many metres past them: no coins to chase or to read as a hint */
 export const GATE_CLEAR = 30;
-export const TOUR_SECONDS = { sprint: 3, think: 1.5, auditThink: 2.5, stun: 1.2, loto: 8, buddy: 5, streak: 15 } as const;
+export const TOUR_SECONDS = { sprint: 3, think: 1.5, auditThink: 2.5, stun: 1.2, loto: 8, buddy: 5 } as const;
 /** speed multipliers: Safety Sprint, Stop & Think, the stumble after a crash */
 export const SPRINT_FACTOR = 2, THINK_FACTOR = 0.5, STUN_FACTOR = 0.35;
 /** points the sender of a Spot Audit gets */
@@ -94,9 +96,7 @@ export const GATE_SCORE = 500, GATE_SCORE_MIN = 100, AUDIT_PASS_SCORE = 150;
 /** what a right question card pays when the answer was picked with `left` (1..0) of the gates' time still to go; steps of 10 */
 export const gateScore = (left: number) =>
   GATE_SCORE_MIN + Math.round((GATE_SCORE - GATE_SCORE_MIN) * Math.max(0, Math.min(1, left)) / 10) * 10;
-/** points for getting through a whole Zero Accident streak without a crash */
-export const STREAK_SCORE = 100;
-const ITEM_WEIGHTS: Record<Exclude<TourItem, 'quiz'>, number> = { loto: 24, foam: 26, buddy: 18, streak: 18, audit: 14 };
+const ITEM_WEIGHTS: Record<Exclude<TourItem, 'quiz'>, number> = { loto: 28, foam: 32, buddy: 22, audit: 18 };
 export const POWER_SECONDS = { estop: 5, broom: 8, lift: 5 } as const;
 /** E-Stop (stop work authority) slows the world to this fraction */
 export const ESTOP_FACTOR = 0.6;
@@ -199,7 +199,7 @@ export interface TourView {
   ticksLeft: number;
   gate: Gate | null;
   /** seconds left on each effect */
-  sprint: number; think: number; stun: number; loto: number; buddy: number; streak: number;
+  sprint: number; think: number; stun: number; loto: number; buddy: number;
   correct: number; wrong: number; crashes: number;
 }
 
@@ -307,7 +307,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   const itemRandom = seededRandom(seed ^ 0x165667b1), gateRandom = seededRandom(seed ^ 0xd3a2646c);
   const quizDeck = tour ? deck(seededRandom(seed ^ 0x2545f491)) : [], auditDeck = tour ? deck(seededRandom(seed ^ 0x61c88647)) : [];
   let quizN = 0, auditN = 0, nextQuiz = QUIZ_FIRST, lastItem = 0, gate: Gate | null = null;
-  let sprint = 0, think = 0, stun = 0, loto = 0, buddy = 0, streak = 0, correctN = 0, wrongN = 0, crashes = 0;
+  let sprint = 0, think = 0, stun = 0, loto = 0, buddy = 0, correctN = 0, wrongN = 0, crashes = 0;
 
   const mult = () => tour ? 1 : 1 + Math.min(MULT_MAX - 1, Math.floor(combo / 3));
   const say = (text: string, seconds: number) => { toast = text; toastT = seconds; };
@@ -536,7 +536,6 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     o.gone = true;
     crashes++;
     stun = TOUR_SECONDS.stun; inv = TOUR_SECONDS.stun + 1; flash = 0.35; combo = 0;
-    streak = 0;
     say(`ชน! ${HZ[o.k].th}`, 1.4);
     beep(110, 0.25, 'sawtooth', 0.08);
     emit({ type: 'saved' });
@@ -570,7 +569,6 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     else if (t === 'loto') { loto = TOUR_SECONDS.loto; say('LOTO! ตัดพลังงาน อันตรายที่เคลื่อนที่หยุดหมด', 2); }
     else if (t === 'foam') { foam(); say('ถังดับเพลิง! เคลียร์เลนข้างหน้า', 2); }
     else if (t === 'buddy') { buddy = TOUR_SECONDS.buddy; say('Buddy System! เพื่อนช่วยนำทาง', 2); }
-    else if (t === 'streak') { streak = TOUR_SECONDS.streak; say(`Zero Accident! ไม่ชนเลย ${TOUR_SECONDS.streak} วินาที รับ +${STREAK_SCORE}`, 2); }
     else if (t === 'audit') { earn('extra', AUDIT_SCORE); say(`Spot Audit! ส่งผู้ตรวจไปหาคนที่นำอยู่ +${AUDIT_SCORE}`, 2); }
     else if (t === 'toolbox') toolbox();
     else if (t === 'estop') { slow = POWER_SECONDS.estop; say('E-Stop! หยุดงานเพื่อความปลอดภัย · เกมช้าลง', 2); }
@@ -609,6 +607,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   }
 
   function nearMiss() {
+    if (tour) return;                                         // a tournament pays for answers, not dodges
     combo++; comboT = COMBO_SECONDS;
     const m = mult();
     earn('near', NEAR_SCORE * m);
@@ -646,7 +645,6 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       dz *= (sprint > 0 ? SPRINT_FACTOR : stun > 0 ? STUN_FACTOR : think > 0 ? THINK_FACTOR : 1) * (gate ? GATE_FACTOR : 1);
       sprint = Math.max(0, sprint - dt); think = Math.max(0, think - dt); stun = Math.max(0, stun - dt);
       loto = Math.max(0, loto - dt); buddy = Math.max(0, buddy - dt);
-      if (streak > 0 && (streak -= dt) <= 0) { streak = 0; earn('extra', STREAK_SCORE); say(`Zero Accident สำเร็จ! +${STREAK_SCORE}`, 1.8); beep(1200, 0.16, 'triangle'); }
       if (gate && (gate.z -= dz) < -1) resolveGate(null);
       if (buddy > 0) buddyStep();
     }
@@ -677,7 +675,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       if (o.gone || Math.abs(o.z) > 0.7 || Math.abs(o.l - px) > 0.5) continue;
       if (o.k === 'coin') { o.gone = true; coins++; earn('coin', COIN_SCORE * m); beep(1180, 0.04, 'triangle', 0.05); emit({ type: 'coin' }); continue; }
       if (o.k === 'ppe') {
-        o.gone = true; got.add(o.p); earn('ppe', PPE_SCORE * m); beep(880, 0.07, 'triangle'); emit({ type: 'pickup' });
+        o.gone = true; got.add(o.p); if (!tour) earn('ppe', PPE_SCORE * m); beep(880, 0.07, 'triangle'); emit({ type: 'pickup' });
         if (got.size === 5) { got.clear(); shield = 8; say('FULL PPE! โล่กันชน 1 ครั้ง', 2); beep(1320, 0.2, 'triangle'); }
         continue;
       }
@@ -711,7 +709,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       if (near) nearMiss();
     }
     objs = objs.filter(o => o.z > -3 && !(o.gone && isItem(o)));
-    if (!opts.movementOnly && dist >= nextSur) { nextSur += 1500; surprise(); }
+    if (!tour && !opts.movementOnly && dist >= nextSur) { nextSur += 1500; surprise(); }
     if (!tour && !opts.movementOnly && dist >= nextBonusCheck) { nextBonusCheck += BONUS_GAP; if (bonusRandom() < BONUS_CHANCE) bonusArmed = true; }
     if (!tour && !opts.movementOnly && dist >= nextLootCheck) { nextLootCheck += LOOT_GAP; if (lootRandom() < LOOT_CHANCE) lootArmed = true; }
   }
@@ -772,7 +770,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       zone: zoneOf(dist).index, zoneN: zoneOf(dist).n, stageZone: tourZone, combo, mult: mult(), comboT, slow, magnet, lift, hearts, pendingBonus,
       tour: tour && {
         ticksLeft: Math.max(0, tour.durationTicks - tick), gate,
-        sprint, think, stun, loto, buddy, streak, correct: correctN, wrong: wrongN, crashes,
+        sprint, think, stun, loto, buddy, correct: correctN, wrong: wrongN, crashes,
       },
     }),
     score: () => Math.floor(dist / METRES_PER_POINT) + bonus,

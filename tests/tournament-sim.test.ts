@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AUDIT_PASS_SCORE, GATES, GATE_CLEAR, GATE_SCORE, GATE_SCORE_MIN, STEP, gateScore, createRun, isItem, replayScore, replayTour, type Action, type InputEntry, type Run, type TourOptions } from '../shared/sim.js';
+import { AUDIT_PASS_SCORE, AUDIT_SCORE, GATES, GATE_CLEAR, GATE_SCORE, GATE_SCORE_MIN, STEP, TOUR_DURATION, gateScore, createRun, isItem, replayScore, replayTour, type Action, type InputEntry, type Run, type TourOptions } from '../shared/sim.js';
 import { think } from './bot.js';
 
 const TOUR: TourOptions = { stage: 'tour', durationTicks: 60 / STEP };
@@ -61,6 +61,32 @@ describe('tournament run', () => {
       expect(right.run.score() - wrong.run.score()).toBeGreaterThan(correct * (GATE_SCORE - 50));
       expect(right.run.view().mult).toBe(1);
     }
+  });
+
+  it('scores only the answers, Spot Audit pickups, the metres and the coins (1 each): PPE, near misses and surprises pay nothing', () => {
+    for (const seed of [3, 11, 42, 99]) {
+      const { run } = race(seed, { tour: { stage: 'tour', durationTicks: TOUR_DURATION / STEP }, audits: [600] });
+      const v = run.view();
+      expect(v.dist).toBeGreaterThan(1500);                 // far enough that a surprise would have come up
+      expect(v.earned.ppe).toBe(0);
+      expect(v.earned.near).toBe(0);
+      expect(v.earned.coin).toBe(v.coins);
+      expect(v.sur).toBeNull();
+      expect(run.score()).toBe(Math.floor(v.dist) + v.coins + v.earned.extra);
+    }
+  });
+
+  it('pays nothing extra except at a right gate or for picking up a Spot Audit', () => {
+    const run = createRun(42, undefined, undefined, { tour: { stage: 'tour', durationTicks: TOUR_DURATION / STEP } });
+    while (!run.finished) {
+      const v = run.view(), gate = v.tour!.gate;
+      if (gate) { const want = gate.correct - 1; if (v.lane !== want) run.input(v.lane < want ? 'right' : 'left'); }
+      else think(run);
+      const before = v.tour!.correct, extra = v.earned.extra;
+      run.step();
+      if (run.view().tour!.correct === before) expect([0, AUDIT_SCORE]).toContain(run.view().earned.extra - extra);
+    }
+    expect(run.view().tour!.correct).toBeGreaterThan(0);
   });
 
   it('pays gateScore for a question card and AUDIT_PASS_SCORE for a Spot Audit, the moment the right gate is run through', () => {

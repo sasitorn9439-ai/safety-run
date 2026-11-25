@@ -1,5 +1,6 @@
 import postgres from 'postgres';
 import type { StageId } from '../shared/sim.js';
+import { TOUR_SEATS } from '../shared/tour-channels.js';
 import type { Slot, TourPlayer, TourStore } from './tour-store.js';
 
 export function createPostgresTourStore(url: string): TourStore {
@@ -10,8 +11,9 @@ export function createPostgresTourStore(url: string): TourStore {
     init() {
       // a catalog read takes no lock: the DDL only runs while the tables are missing (see postgres-store.ts)
       ready ||= (async () => {
-        // a catalog read: the tables exist and have every column added since they were first made
-        const [have] = await sql`select exists (select 1 from pg_attribute where attrelid = to_regclass('safety_run_tour_players') and attname = 'look' and not attisdropped) as ok`;
+        // a catalog read: the tables exist, have every column added since they were first made, and the slot check allows 8 seats
+        const [have] = await sql`select exists (select 1 from pg_attribute where attrelid = to_regclass('safety_run_tour_players') and attname = 'look' and not attisdropped)
+          and exists (select 1 from pg_constraint where conname = 'safety_run_tour_players_slot_check' and pg_get_constraintdef(oid) like '%<= 7%') as ok`;
         if (have?.ok) return;
         await sql.begin(async tx => {
           await tx`set local lock_timeout = '5s'`;
@@ -27,7 +29,7 @@ export function createPostgresTourStore(url: string): TourStore {
             created_at timestamptz not null default now())`;
           await tx`create table if not exists safety_run_tour_players (
             code text not null references safety_run_tour_rooms (code) on delete cascade,
-            slot smallint not null check (slot between 0 and 2),
+            slot smallint not null,
             emp_id text not null,
             avatar integer not null,
             token_hash text not null,
@@ -38,6 +40,9 @@ export function createPostgresTourStore(url: string): TourStore {
             unique (code, emp_id))`;
           // what the player wore when they joined
           await tx`alter table safety_run_tour_players add column if not exists look jsonb not null default '{}'::jsonb`;
+          // seats 0..7 (TOUR_SEATS); a room used to hold three
+          await tx`alter table safety_run_tour_players drop constraint if exists safety_run_tour_players_slot_check`;
+          await tx`alter table safety_run_tour_players add constraint safety_run_tour_players_slot_check check (slot between 0 and 7)`;
           await tx`alter table safety_run_tour_rooms enable row level security`;
           await tx`alter table safety_run_tour_players enable row level security`;
         });
@@ -66,14 +71,14 @@ export function createPostgresTourStore(url: string): TourStore {
       const again = await sql`update safety_run_tour_players set token_hash = ${p.tokenHash}, look = ${sql.json(p.look)} where code = ${code} and emp_id = ${p.empId} returning slot`;
       if (again.length) return again[0]!.slot as Slot;
       // two phones joining at once may both pick the same free slot: the primary key turns one away, and it tries the next
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < TOUR_SEATS; attempt++) {
         const rows = await sql`insert into safety_run_tour_players (code, slot, emp_id, avatar, look, token_hash)
-          select ${code}, s, ${p.empId}, ${p.avatar}, ${sql.json(p.look)}, ${p.tokenHash} from generate_series(0, 2) s
+          select ${code}, s, ${p.empId}, ${p.avatar}, ${sql.json(p.look)}, ${p.tokenHash} from generate_series(0, ${TOUR_SEATS - 1}) s
           where s not in (select slot from safety_run_tour_players where code = ${code}) order by s limit 1
           on conflict do nothing returning slot`;
         if (rows.length) return rows[0]!.slot as Slot;
         const [n] = await sql`select count(*)::int as n from safety_run_tour_players where code = ${code}`;
-        if (n!.n >= 3) return null;
+        if (n!.n >= TOUR_SEATS) return null;
       }
       return null;
     },

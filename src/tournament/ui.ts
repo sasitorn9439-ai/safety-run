@@ -7,7 +7,6 @@ export const ITEMS: readonly [TourItem, string, string][] = [
   ['loto', 'LOTO Lock', 'ตัดพลังงาน 8 วินาที ควันหยุดลอย ของไม่ตก ประกายไฟดับ'],
   ['foam', 'ถังดับเพลิง', 'เคลียร์อันตรายในเลนของตัวเองไปข้างหน้าประมาณ 3 วินาที'],
   ['buddy', 'Buddy System', 'เพื่อนช่วยนำทาง หลบให้อัตโนมัติ 5 วินาที'],
-  ['streak', 'Zero Accident', 'ไม่ชนเลย 15 วินาที รับ +100 · ชนเมื่อไหร่ก็หมดสิทธิ์'],
   ['audit', 'Spot Audit', 'ได้ +30 และส่งผู้ตรวจไปหาคนที่นำอยู่ เขาต้องตอบให้ถูก (ได้ +150) ไม่งั้นช้าลง'],
 ];
 
@@ -39,7 +38,6 @@ export function fxHtml(t: TourView) {
   if (t.stun > 0) out.push(chip('💫', 'เซ', t.stun, 'bad'));
   if (t.loto > 0) out.push(chip(img('loto'), 'LOTO', t.loto));
   if (t.buddy > 0) out.push(chip(img('buddy'), 'Buddy', t.buddy));
-  if (t.streak > 0) out.push(chip(img('streak'), 'Zero Accident', t.streak));
   return out.join('');
 }
 

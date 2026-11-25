@@ -1,7 +1,8 @@
 import type { StageId } from '../shared/sim.js';
+import { TOUR_SEATS } from '../shared/tour-channels.js';
 
-export type Slot = 0 | 1 | 2;
-export const SLOTS: readonly Slot[] = [0, 1, 2];
+export type Slot = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export const SLOTS = Array.from({ length: TOUR_SEATS }, (_, i) => i as Slot) as readonly Slot[];
 
 /** `look`: the cosmetics the player wore when they joined (slot → item id), so everyone sees them dressed that way */
 export interface TourPlayer { slot: Slot; empId: string; avatar: number; look: Record<string, string>; tokenHash: string; score: number | null; correct: number | null }

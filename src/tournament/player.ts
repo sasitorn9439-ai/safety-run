@@ -6,7 +6,7 @@ import { $, digitsOnly, esc } from '../lib/dom.js';
 import { LS } from '../lib/storage.js';
 import type { GameRenderer } from '../render/index.js';
 import { Hud } from '../ui/hud.js';
-import { Clock, SEND_MS, errText, fmtTime, openChannel, tourApi, type Board, type Channel, type Msg, type Room, type Slot } from './net.js';
+import { Clock, SEND_MS, errText, fmtTime, openChannel, tourApi, SLOTS, type Board, type Channel, type Msg, type Room, type Slot } from './net.js';
 import { Ghosts } from './ghosts.js';
 import { Race } from './race.js';
 import { GatePanel, fxHtml, itemListHtml } from './ui.js';
@@ -82,7 +82,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
     $('lobbyName').textContent = `${avName(seat!.avatar)} · ช่อง ${seat!.slot + 1}`;
     $('lobbyInfo').textContent = `ด่านสุ่มตอนเริ่มแข่ง · ${fmtTime(room!.duration)} นาที`;
     $('lobbyWait').textContent = room!.phase === 'finished' ? 'รอ Host เปิดรอบใหม่' : 'รอ Host กดเริ่ม';
-    $('lobbySeats').innerHTML = [0, 1, 2].map(s => {
+    $('lobbySeats').innerHTML = SLOTS.map(s => {
       const p = room!.players.find(x => x.slot === s);
       return `<li class="${p?.slot === seat!.slot ? 'me' : ''}">${p ? `${avImg(p.avatar, 36, p.look)}<span>${esc(avName(p.avatar))}</span>` : '<span class="empty">ว่าง</span>'}</li>`;
     }).join('');
@@ -158,7 +158,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
     $('resScore').textContent = me?.score != null ? `${me.score} คะแนน` : '';
     $('resInfo').textContent = me?.correct != null ? `ตอบถูก ${me.correct} ข้อ` : '';
     const ranked = [...room!.players].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || (b.correct ?? 0) - (a.correct ?? 0));
-    $('resBoard').innerHTML = ranked.map((p, i) => `<li class="${p.slot === seat!.slot ? 'me' : ''}"><span class="n">${i + 1}</span><div>${avImg(p.avatar, 28, p.look)} ${esc(avName(p.avatar))}<small>${p.score == null ? 'รอผล…' : `ตอบถูก ${p.correct} ข้อ`}</small></div><span class="sc">${p.score ?? '—'}</span></li>`).join('');
+    $('resBoard').innerHTML = ranked.map((p, i) => `<li class="${p.slot === seat!.slot ? 'me' : ''}"><span class="n">${i + 1}</span><div>${avImg(p.avatar, 28, p.look)} ${esc(avName(p.avatar))}${p.slot === seat!.slot ? ' <span class="you">(คุณ)</span>' : ''}<small>${p.score == null ? 'รอผล…' : `ตอบถูก ${p.correct} ข้อ`}</small></div><span class="sc">${p.score ?? '—'}</span></li>`).join('');
   }
 
   /* ---------- input: swipe + keyboard ---------- */
