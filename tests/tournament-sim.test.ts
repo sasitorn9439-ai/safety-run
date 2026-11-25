@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AUDIT_PASS_SCORE, GATES, GATE_SCORE, GATE_SCORE_MIN, STEP, gateScore, createRun, replayScore, replayTour, type Action, type InputEntry, type Run, type TourOptions } from '../shared/sim.js';
+import { AUDIT_PASS_SCORE, GATES, GATE_CLEAR, GATE_SCORE, GATE_SCORE_MIN, STEP, gateScore, createRun, replayScore, replayTour, type Action, type InputEntry, type Run, type TourOptions } from '../shared/sim.js';
 import { think } from './bot.js';
 
 const TOUR: TourOptions = { stage: 'tour', durationTicks: 60 / STEP };
@@ -119,14 +119,14 @@ describe('tournament run', () => {
     expect(hazards).toEqual([]);
   });
 
-  it('leaves nothing to pick up between you and the gates', () => {
+  it('leaves nothing to pick up between you and the gates, or just past them', () => {
     for (const seed of [3, 11, 42]) {
       const run = createRun(seed, undefined, undefined, { tour: TOUR });
       let gates = 0;
       while (!run.finished) {
         const v = run.view(), gate = v.tour!.gate;
         if (gate) {
-          const loot = v.objs.filter(o => !o.gone && o.z > -1 && o.z < gate.z + 8 && (o.k === 'coin' || o.k === 'ppe' || o.k === 'bonus' || (o.k === 'power' && !GATES.includes(o.t as never))));
+          const loot = v.objs.filter(o => !o.gone && o.z > -1 && o.z < gate.z + GATE_CLEAR && (o.k === 'coin' || o.k === 'ppe' || o.k === 'bonus' || (o.k === 'power' && !GATES.includes(o.t as never))));
           expect(loot).toEqual([]);
           if (gate.z === gate.z0) gates++;
           const want = gate.correct - 1;

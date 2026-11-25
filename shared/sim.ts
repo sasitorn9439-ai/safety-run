@@ -79,6 +79,8 @@ const QUIZ_ROW_GAP = 9;
 export const ITEM_GAP = 300;
 /** the gates come up this many seconds after the card, with the world slowed to GATE_FACTOR meanwhile */
 export const GATE_SECONDS = 4.5, GATE_FACTOR = 0.5;
+/** while a question is up nothing to pick up lies before the gates or this many metres past them: no coins to chase or to read as a hint */
+export const GATE_CLEAR = 30;
 export const TOUR_SECONDS = { sprint: 3, think: 1.5, auditThink: 2.5, stun: 1.2, loto: 8, buddy: 5, streak: 15 } as const;
 /** speed multipliers: Safety Sprint, Stop & Think, the stumble after a crash */
 export const SPRINT_FACTOR = 2, THINK_FACTOR = 0.5, STUN_FACTOR = 0.35;
@@ -204,6 +206,8 @@ export interface Run {
   view(): RunView;
   score(): number;
 }
+
+const isPickup = (o: GameObject) => o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus';
 
 function seededRandom(seed: number) {
   let value = seed >>> 0;
@@ -464,14 +468,20 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     }
     const z = speed * GATE_FACTOR * GATE_SECONDS;
     gate = { prompt, options: order.map(i => choices[i]!), correct: order.indexOf(0), audit, z, z0: z, picked: 0 };
-    // nothing in the way of the gates and nothing to pick up on the way (the question is all there is), and nothing new until they
-    // have gone by; a hazard already on top of you stays rather than vanish
-    const pickup = (o: GameObject) => o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus';
-    objs = objs.filter(o => o.z > z + 8 || (o.z < 6 && !pickup(o)));
+    // no hazard in the way of the gates (one already on top of you stays rather than vanish), and nothing new until they have gone by
+    objs = objs.filter(o => o.z > z + 8 || (o.z < 6 && !isPickup(o)));
     GATES.forEach((t, i) => objs.push({ k: 'power', t, l: i - 1, z }));
+    clearForGate();
     next = Math.max(next, z + 10);
     say(audit ? 'Spot Audit! มีคนส่งผู้ตรวจมาหาคุณ' : 'Safety Check! วิ่งเข้าประตูคำตอบที่ถูก', 2);
     beep(1400, 0.1, 'triangle'); beep(1800, 0.12, 'triangle');
+  }
+
+  /** the question is all there is: nothing to pick up before the gates or GATE_CLEAR past them (run again every step, as new rows
+   * and a Coin Rain land behind them) */
+  function clearForGate() {
+    const end = gate!.z + GATE_CLEAR;
+    objs = objs.filter(o => !isPickup(o) || o.z >= end || (o.k === 'power' && GATES.includes(o.t as GateType)));
   }
 
   /** `lane` the gate run through, or null if the gates went by untouched */
@@ -632,6 +642,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       // at least ROW_SECONDS'-worth of running between two patterns, more when the zone is calm
       next = length + Math.max(13 + random() * 9 - Math.min(3, dist / 800), speed * 0.6 + random() * 3);
     }
+    if (gate) clearForGate();
     px += (lane - px) * Math.min(1, dt * 14);
     if (lift > 0) {
       lift = Math.max(0, lift - dt);
