@@ -327,7 +327,8 @@ export const EFFECTS: readonly Effect[] = [
   { ...fx('petals', 'ดอกไม้บานตามรอยเท้า · Blooming steps', 'common', bloom(BLOOM)), avatar: rain(flower, BLOOM, 1.5, .05) },   // id kept from 'Petals'
   fx('stars', 'ดาวหมุน · Star ring', 'common', orbit(star, ['#ffd400'], 5, .05)),
   fx('clouds', 'ปุยเมฆ · Cloud steps', 'common', trail(puff, ['#ffffff', '#eceff1'], 4, .07, .1)),
-  fx('flamefeet', 'เท้าไฟ · Fire feet', 'rare', feetFire(['#ff6d00', '#ffab00', '#ff3d00'])),
+  // flames on the shoes and a trail of them left on the ground behind (toward the camera), burning out as they fall back
+  fx('flamefeet', 'เท้าไฟ · Fire feet', 'rare', feetFire(['#ff6d00', '#ffab00', '#ff3d00']), trail(flame, ['#ff6d00', '#ffab00', '#ff3d00'], 9, .1, .2, .55, 0)),
   fx('lightning', 'สายฟ้า · Lightning', 'rare', orbit(bolt, ['#ffea00', '#ffffff'], 4, .07, .46, .16)),
   fx('frost', 'เกล็ดน้ำแข็ง · Frost', 'rare', aura('#b3e5fc', .6, .45), orbit(snowflake, ['#e1f5fe', '#81d4fa'], 5, .05)),
   fx('rainbow', 'สายรุ้ง · Rainbow trail', 'rare', rainbow),
