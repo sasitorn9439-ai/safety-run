@@ -24,13 +24,34 @@ export interface Store {
   /** claims run number `runNo` for the employee; null if another device got it first */
   createRun(r: { id: string; runNo: number; name: string; tokenHash: string; ua: string; seed: number }): Promise<number | null>;
   getRun(runId: string, id: string): Promise<RunRow | null>;
-  /** stores the verified score once; null if the run was already finished */
-  finishRun(runId: string, score: number, secs: number): Promise<number | null>;
+  /** stores the verified result once (score, play time, metres run, loot boxes picked up); null if the run was already finished */
+  finishRun(runId: string, r: FinishedRun): Promise<number | null>;
   runScore(runId: string): Promise<number | null | undefined>;
   leaderboard(id: string): Promise<{ top: BoardEntry[]; total: number; rank: number }>;
   adminExport(): Promise<AdminRow[]>;
   /** every run, newest started first */
   adminRuns(): Promise<AdminRun[]>;
+  /** one row per player: plays, bests and treasure chests */
+  adminPlayers(): Promise<AdminPlayer[]>;
   /** hides or shows the player's scores on the leaderboard; returns how many players matched (0 or 1) */
   adminHide(id: string, hidden: boolean): Promise<number>;
+  /** the player's cosmetics: loot boxes picked up on finished runs, items won (in the order the boxes were opened), items worn */
+  wardrobe(id: string): Promise<StoredWardrobe>;
+  /** records that box number `boxNo` (from 1) gave `item`; false if that box was already opened or the item is already owned */
+  addCosmetic(id: string, boxNo: number, item: string): Promise<boolean>;
+  setEquipped(id: string, equipped: Record<string, string>): Promise<void>;
+  /** admin hands `n` loot boxes to each of `ids`, or to every player so far ('all'). Returns who got them, and which ids have never played. */
+  grantBoxes(ids: string[] | 'all', n: number): Promise<{ granted: number; unknown: string[] }>;
 }
+
+export interface FinishedRun { score: number; secs: number; dist: number; loot: number }
+
+/** A player as the admin sees them. `maxDist` is null when none of their runs recorded distance (runs from before it was stored). */
+export interface AdminPlayer {
+  id: string; avatar: number | null; hidden: boolean;
+  plays: number; best: number | null; maxDist: number | null; lastPlayed: string | Date | null;
+  /** treasure chests: picked up on verified runs, handed out by admin, opened */
+  loot: number; granted: number; opened: number;
+}
+
+export interface StoredWardrobe { earned: number; owned: string[]; equipped: Record<string, string> }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GATES, STEP, createRun, replayScore, replayTour, type Action, type InputEntry, type Run, type TourOptions } from '../shared/sim.js';
+import { GATES, STEP, createRun, isItem, replayScore, replayTour, type Action, type InputEntry, type Run, type TourOptions } from '../shared/sim.js';
 import { think } from './bot.js';
 
 const TOUR: TourOptions = { stage: 'tour', durationTicks: 60 / STEP };
@@ -60,7 +60,7 @@ describe('tournament run', () => {
     const gates = v.objs.filter(o => o.k === 'power' && GATES.includes(o.t as never));
     expect(gates.map(o => o.l).sort()).toEqual([-1, 0, 1]);
     expect(g.options).toHaveLength(3);
-    const hazards = v.objs.filter(o => o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power' && o.k !== 'bonus' && !o.gone && o.z > 6 && o.z < g.z + 8);
+    const hazards = v.objs.filter(o => !isItem(o) && !o.gone && o.z > 6 && o.z < g.z + 8);
     expect(hazards).toEqual([]);
   });
 

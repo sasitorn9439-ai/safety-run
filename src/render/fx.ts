@@ -5,7 +5,7 @@
  */
 import { zoneIndexAt } from '../../shared/zones.js';
 import { HZ, type HazardKind, type PpeType } from '../../shared/hazards.js';
-import { LIFT_HEIGHT, POWER_SECONDS, SLIDE_SECONDS, START_SPEED, STEP, ZMAX, type GameObject, type PowerType, type SimEvent } from '../../shared/sim.js';
+import { LIFT_HEIGHT, POWER_SECONDS, SLIDE_SECONDS, START_SPEED, STEP, ZMAX, isItem, type GameObject, type PowerType, type SimEvent } from '../../shared/sim.js';
 import { Camera, type Pt } from './camera.js';
 import type { Frame, Ghost, SceneState } from './types.js';
 
@@ -57,6 +57,9 @@ export class Fx {
       for (let i = 0; i < 18; i++) this.burst(p.x, p.y - u * .6, i % 2 ? 0xffffff : 0x3ccf7a, 110 + Math.random() * 90, -.4 - Math.random() * 3.6, u * .03);
     } else if (e.type === 'bonus') {
       for (let i = 0; i < 20; i++) this.burst(p.x, p.y - u * .6, i % 2 ? 0xffffff : 0x9b5de5, 120 + Math.random() * 90, -.4 - Math.random() * 3.6, u * .03);
+    } else if (e.type === 'loot') {
+      this.shake = Math.max(this.shake, .3);
+      for (let i = 0; i < 28; i++) this.burst(p.x, p.y - u * .6, [0xffd400, 0xffffff, 0xff5ac8, 0x5ad1ff][i % 4]!, 130 + Math.random() * 110, -.6 - Math.random() * 3.8, u * .034);
     } else if (e.type === 'near') {
       for (let i = 0; i < 6; i++) this.burst(p.x, p.y - u * .5, 0xfff6a8, 90 + Math.random() * 60, -.2, u * .022);
     } else if (e.type === 'saved') {
@@ -106,7 +109,7 @@ export class Fx {
 /* ---------- what to draw, far to near ---------- */
 
 export interface DrawItem {
-  kind: 'hazard' | 'ppe' | 'coin' | 'power' | 'bonus' | 'player' | 'ghost';
+  kind: 'hazard' | 'ppe' | 'coin' | 'power' | 'bonus' | 'loot' | 'player' | 'ghost';
   z: number;
   /** art origin on screen (feet for hazards, centre for PPE) */
   x: number; y: number;
@@ -165,7 +168,7 @@ export class DrawList {
     this.lastDist = f.s.dist;
     if ((f.s.lift ?? 0) > 0) this.liftEnd = f.s.dist + f.s.lift! * this.speed;
     const lowHazards = list.filter(o =>
-      o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power' && o.k !== 'bonus' && HZ[o.k].t === 'low',
+      !isItem(o) && HZ[o.k].t === 'low',
     );
     list.sort((a, b) => b.z - a.z);
     const ghosts = this.ghosts;
@@ -215,10 +218,10 @@ export class DrawList {
         it.kind = 'ppe'; it.p = o.p; it.x = p.x; it.y = p.y - (.6 + bob) * u * .9; it.u = u * pulse * boost; it.blink = false;
         it.sx = .8 + .2 * Math.cos(now * .0045 + (I.dist + o.z) * .8);          // a slow coin-like turn
         it.halo = .45 + .15 * Math.sin(phase * 1.3);
-      } else if (o.k === 'bonus') {
-        // a mystery coin: bigger than a plain coin and it pulses harder, so it reads as worth stopping for
+      } else if (o.k === 'bonus' || o.k === 'loot') {
+        // a mystery coin or a loot box: bigger than a plain coin and it pulses harder, so it reads as worth stopping for
         const phase = (I.dist + o.z) * .8 + now * .005, boost = 1 + PPE_FAR_BOOST * (1 - p.s);
-        it.kind = 'bonus'; it.x = p.x; it.y = p.y - (.65 + Math.sin(phase) * .1) * u * .9; it.u = u * boost * (1 + Math.sin(phase * 1.3) * .08); it.blink = false;
+        it.kind = o.k; it.x = p.x; it.y = p.y - (.65 + Math.sin(phase) * .1) * u * .9; it.u = u * boost * (1 + Math.sin(phase * 1.3) * .08); it.blink = false;
         it.sx = .85 + .15 * Math.cos(now * .005 + (I.dist + o.z) * .8);
         it.halo = .7 + .25 * Math.sin(phase * 1.3);
       } else {

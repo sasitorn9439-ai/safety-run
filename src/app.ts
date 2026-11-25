@@ -9,10 +9,13 @@ import { Game, type GameState, type Pending, type Session } from './game/game.js
 import { createRenderer, type GameRenderer } from './render/index.js';
 import { Hud } from './ui/hud.js';
 import { Tally } from './ui/tally.js';
+import { mountWardrobe } from './ui/wardrobe.js';
+import { cosmetic, lookOf, parseWardrobe, type Wardrobe } from './cosmetics/wardrobe.js';
 
 /** this many places on the board win a prize */
 const PRIZE_RANKS = 7;
 const OVERLAYS = ['menu', 'over', 'quiz', 'done', 'boardOv', 'avOv', 'pauseOv'] as const;
+/** cosmetics are kept on this device */
 type OverlayId = (typeof OVERLAYS)[number];
 const show = (id: OverlayId | null) => { for (const o of OVERLAYS) $(o).classList.toggle('on', o === id); };
 
@@ -37,6 +40,29 @@ export async function startApp() {
     },
   }, sfx.beep);
   const pauseBtn = $('pauseBtn'), skipTut = $('skipTut');
+
+  /* ---------- wardrobe: loot boxes picked up on runs, cosmetics worn by the mascot ----------
+     The server holds it all (boxes come from verified replays, the server rolls them), so nothing on the device can add a box or an item. */
+  let wardState: Wardrobe | null = null, wardId = '';
+  const wardCall = async (body: Record<string, unknown>) => {
+    const id = wardId, r = await api<Wardrobe & { items?: string[] }>('/api/wardrobe', { id, ...body });
+    if (!r.ok || id !== wardId) return null;
+    wardState = parseWardrobe(r);
+    renderer.setLook(lookOf(wardState)); game.invalidate(); wardrobe.refresh();
+    return r;
+  };
+  const loadWardrobe = (id: string) => { wardId = id; return wardCall({}).catch(() => null); };
+  const wardrobe = mountWardrobe({
+    current: () => wardState,
+    open: async n => {
+      const r = await wardCall({ action: 'open', n });
+      const items = (r?.items ?? []).map(cosmetic).filter(c => c !== undefined);
+      return items.length ? items : null;
+    },
+    wear: async (slot, item) => { await wardCall({ action: 'equip', slot, item }).catch(() => null); },
+    beep: sfx.beep,
+  });
+  wardrobe.refresh();
 
   const tutorialSeen = new Set<string>();
   const tutorialKey = (id: string) => `srTutorialSeen:${id}`;
@@ -78,16 +104,16 @@ export async function startApp() {
   }
 
   /* ---------- how to play, prizes and what's new: modals over the menu ---------- */
-  function menuModal(name: 'how' | 'news' | 'prize', onClose = () => {}) {
+  function menuModal(name: 'how' | 'news' | 'prize' | 'ward', onClose = () => {}, onOpen = () => {}) {
     const ov = $(name + 'Ov');
     const close = () => { ov.classList.remove('on'); $(name + 'Btn').focus(); onClose(); };
-    const open = () => { ov.classList.add('on'); $(name + 'Close').focus({ preventScroll: true }); ov.querySelector('.card')!.scrollTop = 0; };
+    const open = () => { onOpen(); ov.classList.add('on'); $(name + 'Close').focus({ preventScroll: true }); ov.querySelector('.card')!.scrollTop = 0; };
     $(name + 'Btn').onclick = open;
     $(name + 'Close').onclick = close;
     ov.onclick = e => { if (e.target === ov) close(); };   // a tap on the dimmed backdrop closes it
     return { ov, open, close };
   }
-  const how = menuModal('how'), prize = menuModal('prize');
+  const how = menuModal('how'), prize = menuModal('prize'), ward = menuModal('ward', wardrobe.close, wardrobe.open);
   // what's new opens by itself once per version
   const newsVersion = $('newsOv').dataset.version!;
   const news = menuModal('news', () => LS.set('srNewsSeen', newsVersion));
@@ -163,7 +189,8 @@ export async function startApp() {
   addEventListener('pointercancel', () => { swiping = false; });
   const KEYS: Record<string, Action> = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', arrowup: 'up', w: 'up', ' ': 'up', arrowdown: 'down', s: 'down' };
   addEventListener('keydown', e => {
-    for (const m of [news, how, prize]) if (e.key === 'Escape' && m.ov.classList.contains('on')) { m.close(); return; }
+    if (e.key === 'Escape' && ward.ov.classList.contains('on') && wardrobe.escape()) return;
+    for (const m of [news, how, prize, ward]) if (e.key === 'Escape' && m.ov.classList.contains('on')) { m.close(); return; }
     if ((e.target as HTMLElement).tagName === 'INPUT') return;
     const k = e.key.toLowerCase();
     if (k === 'escape' || k === 'p') {
@@ -180,7 +207,7 @@ export async function startApp() {
   });
 
   /* ---------- login / start ---------- */
-  { const lp = LS.get<{ id?: string }>('srPlayer'); if (lp) ($('empId') as HTMLInputElement).value = lp.id || ''; }
+  { const lp = LS.get<{ id?: string }>('srPlayer'); if (lp) ($('empId') as HTMLInputElement).value = lp.id || ''; if (lp?.id) void loadWardrobe(lp.id); }
 
   async function startRun(id: string, msg: HTMLElement, btn: HTMLButtonElement, label: string) {
     sfx.unlock();
@@ -189,6 +216,7 @@ export async function startApp() {
       const r = await api<StartResp>('/api/start', { id });
       if (r.ok && r.token) {
         LS.set('srPlayer', { id, avatar: r.avatar });
+        if (id !== wardId) void loadWardrobe(id);
         game.sess = { id, token: r.token, run: r.run!, runNo: r.runNo!, avatar: r.avatar!, seed: r.seed! } satisfies Session;
         LS.set('srPending', { ...game.sess, score: 0 });
         game.runLabel = `รอบที่ ${r.runNo} · GO!`;
@@ -239,6 +267,7 @@ export async function startApp() {
       const r = await api<FinishResp>('/api/finish', { id: p.id, run: p.run, token: p.token, ticks: p.ticks, inputs: p.inputs });
       if (r.ok) {
         LS.set('srPending', null); game.sess = null;
+        void loadWardrobe(p.id);                        // boxes picked up on this run count now that it verified
         $('doneHead').textContent = `ส่งคะแนนแล้ว · รอบที่ ${r.used}`; $('doneScore').textContent = `รอบนี้ ${r.score} คะแนน`;
         $('doneRank').textContent = `${avName(p.avatar)} · คะแนนดีที่สุด ${r.best}`;
         ag.textContent = 'เล่นอีกครั้ง · Play again'; ag.style.display = 'block';
@@ -308,7 +337,10 @@ export async function startApp() {
 
   /* ---------- boot ---------- */
   // handy for poking at the game from the browser console while developing
-  if (import.meta.env.DEV) Object.assign(window, { __sr: { game, renderer, hud } });
+  if (import.meta.env.DEV) Object.assign(window, { __sr: { game, renderer, hud,
+    /** local only (the dev server's /api/dev-boxes; production has no such route): __sr.boxes(20) */
+    boxes: async (n = 10) => { if (!wardId) return 'ใส่รหัสพนักงานแล้วเริ่มวิ่งก่อน'; await api('/api/dev-boxes', { id: wardId, n }); await loadWardrobe(wardId); return wardState?.boxes; },
+  } });
   const ro = new ResizeObserver(() => { renderer.resize(); game.invalidate(); });
   ro.observe(canvas);
   let frames = 0;

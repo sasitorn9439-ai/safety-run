@@ -6,6 +6,8 @@
  *   'pixel'   the stubby mascot as exact pixel rectangles   (assets/mascot-pixel/vector.json)
  * Each set says how many frames it has and which ranges are takeoff/rise/…/recover (FrameConfig), so the frame picker is generic.
  */
+import { DEFAULT_LOOK } from '../cosmetics/skins.js';
+import type { Look } from '../cosmetics/types.js';
 import type { Ctx } from './draw.js';
 import { DEFAULT_SLIDE, type SlideId } from './flat/ids.js';
 import type { FrameConfig, PixelAnim, Range } from './pixel-frames.js';
@@ -20,6 +22,18 @@ export interface MascotSet {
   count(anim: PixelAnim): number;
   /** how to rasterise for a lane width of `base` device pixels (the Art scale) */ scaleFor(base: number): number;
   art(anim: PixelAnim, i: number, scale: number): Art;
+  /** what the flat mascot wears (the other sets ignore it); change it through the renderer's setLook so the frames are redrawn */
+  look: Look;
+}
+
+/**
+ * The flat frames' cell, in game units around the feet: the 384 px cell they were designed in (300 px per unit, feet at 192, 330),
+ * taller when a hat sits on the crystal, wider and deeper when an effect surrounds the body. Only the paint changes; the anchor
+ * (the feet) stays put, so the mascot stands and moves exactly where it always does.
+ */
+export function flatBox(look: Look): Art['box'] {
+  const top = Math.min(look.hat ? -1.5 : -330 / 300, look.effect ? -1.42 : 0);
+  return look.effect ? [-.75, top, .75, Math.max(.34, look.effect.below ?? 0)] : [-192 / 300, top, 192 / 300, 54 / 300];
 }
 
 type Layer = [fill: string, d: string, stroke?: string, strokeWidth?: number];
@@ -54,7 +68,7 @@ async function loadVector(style: 'smooth' | 'pixel'): Promise<MascotSet> {
   const tags = { ...m.jump!.tags, ...m.slide!.tags };
   const counts = Object.fromEntries(ANIMS.map(a => [a, vec.animations[a].length])) as Record<PixelAnim, number>;
   return {
-    style, crisp: style === 'pixel', cfg: configFrom(counts, tags, 166),
+    style, crisp: style === 'pixel', cfg: configFrom(counts, tags, 166), look: DEFAULT_LOOK,
     count: a => vec.animations[a].length,
     // pixel art: a whole number of texture pixels per art pixel (no seams, no uneven pixels); smooth: simply 1:1
     scaleFor: base => { if (style === 'smooth') return 1; const k = Math.max(1, Math.round(base / vec.unit)); return vec.unit * k / base; },
@@ -85,23 +99,23 @@ async function loadFlat(slide: SlideId): Promise<MascotSet> {
   const by = Object.fromEntries(sets.map(a => [a.name, a])) as Record<PixelAnim, (typeof sets)[number]>;
   const counts = Object.fromEntries(ANIMS.map(a => [a, by[a].frames])) as Record<PixelAnim, number>;
   const tags = { ...by.jump.tags, ...by.slide.tags } as Record<string, Range>;
-  return {
-    style: 'flat', crisp: false, cfg: configFrom(counts, tags, 100),
+  const set: MascotSet = {
+    style: 'flat', crisp: false, cfg: configFrom(counts, tags, 100), look: DEFAULT_LOOK,
     count: a => by[a].frames, scaleFor: () => 1,
     art(anim, i, scale) {
-      const pose = by[anim].pose(i);
+      const pose = by[anim].pose(i), look = set.look, t = i / by[anim].frames;
       return {
-        // the cell the frames were designed in: 384 px with the feet at (192, 330), 300 px per game unit
-        box: [-192 / 300, -330 / 300, 192 / 300, 54 / 300],
+        box: flatBox(look),
         draw(c: Ctx, u: number) {
           c.save(); c.scale(u, u);
-          if ('side' in pose) drawSideSlide(c, pose.side); else drawPuppet(c, pose);
+          if ('side' in pose) drawSideSlide(c, pose.side, look, t); else drawPuppet(c, pose, look, t);
           c.restore();
         },
         scale, mips: false,
       };
     },
   };
+  return set;
 }
 
 /** Loads a set on demand (each is its own chunk), so devices that don't use it never download it. `slide` picks the flat set's down-key animation (default: the Tuck ball crouch). */

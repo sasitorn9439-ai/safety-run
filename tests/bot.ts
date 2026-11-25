@@ -1,7 +1,7 @@
 /** A simple dodging player for tests: it reads the hazards ahead and reacts, and answers the quiz once after a crash. */
-import { HZ, createRun, speedAt, type Action, type GameObject, type InputEntry, type Obstacle, type Run, type SimEvent } from '../shared/sim.js';
+import { HZ, createRun, isItem, speedAt, type Action, type GameObject, type InputEntry, type Obstacle, type Run, type SimEvent } from '../shared/sim.js';
 
-export const isHazard = (o: GameObject): o is Obstacle => o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power' && o.k !== 'bonus';
+export const isHazard = (o: GameObject): o is Obstacle => !isItem(o);
 
 /** one tick of the bot's decision; returns the action it pressed, if the run accepted one */
 export function think(run: Run): Action | null {

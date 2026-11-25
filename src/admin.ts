@@ -1,14 +1,15 @@
 import { avName } from '../shared/avatar.js';
 import { SCORE_BUCKET, filterRuns, playerHeat, runStatus, summarize, type Range, type RunFilter, type RunStatus } from './admin-stats.js';
-import type { AdminRun } from './lib/api.js';
+import type { AdminPlayer, AdminRun } from './lib/api.js';
 import { $, esc } from './lib/dom.js';
 
 const CACHE = 'srAdmin';
 /** what a correct key leaves in this browser: the key and the last runs it loaded, so a reopened page shows data straight away */
-interface Cache { key: string; runs: AdminRun[]; at: number }
+interface Cache { key: string; runs: AdminRun[]; players?: AdminPlayer[]; at: number }
 
 let key = '';
 let runs: AdminRun[] = [];
+let players: AdminPlayer[] = [];
 let loadedAt = 0;
 /** filtered runs in the selected column order */
 let shown: AdminRun[] = [];
@@ -58,7 +59,7 @@ function readCache(): Cache | null {
   } catch { return null; }
 }
 function writeCache() {
-  try { localStorage.setItem(CACHE, JSON.stringify({ key, runs, at: loadedAt } satisfies Cache)); } catch { /* storage full or blocked */ }
+  try { localStorage.setItem(CACHE, JSON.stringify({ key, runs, players, at: loadedAt } satisfies Cache)); } catch { /* storage full or blocked */ }
 }
 function clearCache() {
   try { localStorage.removeItem(CACHE); sessionStorage.removeItem('srKey'); } catch { /* ignore */ }
@@ -69,6 +70,7 @@ async function call<T>(data: object): Promise<T> {
   const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, ...data }) });
   const j = await r.json().catch(() => ({}));
   if (r.status === 401) throw new KeyError('Admin key ไม่ถูกต้อง');
+  if (j.error === 'ids' && j.bad?.length) throw new Error('รหัสพนักงานไม่ถูกต้อง ยังไม่ได้ให้ใคร: ' + j.bad.join(', '));
   if (!r.ok) throw new Error('ผิดพลาด: ' + (j.error || r.status));
   return j as T;
 }
@@ -200,12 +202,14 @@ function showData(note = '') {
   $('app').hidden = false;
   fillRunNos();
   render();
+  renderPlayers();
   $('msg').textContent = note || `ข้อมูลเมื่อ ${date(loadedAt)}`;
 }
 
 function lock(message = '') {
   key = '';
   runs = [];
+  players = [];
   clearCache();
   $('app').hidden = true;
   $('gate').hidden = false;
@@ -218,6 +222,7 @@ function lock(message = '') {
 async function load(): Promise<boolean> {
   try {
     runs = (await call<{ runs: AdminRun[] }>({ action: 'runs' })).runs;
+    players = (await call<{ players: AdminPlayer[] }>({ action: 'players' })).players;
     loadedAt = Date.now();
     writeCache();
     showData();
@@ -256,6 +261,123 @@ $('export').onclick = () => {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   $('msg').textContent = `Export ${fmt(lines.length)} รอบแล้ว`;
 };
+
+/* ---------- tabs: runs (overview, charts, every run) and players (one row each, chests, handing out chests) ---------- */
+const TABS = ['runs', 'players'] as const;
+type Tab = typeof TABS[number];
+function showTab(tab: Tab, focus = false) {
+  for (const t of TABS) {
+    const btn = $(`tab-btn-${t}`), on = t === tab;
+    btn.setAttribute('aria-selected', String(on)); btn.tabIndex = on ? 0 : -1;
+    $(`tab-${t}`).hidden = !on;
+    if (on && focus) btn.focus();
+  }
+  history.replaceState(null, '', tab === 'runs' ? location.pathname + location.search : '#players');
+}
+document.querySelectorAll<HTMLButtonElement>('[role=tab]').forEach(btn => {
+  btn.onclick = () => showTab(btn.dataset.tab as Tab);
+  btn.onkeydown = e => {                                              // arrow keys move between tabs
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const i = TABS.indexOf(btn.dataset.tab as Tab), next = TABS[(i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length]!;
+    showTab(next, true);
+  };
+});
+if (location.hash === '#players') showTab('players');
+
+/* ---------- players ---------- */
+const chests = (p: AdminPlayer) => ({ total: p.loot + p.granted, left: Math.max(0, p.loot + p.granted - p.opened) });
+const playerValues = {
+  id: (p: AdminPlayer) => p.id,
+  avatar: (p: AdminPlayer) => avName(p.avatar),
+  maxDist: (p: AdminPlayer) => p.maxDist,
+  best: (p: AdminPlayer) => p.best,
+  plays: (p: AdminPlayer) => p.plays,
+  chests: (p: AdminPlayer) => chests(p).total,
+  lastPlayed: (p: AdminPlayer) => p.lastPlayed == null ? null : Date.parse(p.lastPlayed),
+} satisfies Record<string, (p: AdminPlayer) => string | number | null>;
+let pSort: keyof typeof playerValues = 'best', pDir: 'ascending' | 'descending' = 'descending';
+const pSortButtons = document.querySelectorAll<HTMLButtonElement>('#players button[data-psort]');
+let shownPlayers: AdminPlayer[] = [];
+
+function playerRow(p: AdminPlayer) {
+  const c = chests(p);
+  return `<tr${p.hidden ? ' class="hid"' : ''}><td>${esc(p.id)}${p.hidden ? ' · ซ่อน' : ''}</td><td>${esc(avName(p.avatar))}</td>`
+    + `<td class="n">${p.maxDist == null ? '—' : fmt(p.maxDist) + ' ม.'}</td><td class="n">${fmt(p.best)}</td><td class="n">${fmt(p.plays)}</td>`
+    + `<td class="n" title="เก็บจากการวิ่ง ${p.loot} · แอดมินให้ ${p.granted} · เปิดแล้ว ${p.opened}">${fmt(c.left)} / ${fmt(c.total)} <span class="sub">(วิ่ง ${fmt(p.loot)} + ให้ ${fmt(p.granted)})</span></td>`
+    + `<td>${date(p.lastPlayed)}</td><td><button type="button" class="alt" data-grant="${esc(p.id)}">ให้หีบ</button></td></tr>`;
+}
+
+function renderPlayers() {
+  const q = $<HTMLInputElement>('p-search').value.trim().toLowerCase();
+  shownPlayers = players.filter(p => !q || p.id.toLowerCase().includes(q) || avName(p.avatar).toLowerCase().includes(q));
+  const value = playerValues[pSort], dir = pDir === 'ascending' ? 1 : -1;
+  shownPlayers.sort((a, b) => {
+    const l = value(a), r = value(b);
+    if (l == null) return r == null ? 0 : 1;
+    if (r == null) return -1;
+    return dir * (typeof l === 'number' && typeof r === 'number' ? l - r : textOrder.compare(String(l), String(r)));
+  });
+  for (const b of pSortButtons) {
+    const th = b.closest('th');
+    if (b.dataset.psort === pSort) th?.setAttribute('aria-sort', pDir); else th?.removeAttribute('aria-sort');
+  }
+  $('pb').innerHTML = shownPlayers.length ? shownPlayers.map(playerRow).join('') : '<tr><td colspan="8" class="empty">ไม่มีผู้เล่น</td></tr>';
+  $('players-note').textContent = `${fmt(shownPlayers.length)} คน`;
+  $<HTMLButtonElement>('p-export').disabled = !shownPlayers.length;
+}
+for (const b of pSortButtons) b.onclick = () => {
+  const col = b.dataset.psort as keyof typeof playerValues;
+  pDir = col === pSort && pDir === 'descending' ? 'ascending' : 'descending';
+  pSort = col; renderPlayers();
+};
+$('p-search').oninput = () => renderPlayers();
+$('pb').onclick = e => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-grant]');
+  if (!b) return;
+  const box = $<HTMLTextAreaElement>('g-ids'), have = box.value.split(/[,\s]+/).filter(Boolean);
+  if (!have.includes(b.dataset.grant!)) box.value = [...have, b.dataset.grant!].join(', ');
+  $('grant').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  $('g-n').focus({ preventScroll: true });
+};
+$('p-export').onclick = () => {
+  const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const lines = shownPlayers.map(p => { const c = chests(p); return [p.id, avName(p.avatar), p.maxDist, p.best, p.plays, p.loot, p.granted, p.opened, c.left, p.lastPlayed, p.hidden ? 'hidden' : '']; });
+  const csv = '\ufeffemployee_id,avatar_name,max_distance_m,best_score,plays,chests_from_runs,chests_granted,chests_opened,chests_left,last_played,hidden\n' + lines.map(l => l.map(q).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const d = new Date(), p2 = (n: number) => String(n).padStart(2, '0');
+  a.download = `safety-run-players-${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  $('msg').textContent = `Export ${fmt(lines.length)} คนแล้ว`;
+};
+
+/* ---------- loot boxes: hand them to listed players or to everyone who has played ---------- */
+async function grant(body: { ids: string } | { all: true }, who: string, buttons: HTMLButtonElement[]) {
+  const n = Number($<HTMLInputElement>('g-n').value), msg = $('g-msg');
+  msg.classList.remove('err');
+  if (!Number.isInteger(n) || n < 1 || n > 100) { msg.classList.add('err'); msg.textContent = 'จำนวนหีบต้องเป็น 1–100'; return; }
+  if (!confirm(`ให้หีบสมบัติคนละ ${n} หีบกับ${who}?\nให้ไปแล้วเอาคืนไม่ได้`)) return;
+  buttons.forEach(b => (b.disabled = true));
+  try {
+    const r = await call<{ granted: number; unknown: string[] }>({ action: 'grant', n, ...body });
+    msg.textContent = `ให้หีบคนละ ${n} หีบแล้ว ${fmt(r.granted)} คน` + (r.unknown.length ? ` · ยังไม่เคยเล่น: ${r.unknown.join(', ')} (จะเห็นหีบเมื่อเข้าเล่น)` : '');
+    if ('ids' in body) $<HTMLTextAreaElement>('g-ids').value = '';
+    players = (await call<{ players: AdminPlayer[] }>({ action: 'players' })).players;
+    writeCache(); renderPlayers();
+  } catch (err) {
+    if (err instanceof KeyError) lock(err.message);
+    else { msg.classList.add('err'); msg.textContent = (err as Error).message; }
+  } finally { buttons.forEach(b => (b.disabled = false)); }
+}
+const grantButtons = [$<HTMLButtonElement>('g-some'), $<HTMLButtonElement>('g-all')];
+$('grant').onsubmit = e => {
+  e.preventDefault();
+  const ids = [...new Set($<HTMLTextAreaElement>('g-ids').value.split(/[,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean))];
+  if (!ids.length) { $('g-msg').classList.add('err'); $('g-msg').textContent = 'ใส่รหัสพนักงานอย่างน้อย 1 คน'; return; }
+  void grant({ ids: ids.join(',') }, ids.length === 1 ? ` ${ids[0]}` : `${ids.length} คนนี้`, grantButtons);
+};
+$('g-all').onclick = () => void grant({ all: true }, `ทุกคนที่เคยเล่น (${fmt(players.length)} คน)`, grantButtons);
 
 $('rb').onclick = async e => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-id]');
@@ -327,6 +449,7 @@ const cached = readCache();
 if (cached) {
   key = cached.key;
   runs = cached.runs;
+  players = cached.players ?? [];
   loadedAt = cached.at;
   showData(`ข้อมูลเมื่อ ${date(loadedAt)} · กำลังอัปเดต…`);
   void load();
