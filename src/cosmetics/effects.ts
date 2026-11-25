@@ -280,6 +280,24 @@ const rain = (shape: Shape, colors: readonly string[], { size = 1, sway = 0, up 
   });
 };
 
+/** yellow at the heart of the fire, red at its edge: u 0 → 1 */
+const fireAt = (u: number) => u < .33 ? '#ffd600' : u < .66 ? '#ff9100' : '#ff3d00';
+/** a flicker for flame k at time t, 0.75…1 */
+const flicker = (t: number, k: number) => .875 + .125 * Math.sin((t * 4 + k * .37) * TAU);
+
+/** fire tracks: two lines of flame stream back from the shoes along the ground, as if the floor caught fire */
+const fireTracks = (n = 8, len = .62): Part => ({
+  front(c, t) {
+    for (const side of [-1, 1]) for (let k = 0; k < n; k++) {
+      const u = ((k + t) / n) % 1, y = TRAIL_START + u * len, x = side * (.1 + u * .05) + Math.sin((u * 3 + k) * TAU) * .01;
+      c.save(); c.globalAlpha *= Math.min(1, u / .12) * (1 - u * .7);
+      flame(c, x, y, .13 * (1 - u * .45) * flicker(t, k + side), fireAt(u), 0);
+      c.restore();
+    }
+  },
+  below: TRAIL_START + len + .1,
+});
+
 const FIRE = ['#ff6d00', '#ffab00', '#ff3d00'];
 const BLOOM = ['#ffffff', '#f8bbd0', '#b3e5fc', '#fff59d'];
 const PARTY = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb'];
@@ -296,8 +314,8 @@ export const EFFECTS: readonly Effect[] = [
   { ...fx('petals', 'ดอกไม้บานตามรอยเท้า · Blooming steps', 'common', bloom(BLOOM)), avatar: rain(flower, BLOOM, { size: 1.5, sway: .05 }) },   // id kept from 'Petals'
   fx('stars', 'ดาวหมุน · Star ring', 'common', orbit(star, ['#ffd400'], 5, .05)),
   fx('clouds', 'ปุยเมฆ · Cloud steps', 'common', trail(puff, ['#ffffff', '#eceff1'], 4, .07, .1)),
-  // flames on the shoes and a trail of them left on the ground behind (toward the camera), burning out as they fall back
-  { ...fx('flamefeet', 'เท้าไฟ · Fire feet', 'rare', feetFire(FIRE), trail(flame, FIRE, 9, .1, .2, .55, 0)), avatar: rain(flame, FIRE, { size: 1.3, sway: .04, up: true, fade: true }) },
+  // flames on the shoes and two tracks of flame left burning on the ground behind (toward the camera)
+  { ...fx('flamefeet', 'เท้าไฟ · Fire feet', 'rare', feetFire(FIRE), fireTracks(5)), avatar: rain(flame, FIRE, { size: 1.3, sway: .04, up: true, fade: true }) },
   fx('lightning', 'สายฟ้า · Lightning', 'rare', orbit(bolt, ['#ffea00', '#ffffff'], 4, .07, .46, .16)),
   fx('frost', 'เกล็ดน้ำแข็ง · Frost', 'rare', aura('#b3e5fc', .6, .45), orbit(snowflake, ['#e1f5fe', '#81d4fa'], 5, .05)),
   fx('rainbow', 'สายรุ้ง · Rainbow trail', 'rare', rainbow),
