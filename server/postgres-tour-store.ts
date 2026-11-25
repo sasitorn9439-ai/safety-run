@@ -10,7 +10,8 @@ export function createPostgresTourStore(url: string): TourStore {
     init() {
       // a catalog read takes no lock: the DDL only runs while the tables are missing (see postgres-store.ts)
       ready ||= (async () => {
-        const [have] = await sql`select to_regclass('safety_run_tour_players') is not null as ok`;
+        // a catalog read: the tables exist and have every column added since they were first made
+        const [have] = await sql`select exists (select 1 from pg_attribute where attrelid = to_regclass('safety_run_tour_players') and attname = 'look' and not attisdropped) as ok`;
         if (have?.ok) return;
         await sql.begin(async tx => {
           await tx`set local lock_timeout = '5s'`;
@@ -35,6 +36,8 @@ export function createPostgresTourStore(url: string): TourStore {
             finished_at timestamptz,
             primary key (code, slot),
             unique (code, emp_id))`;
+          // what the player wore when they joined
+          await tx`alter table safety_run_tour_players add column if not exists look jsonb not null default '{}'::jsonb`;
           await tx`alter table safety_run_tour_rooms enable row level security`;
           await tx`alter table safety_run_tour_players enable row level security`;
         });
@@ -51,21 +54,21 @@ export function createPostgresTourStore(url: string): TourStore {
     async get(code) {
       const [r] = await sql`select code, host_hash, seed, stage, duration, status, start_at from safety_run_tour_rooms where code = ${code}`;
       if (!r) return null;
-      const ps = await sql`select slot, emp_id, avatar, token_hash, score, correct from safety_run_tour_players where code = ${code} order by slot`;
+      const ps = await sql`select slot, emp_id, avatar, look, token_hash, score, correct from safety_run_tour_players where code = ${code} order by slot`;
       return {
         code: r.code, hostHash: r.host_hash, seed: Number(r.seed), stage: r.stage as StageId, duration: r.duration,
         status: r.status, startAt: r.start_at ? new Date(r.start_at).getTime() : null,
-        players: ps.map((p): TourPlayer => ({ slot: p.slot as Slot, empId: p.emp_id, avatar: p.avatar, tokenHash: p.token_hash, score: p.score, correct: p.correct })),
+        players: ps.map((p): TourPlayer => ({ slot: p.slot as Slot, empId: p.emp_id, avatar: p.avatar, look: p.look ?? {}, tokenHash: p.token_hash, score: p.score, correct: p.correct })),
       };
     },
 
     async join(code, p) {
-      const again = await sql`update safety_run_tour_players set token_hash = ${p.tokenHash} where code = ${code} and emp_id = ${p.empId} returning slot`;
+      const again = await sql`update safety_run_tour_players set token_hash = ${p.tokenHash}, look = ${sql.json(p.look)} where code = ${code} and emp_id = ${p.empId} returning slot`;
       if (again.length) return again[0]!.slot as Slot;
       // two phones joining at once may both pick the same free slot: the primary key turns one away, and it tries the next
       for (let attempt = 0; attempt < 3; attempt++) {
-        const rows = await sql`insert into safety_run_tour_players (code, slot, emp_id, avatar, token_hash)
-          select ${code}, s, ${p.empId}, ${p.avatar}, ${p.tokenHash} from generate_series(0, 2) s
+        const rows = await sql`insert into safety_run_tour_players (code, slot, emp_id, avatar, look, token_hash)
+          select ${code}, s, ${p.empId}, ${p.avatar}, ${sql.json(p.look)}, ${p.tokenHash} from generate_series(0, 2) s
           where s not in (select slot from safety_run_tour_players where code = ${code}) order by s limit 1
           on conflict do nothing returning slot`;
         if (rows.length) return rows[0]!.slot as Slot;

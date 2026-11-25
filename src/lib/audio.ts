@@ -3,6 +3,8 @@ import type { Beep } from '../../shared/sim.js';
 /** Tiny synth for the game's blips. The AudioContext can only start after a user gesture, hence unlock(). */
 export class Sfx {
   private ac: AudioContext | undefined;
+  /** the context once unlock() has made one, for anything else that plays sound (the lobby music) */
+  get ctx() { return this.ac; }
 
   unlock() {
     try {

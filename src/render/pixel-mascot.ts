@@ -21,7 +21,8 @@ export interface MascotSet {
   /** pixel art must not be smoothed when it is drawn */ crisp: boolean;
   count(anim: PixelAnim): number;
   /** how to rasterise for a lane width of `base` device pixels (the Art scale) */ scaleFor(base: number): number;
-  art(anim: PixelAnim, i: number, scale: number): Art;
+  /** `look` dresses the flat set (default: `look` below); the other sets ignore it */
+  art(anim: PixelAnim, i: number, scale: number, look?: Look): Art;
   /** what the flat mascot wears (the other sets ignore it); change it through the renderer's setLook so the frames are redrawn */
   look: Look;
 }
@@ -102,8 +103,8 @@ async function loadFlat(slide: SlideId): Promise<MascotSet> {
   const set: MascotSet = {
     style: 'flat', crisp: false, cfg: configFrom(counts, tags, 100), look: DEFAULT_LOOK,
     count: a => by[a].frames, scaleFor: () => 1,
-    art(anim, i, scale) {
-      const pose = by[anim].pose(i), look = set.look, t = i / by[anim].frames;
+    art(anim, i, scale, worn) {
+      const pose = by[anim].pose(i), look = worn ?? set.look, t = i / by[anim].frames;
       return {
         box: flatBox(look),
         draw(c: Ctx, u: number) {

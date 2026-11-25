@@ -11,6 +11,7 @@ import { drawPropModel, BackdropFade, PROPS, sceneryOpacity, propItems, sideWall
 import { ZONES } from '../../shared/zones.js';
 import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
 import type { MascotSet } from './pixel-mascot.js';
+import { DEFAULT_PALETTE } from '../cosmetics/skins.js';
 import type { Look } from '../cosmetics/types.js';
 import { PAD, ON_KINDS, POWERS, bonusArt, coinArt, lootArt, crateArt, dotArt, liftArt, powerArt, haloArt, hazardArt, lightArt, pillarArt, whitePillarArt, ppeArt, rasterize, runArt, shadowArt, shieldArt, slideArt, type Art } from './sprites.js';
 import type { Frame, GameRenderer } from './types.js';
@@ -31,6 +32,10 @@ function canvasTex(canvas: HTMLCanvasElement): Texture {
 
 /** ghosts are washed toward a pale blue, so they never read as the player's own mascot */
 const GHOST_TINT = 0x9fd8ff;
+/** a mascot in its plain clothes; a ghost wearing cosmetics keeps their colours instead of the tint */
+const plain = (l: Look | null) => !l || (!l.hat && !l.effect && !l.figure && l.pal === DEFAULT_PALETTE);
+/** looks whose frames are kept; past this the ones not being worn are dropped (a host sees new players every round) */
+const KEEP_LOOKS = 6;
 
 /** Re-uses Sprite objects frame to frame instead of creating and destroying them. */
 class Pool {
@@ -80,6 +85,9 @@ export class PixiRenderer implements GameRenderer {
   private dpr: number;
   private maxDpr: number;
   private builtKey = '';
+  /** each look's mascot frames (the player's own and the ghosts'), and the lane size they were drawn for */
+  private looks = new Map<Look, Record<PixelAnim, Tex[]>>();
+  private texBase = 0;
   private tx!: Textures;
   private lastNow = 0;
   private slowFrames = 0;
@@ -191,7 +199,20 @@ export class PixiRenderer implements GameRenderer {
   setLook(look: Look) {
     if (this.pixel?.style !== 'flat' || this.pixel.look === look) return;
     this.pixel.look = look;
-    this.build(true);
+    if (this.tx) this.tx.mascot = this.mascotFor(look);
+  }
+
+  /** the mascot's frames in `look`, drawn the first time they are asked for */
+  private mascotFor(look: Look | null): Record<PixelAnim, Tex[]> | null {
+    const m = this.pixel;
+    if (!m) return null;
+    const key = m.style === 'flat' && look ? look : m.look;
+    let t = this.looks.get(key);
+    if (!t) {
+      t = this.pixelTextures(this.texBase, key);
+      this.looks.set(key, t);
+    }
+    return t;
   }
 
   private build(force: boolean) {
@@ -212,9 +233,11 @@ export class PixiRenderer implements GameRenderer {
       shadow: mk(shadowArt), halo: mk(haloArt), coin: mk(coinArt), bonus: mk(bonusArt), loot: mk(lootArt), pillar: mk(pillarArt), whitePillar: mk(whitePillarArt), light: mk(lightArt), shield: mk(shieldArt), dot: mk(dotArt),
       run: Array.from({ length: RUN_FRAMES }, (_, i) => mk(runArt(i))),
       slide: Array.from({ length: SLIDE_FRAMES }, (_, i) => mk(slideArt(i))),
-      mascot: this.pixel ? this.pixelTextures(base) : null,
+      mascot: null,
       flame: canvasTex(makeDrillTexture('flame')), drillSmoke: canvasTex(makeDrillTexture('smoke')), smoke: canvasTex(makeTankSmoke()), cloud: canvasTex(makeCloud()), backdrops: ZONES.map((_, z) => canvasTex(makeBackdrop(cam, this.maxDpr, z))), fog: canvasTex(makeFog()), props: PROPS.map(p => p.art ? mk(p.art) : null),
     };
+    this.texBase = base;
+    this.tx.mascot = this.mascotFor(this.pixel?.look ?? null);
     for (const cloud of this.clouds) cloud.texture = this.tx.cloud;
     this.backdrop.texture = this.tx.backdrops[this.bd.cur]!; this.backdropOld.texture = this.tx.backdrops[this.bd.prev]!;
     for (const b of [this.backdrop, this.backdropOld]) { b.width = cam.W + BACKDROP_MARGIN * 2; b.height = cam.hy + 2; }
@@ -223,11 +246,11 @@ export class PixiRenderer implements GameRenderer {
   }
 
   /** The stubby mascot: vector frames rasterised at the size they are shown (pixel style: a whole number of texels per art pixel, sampled NEAREST). */
-  private pixelTextures(base: number) {
+  private pixelTextures(base: number, look: Look) {
     const m = this.pixel!, scale = m.scaleFor(base);
     const out = {} as Record<PixelAnim, Tex[]>;
     for (const anim of ['idle', 'run', 'jump', 'slide'] as const) {
-      out[anim] = Array.from({ length: m.count(anim) }, (_, i) => { const art = m.art(anim, i, scale); return makeTex(art, base * scale, m.crisp); });
+      out[anim] = Array.from({ length: m.count(anim) }, (_, i) => { const art = m.art(anim, i, scale, look); return makeTex(art, base * scale, m.crisp); });
     }
     return out;
   }
@@ -240,8 +263,9 @@ export class PixiRenderer implements GameRenderer {
     const all: Texture[] = [
       ...Object.values(t.hazards).map(x => x.tex), ...Object.values(t.ppe).map(x => x.tex), ...Object.values(t.power).map(x => x.tex), t.lift.tex, t.crate.tex, ...Object.values(t.on).map(x => x!.tex),
       t.shadow.tex, t.halo.tex, t.coin.tex, t.bonus.tex, t.loot.tex, t.pillar.tex, t.whitePillar.tex, t.light.tex, t.shield.tex, t.dot.tex, ...t.run.map(x => x.tex), ...t.slide.map(x => x.tex), ...t.backdrops, t.flame, t.drillSmoke, t.smoke, t.cloud, t.fog, ...t.props.flatMap(x => x ? [x.tex] : []),
-      ...(t.mascot ? Object.values(t.mascot).flat().map(x => x.tex) : []),
+      ...[...this.looks.values()].flatMap(set => Object.values(set).flat().map(x => x.tex)),
     ];
+    this.looks.clear();
     for (const x of all) x.destroy(true);
   }
 
@@ -254,6 +278,12 @@ export class PixiRenderer implements GameRenderer {
     const dt = Math.min(.05, rawDt);
     this.lastNow = now;
     this.adapt(rawDt, f.playing);
+
+    // before anything is placed this frame, so no sprite is left holding a destroyed texture
+    if (this.looks.size > KEEP_LOOKS) {
+      const own = this.pixel!.look;
+      for (const [l, set] of this.looks) if (l !== own) { for (const x of Object.values(set).flat()) x.tex.destroy(true); this.looks.delete(l); }
+    }
 
     const I = interp(f);
     cam.camX = I.px * .28;
@@ -361,11 +391,12 @@ export class PixiRenderer implements GameRenderer {
         const gf = it.gf!, gI = interp(gf), up = gI.py * it.u * .9;
         place(sh.get(), tx.shadow, it.x, it.y, it.u * .5 / (1 + gI.py * .3), it.fade / (1 + gI.py));
         let t: Tex;
-        if (tx.mascot) { const pick = pixelFrame(gf, gI, GHOST_FX, now, this.pixel!.cfg); t = tx.mascot[pick.anim][pick.frame]!; }
+        const worn = tx.mascot && this.mascotFor(it.look);
+        if (worn) { const pick = pixelFrame(gf, gI, GHOST_FX, now, this.pixel!.cfg); t = worn[pick.anim][pick.frame]!; }
         else { const P = pose(gf, cam, gI, GHOST_FX, now, this.pt); t = P.sliding ? tx.slide[P.frame]! : tx.run[P.frame]!; }
         const s = ac.get();
         place(s, t, it.x, it.y - up, it.u, it.fade, -it.z);
-        s.tint = GHOST_TINT;
+        if (plain(it.look)) s.tint = GHOST_TINT;
         continue;
       }
       if (it.kind === 'power') {

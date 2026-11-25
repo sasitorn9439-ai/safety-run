@@ -78,6 +78,21 @@ export function equip(w: Wardrobe, slot: Slot, id: string | null): Wardrobe {
 }
 
 export { DEFAULT_LOOK };
+
+const worn = new Map<string, Look>();
+/**
+ * Someone else's look from the item ids they wear (a tournament room sends them), checked against the catalog. The same ids
+ * always give the same Look object, so the renderer draws each look's frames once.
+ */
+export function lookOfWorn(equipped: unknown): Look {
+  const eq = (equipped && typeof equipped === 'object' ? equipped : {}) as Record<string, unknown>;
+  const ids: Partial<Record<Slot, string>> = {};
+  for (const slot of SLOTS) { const id = eq[slot]; if (typeof id === 'string' && BY_ID.get(id)?.slot === slot) ids[slot] = id; }
+  const key = SLOTS.map(s => ids[s] ?? '').join('|');
+  let look = worn.get(key);
+  if (!look) { look = lookOf({ ...EMPTY_WARDROBE, owned: Object.values(ids), equipped: ids }); worn.set(key, look); }
+  return look;
+}
 export function lookOf(w: Wardrobe): Look {
   const skin = w.equipped.skin ? cosmetic(w.equipped.skin) as Skin : null;
   return {

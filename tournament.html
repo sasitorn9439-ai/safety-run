@@ -66,7 +66,7 @@
 <div class="youav"><div id="lobbyAv"></div><b id="lobbyName"></b></div>
 <p class="sub" id="lobbyInfo"></p>
 <ol class="t-seats" id="lobbySeats"></ol>
-<p class="small">รอ Host กดเริ่ม · ปัดซ้าย/ขวาเลือกเลน ปัดขึ้นกระโดด ปัดลงสไลด์</p>
+<p class="small"><span id="lobbyWait">รอ Host กดเริ่ม</span> · ปัดซ้าย/ขวาเลือกเลน ปัดขึ้นกระโดด ปัดลงสไลด์</p>
 </div></div>
 
 <div class="ov" id="tResult"><div class="card scroll">
@@ -76,6 +76,7 @@
 <ol class="board" id="resBoard"></ol>
 <p class="msg" id="resMsg"></p>
 <button class="btn" id="resRetry" style="display:none">ส่งผลอีกครั้ง</button>
+<button class="btn" id="resLobby" type="button" style="display:none">กลับไปห้องรอ · รอ Host</button>
 </div></div>
 
 <div class="ov how" id="howOv" role="dialog" aria-modal="true"><div class="card scroll">
@@ -97,6 +98,7 @@
 </div></div>
 
 <div class="h-lobby" id="hLobby">
+<button class="btn alt t-mute" id="hMute" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="on" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="off" d="M16.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="hMuteText">เพลง: เปิด</span></button>
 <section class="h-join">
 <p class="event">สแกนเพื่อเข้าห้อง</p>
 <div class="h-qr" id="hQr"></div>

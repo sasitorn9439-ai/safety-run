@@ -12,8 +12,11 @@ export interface SceneState {
 }
 /** The state one simulation tick earlier; renderers blend prev → s by `alpha` so motion stays smooth at any refresh rate. */
 export interface PrevState { dist: number; px: number; py: number; slide: number }
-/** another runner on the same track, drawn see-through: metres run, lateral position, height and speed in a jump, slide seconds left */
-export interface Ghost { dist: number; px: number; py: number; vy: number; slide: number }
+/**
+ * another runner on the same track, drawn see-through: metres run, lateral position, height and speed in a jump, slide seconds
+ * left, and what that runner wears (none: dressed like the player's own mascot)
+ */
+export interface Ghost { dist: number; px: number; py: number; vy: number; slide: number; look?: Look }
 export interface Frame {
   s: SceneState; prev: PrevState; alpha: number; playing: boolean; flash: number;
   /** tournament: the other runners */
@@ -36,6 +39,6 @@ export interface GameRenderer {
   render(f: Frame, now: number): void;
   /** Current render scale (device pixels per CSS pixel); drops on slow devices. */
   readonly renderScale: number;
-  /** Dress the mascot (flat set only; the others keep their look) and redraw its frames. */
+  /** Dress the mascot (flat set only; the others keep their look). Each look's frames are drawn once and kept, so switching back is free. */
   setLook(look: Look): void;
 }
