@@ -12,11 +12,11 @@ import { play, think } from './bot.js';
 const rng = (seed: number) => () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
 
 describe('catalog', () => {
-  it('has 30 of each kind (plus custom skins), every id unique, every rarity in every kind', () => {
+  it('has 30 hats and colour skins and 31 effects (plus custom skins), every id unique, every rarity in every kind', () => {
     expect(new Set(CATALOG.map(c => c.id)).size).toBe(CATALOG.length);
     for (const slot of SLOTS) {
       const of = CATALOG.filter(c => c.slot === slot);
-      expect(of.filter(c => !(c.slot === 'skin' && c.figure))).toHaveLength(30);
+      expect(of.filter(c => !(c.slot === 'skin' && c.figure))).toHaveLength(slot === 'effect' ? 31 : 30);
       for (const r of RARITIES) expect(of.some(c => c.rarity === r)).toBe(true);
     }
   });

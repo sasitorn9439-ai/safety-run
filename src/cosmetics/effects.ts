@@ -1,5 +1,5 @@
 /**
- * Thirty effects, composed from a few motions (rise, fall, orbit, trail behind) and shapes, plus glows and wings.
+ * Thirty-one effects, composed from a few motions (rise, fall, orbit, trail behind) and shapes, plus glows and wings.
  * A motion places n particles evenly along one path and slides them one gap per animation loop, so the loop seams never show
  * and a quick run loop still looks like a slow drift. Everything stays within ±0.7 sideways and between y −1.35 and 0.3, except
  * trails (which say how far `below` they reach) and the sky beam (which says how far `above`).
@@ -409,6 +409,38 @@ const phoenixBackdrop = (c: Ctx, t: number) => {
   c.restore();
 };
 
+/** a cartoon fly: a dark body with a glint, two pale wings that buzz (`rot` drives the beat) and tiny red eyes */
+const fly: Shape = (c, x, y, r, _col, rot) => {
+  const beat = .55 + .45 * Math.abs(Math.sin(rot * 6));
+  c.save(); c.translate(x, y);
+  c.fillStyle = 'rgba(225,240,255,.8)'; c.strokeStyle = 'rgba(90,110,130,.6)'; c.lineWidth = r * .1;
+  for (const s of [-1, 1]) { c.beginPath(); c.ellipse(s * r * .55, -r * .35, r * .55, r * .3 * beat, s * -.5, 0, TAU); c.fill(); c.stroke(); }
+  c.fillStyle = '#26292e'; c.beginPath(); c.ellipse(0, 0, r * .42, r * .55, 0, 0, TAU); c.fill();
+  c.fillStyle = '#c62828'; for (const s of [-1, 1]) { c.beginPath(); c.arc(s * r * .2, -r * .45, r * .14, 0, TAU); c.fill(); }
+  c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.arc(-r * .12, -r * .1, r * .1, 0, TAU); c.fill();
+  c.restore();
+};
+/** a fly's wandering path: a loop round (cx, cy) with wobbles, `k` picks which fly so they never move in step */
+const buzz = (t: number, k: number, rx: number, ry: number) => {
+  const a = t * TAU * (k % 2 ? 1 : -1) + k * 1.7;
+  return [Math.cos(a) * rx + Math.sin(a * 3 + k) * rx * .25, Math.sin(a * 2) * ry + Math.cos(a * 5 + k) * ry * .3] as const;
+};
+
+/** stink: wavy green stink lines rise off the body and three flies circle in the smell */
+const stink = (): Part => ({
+  back(c, t, cy) {
+    c.save(); c.strokeStyle = 'rgba(124,179,66,.75)'; c.lineWidth = .025; c.lineCap = 'round';
+    for (let k = 0; k < 3; k++) {
+      const u = ((k + t) / 3) % 1, x0 = (k - 1) * .2;
+      c.globalAlpha = fade(u) * .9; c.beginPath();
+      for (let i = 0; i <= 10; i++) { const q = i / 10, y = cy - .1 - u * .5 - q * .3, x = x0 + Math.sin((q * 2 + u * 2) * TAU) * .05; if (i) c.lineTo(x, y); else c.moveTo(x, y); }
+      c.stroke();
+    }
+    c.restore();
+  },
+  front(c, t, cy) { for (let k = 0; k < 3; k++) { const [x, y] = buzz(t, k + 2, .36, .2); fly(c, x, cy - .55 + y, .065, '', t * TAU + k); } },
+});
+
 const FIRE = ['#ff6d00', '#ffab00', '#ff3d00'];
 const BLOOM = ['#ffffff', '#f8bbd0', '#b3e5fc', '#fff59d'];
 const PARTY = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb'];
@@ -447,5 +479,6 @@ export const EFFECTS: readonly Effect[] = [
   // over the cape in the game like the angel wings; in the avatar behind the mascot, in the glow
   { ...fx('phoenix', 'ปีกฟีนิกซ์ · Phoenix wings', 'legendary', aura('#ff6d00', .7, .5), backWings('#ff6d00', '#ffd600', 5), feetFire(['#ff3d00', '#ffab00', '#ffd600'])), avatar: phoenixBackdrop },
   fx('holy', 'แสงศักดิ์สิทธิ์ · Holy light', 'legendary', skyBeam('255, 245, 180'), aura('#fff59d', .6, .5), rise(sparkle, ['#ffffff', '#fff176'], 7, .05, .3)),
+  fx('flies', 'กลิ่นตุๆ · Stinky flies', 'common', stink()),
   fx('safetyhero', 'ฮีโร่ความปลอดภัย · Safety hero', 'legendary', aura('#00e676', .7, .5), orbit(cross, ['#2e9e47'], 4, .06, .5, .16), rise(star, ['#ffd400', '#ffffff'], 5, .04)),
 ];
