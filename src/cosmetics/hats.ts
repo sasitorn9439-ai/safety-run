@@ -197,9 +197,9 @@ export const HATS: readonly Hat[] = [
     star(c, -.18, -.68, .035, '#ffffff');
   }), behind: (c, cy) => {
     // the lamp's light pours down from the helmet to the floor and pools round the feet; the body hides the middle of it
-    const top = cy - .5, beam = c.createLinearGradient(0, top, 0, .02);
+    const top = cy - .25, beam = c.createLinearGradient(0, top, 0, .02);   // starts behind the shoulders, so a crouch never shows it above the head
     beam.addColorStop(0, 'rgba(255,250,200,.15)'); beam.addColorStop(1, 'rgba(255,250,200,.5)');
-    c.fillStyle = beam; c.beginPath(); c.moveTo(-.1, top); c.lineTo(-.46, .02); c.lineTo(.46, .02); c.lineTo(.1, top); c.closePath(); c.fill();
+    c.fillStyle = beam; c.beginPath(); c.moveTo(-.16, top); c.lineTo(-.46, .02); c.lineTo(.46, .02); c.lineTo(.16, top); c.closePath(); c.fill();
     const pool = c.createRadialGradient(0, 0, 0, 0, 0, 1);
     pool.addColorStop(0, 'rgba(255,250,200,.75)'); pool.addColorStop(1, 'rgba(255,250,200,0)');
     c.save(); c.translate(0, .02); c.scale(.55, .12); c.fillStyle = pool; c.beginPath(); c.arc(0, 0, 1, 0, TAU_H); c.fill(); c.restore();
