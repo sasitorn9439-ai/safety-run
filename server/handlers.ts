@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { replayRun, STEP } from '../shared/sim.js';
+import { replayRun, rulesOf, STEP } from '../shared/sim.js';
 import { equip, openBox, wardrobeFrom, type Pull } from '../src/cosmetics/wardrobe.js';
 import { SLOTS, type Slot } from '../src/cosmetics/types.js';
 import type { Store } from './store.js';
@@ -60,7 +60,9 @@ export async function finish(store: Store, b: Json): Promise<Reply> {
   if (final == null) {
     const ticks = b.ticks;
     if (!Number.isInteger(ticks) || (ticks as number) * STEP > p.secs + 0.25) return reply(400, { error: 'invalid_replay' });
-    const replay = replayRun(p.seed, ticks, b.inputs);
+    const rules = rulesOf(b.rules);
+    if (rules == null) return reply(400, { error: 'invalid_replay' });
+    const replay = replayRun(p.seed, ticks, b.inputs, rules);
     if (replay == null) return reply(400, { error: 'invalid_replay' });
     const saved = await store.finishRun(run, { score: replay.score, secs: Math.round((ticks as number) * STEP), dist: replay.dist, loot: replay.loot });
     if (saved != null) final = saved;

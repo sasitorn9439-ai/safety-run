@@ -10,6 +10,20 @@ import { Camera, type Pt } from './camera.js';
 import type { Look } from '../cosmetics/types.js';
 import type { Frame, Ghost, SceneState } from './types.js';
 
+/** the PPE shield's ring: tiles round it, pre-drawn frames per tile's turn, how fast it turns (rad/s), and the seconds left when it starts to flicker */
+export const SHIELD_TILES = 11, SHIELD_FRAMES = 12, SHIELD_TURN = 1.6, SHIELD_WARN_SECONDS = 2;
+/** which pre-drawn frame of the shield's ring shows at `now` (ms) */
+export const shieldFrame = (now: number) => Math.floor(now / 1000 * SHIELD_TURN / (TAU / SHIELD_TILES) * SHIELD_FRAMES) % SHIELD_FRAMES;
+/** the shield's opacity with `left` seconds of it to go: steady, then flickering as it runs out */
+export const shieldAlpha = (left: number) => left <= 0 ? 0 : left > SHIELD_WARN_SECONDS || Math.floor(left * 8) % 2 ? 1 : .25;
+
+/** how long before invincibility runs out the player starts to flicker */
+export const INV_BLINK_SECONDS = 1.5;
+/** the player's opacity while invincible */
+export const INV_ALPHA = .45;
+/** see-through while invincible; in the last INV_BLINK_SECONDS it flickers back to solid as a warning it is about to wear off */
+export const invAlpha = (inv: number) => inv <= 0 ? 1 : inv > INV_BLINK_SECONDS || Math.floor(inv * 10) % 2 ? INV_ALPHA : 1;
+
 const JUMP_GUIDE_RADIUS = 5.1;
 const JUMP_GUIDE_HEIGHT = 1.25;
 /** a ghost this far behind the mascot (metres) has left the bottom of the screen */
@@ -257,7 +271,8 @@ export interface Pose {
   sliding: boolean; frame: number;
   bob: number; xs: number; ys: number; lean: number;
   alpha: number; shadowU: number; shadowAlpha: number;
-  shield: boolean; shieldPulse: number;
+  /** the PPE shield's opacity (0 = none), its glow's (which breathes), and its ring's frame; centred at feetY + bob - u * .52 */
+  shield: number; shieldGlow: number; shieldFrame: number;
 }
 
 /** a ghost as a one-runner scene, so the player's pose rules pick its frame too */
@@ -301,14 +316,15 @@ export function pose(f: Frame, cam: Camera, I: Interp, fx: Fx, now: number, pt: 
   const lb = liftBounce(f, now), deckY = p.y - I.py * u * .9 - (lb ? lb.deck * u : bob);
   // on the lift: squash flat on each landing, stretch a little on the way up
   const lsq = lb ? 1 - .22 * lb.contact + .3 * lb.hop : 1;
+  const alpha = invAlpha(f.playing ? f.s.inv : 0), sh = shieldAlpha(f.s.shield) * alpha;
   return {
     x: p.x, groundY: p.y, feetY: deckY - (lb ? lb.hop * u : 0), deckY, u,
     sliding, frame, bob,
     ys: ys0 * lsq * (1 - .18 * fx.landT), xs: (1 / (ys0 * lsq)) * (1 + .12 * fx.landT),
     lean: sliding ? 0 : clamp((f.s.lane - I.px) * .22, -.3, .3),
-    alpha: f.playing && f.s.inv > 0 && Math.floor(f.s.inv * 10) % 2 ? .45 : 1,
+    alpha,
     shadowU: u * .5 / (1 + I.py * .3), shadowAlpha: 1 / (1 + I.py),
-    shield: f.s.shield > 0, shieldPulse: 1 + Math.sin(now * .008) * .03,
+    shield: sh, shieldGlow: sh * (.85 + .15 * Math.sin(now * .005)), shieldFrame: shieldFrame(now),
   };
 }
 

@@ -1,5 +1,5 @@
 import { avName } from '../shared/avatar.js';
-import type { Action } from '../shared/sim.js';
+import { RULES, type Action } from '../shared/sim.js';
 import { api, isFinalFinishError, type BoardResp, type FinishResp, type StartResp } from './lib/api.js';
 import { avImg } from './lib/avatar.js';
 import { Sfx } from './lib/audio.js';
@@ -99,7 +99,7 @@ export async function startApp() {
     void showGap(s);
     $('chanceBtn').textContent = `ตอบคำถามให้ถูก รักษา ${s} คะแนนไว้ แล้ววิ่งต่อ (ได้ 1 ครั้ง)`;
     $('chanceBtn').style.display = game.revives || !game.lastHit ? 'none' : 'block';
-    if (game.sess && game.run) LS.set('srPending', { ...game.sess, score: s, ticks: game.run.tick, inputs: game.inputs } satisfies Pending);
+    if (game.sess && game.run) LS.set('srPending', { ...game.sess, score: s, ticks: game.run.tick, inputs: game.inputs, rules: RULES } satisfies Pending);
     const run = { score: s, dist: game.dist, coins: game.coins, earned: game.earned, coinSrc: $<HTMLImageElement>('hudCoinImg').src, loot: game.loot };
     setTimeout(() => { show('over'); tally.play(run); }, 350);
   }
@@ -152,7 +152,15 @@ export async function startApp() {
     $('pMenu').textContent = 'เมนูหลัก · Main menu';
     show('pauseOv');
   }
-  function resumeRun() { if (game.state === 'pause') { show(null); game.resume(); } }
+  function resumeRun() {
+    if (game.state !== 'pause') return;
+    // paused on the result of a bonus question (Esc there): that is the same as tapping "วิ่งต่อ"
+    if ($('quiz').classList.contains('on')) { show(null); game.continueRun(); return; }
+    // paused with a bonus question still unanswered: the run is frozen on it anyway, so straight back to the question, no countdown
+    const pb = game.run?.view().pendingBonus;
+    if (pb) { askBonusQuiz(pb); game.continueRun(); return; }
+    show(null); game.resume();
+  }
   function goMenu() { game.toMenu(); $('loginMsg').textContent = ''; show('menu'); }
   function leaveRun() {
     LS.set('srPending', null); game.sess = null; goMenu();
@@ -326,7 +334,7 @@ export async function startApp() {
     $('doneHead').textContent = 'กำลังส่งคะแนน… · Submitting'; $('doneScore').textContent = p.score + ' คะแนน'; $('doneRank').textContent = avName(p.avatar);
     $('doneMsg').textContent = ''; $('retryBtn').style.display = 'none'; $('doneBoard').innerHTML = '';
     try {
-      const r = await api<FinishResp>('/api/finish', { id: p.id, run: p.run, token: p.token, ticks: p.ticks, inputs: p.inputs });
+      const r = await api<FinishResp>('/api/finish', { id: p.id, run: p.run, token: p.token, ticks: p.ticks, inputs: p.inputs, rules: p.rules ?? 1 });
       if (r.ok) {
         LS.set('srPending', null); game.sess = null;
         void loadWardrobe(p.id);                        // boxes picked up on this run count now that it verified
@@ -387,12 +395,13 @@ export async function startApp() {
       const b = (e.target as HTMLElement).closest<HTMLElement>('.opt');
       if (!b || $('qNext').style.display === 'block') return;
       const i = +b.dataset.i!, ok = i === quiz.correct;
+      if (!game.answerBonus(i)) return;
       [...$('qOpts').children].forEach((c, j) => { if (j === quiz.correct) c.classList.add('ok'); else if (j === i) c.classList.add('no'); });
       sfx.beep(ok ? 990 : 140, .2, ok ? 'triangle' : 'sawtooth');
       const n = $('qNext');
       n.style.display = 'block';
       n.textContent = ok ? `ถูกต้อง! +${quiz.reward} คะแนน วิ่งต่อ` : 'ยังไม่ถูก ไม่เป็นไร วิ่งต่อ';
-      n.onclick = () => { game.answer(i); show(null); };
+      n.onclick = () => { show(null); game.continueRun(); };
     };
     show('quiz');
   }

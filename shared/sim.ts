@@ -116,6 +116,24 @@ export const BONUS_CHANCE = 0.4;
 export const BONUS_MIN = 50, BONUS_MAX = 300, BONUS_STEP = 10;
 /** seconds the run waits for an answer before giving up on its own (keeps a replay from ever waiting forever) */
 export const BONUS_SECONDS = 7;
+/** after a bonus question, right, wrong or timed out: seconds nothing can hit you while you find your feet again */
+export const BONUS_INV_SECONDS = 5;
+/** a right bonus answer also sends you sprinting this long (at SPRINT_FACTOR), invincible, before BONUS_INV_SECONDS more */
+export const BONUS_SPRINT_SECONDS = 3;
+/** after the second-chance question brings you back */
+export const REVIVE_INV_SECONDS = 3;
+
+/**
+ * Which rules a run is played by. A client sends the version it played with to /api/finish and the server replays with
+ * the same one, so a run started on the previous build (an open tab, or a run that was going during a deploy) still
+ * verifies. Bump it for any change to what the sim does, and keep the older behaviour behind `rules`.
+ *   1: before the bonus question gave invincibility; 2 s of it after a revive
+ *   2: BONUS_INV_SECONDS after every bonus question, plus BONUS_SPRINT_SECONDS of sprint for a right one; REVIVE_INV_SECONDS after a revive
+ */
+export const RULES = 2;
+export type Rules = 1 | 2;
+/** the rules a submitted run asked for; a body without one comes from a build before versioning, which played by 1 */
+export const rulesOf = (v: unknown): Rules | null => v == null ? 1 : v === 1 || v === 2 ? v : null;
 
 /**
  * A cosmetic loot box: pure collectible, it never touches the score, so a run with or without one replays to the same points.
@@ -264,7 +282,7 @@ const OFFICER = [
 const BOX_REWARDS = [['coins', 35, '+10 เหรียญ'], ['shield', 20, 'โล่ PPE'], ['double', 20, 'คะแนน x2'], ['broom', 15, 'ไม้กวาด 5ส'], ['estop', 10, 'E-Stop']] as const;
 
 /** `startDist` starts the run part-way down the corridor (tests and tools only: a real run, and the server's replay, always start at 0) */
-export interface RunOptions { startDist?: number; movementOnly?: boolean; tour?: TourOptions }
+export interface RunOptions { startDist?: number; movementOnly?: boolean; tour?: TourOptions; /** default RULES */ rules?: Rules }
 
 /** the deck of tournament questions in the order this seed deals them (the same for every player on the seed) */
 function deck(random: () => number) {
@@ -302,6 +320,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
 
   // tournament: its own random streams, so the track (main stream) stays the same for every player whatever they answer
   const tour = opts.tour ?? null;
+  const rules = opts.rules ?? RULES;
   const tourZone = tour && tour.stage !== 'tour' ? ZONES.findIndex(z => z.id === tour.stage) : -1;
   const zoneOf = (d: number) => (tourZone >= 0 ? { index: tourZone, zone: ZONES[tourZone]!, n: 1 } : zoneAt(d));
   const itemRandom = seededRandom(seed ^ 0x165667b1), gateRandom = seededRandom(seed ^ 0xd3a2646c);
@@ -602,9 +621,16 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   /** `index` null = gave up waiting (the server's replay can never hang on an unanswered bonus) */
   function resolveBonus(index: number | null) {
     const q = pendingBonus!;
-    if (index != null && index === q.correct) { earn('extra', q.reward * mult()); say(`ตอบถูก! +${q.reward} คะแนน · Bonus +${q.reward}`, 1.8); beep(1200, 0.16, 'triangle'); beep(1600, 0.18, 'triangle'); }
-    else if (index != null) { say('ยังไม่ถูก ไปต่อ! · Not quite, keep running', 1.4); beep(160, 0.16, 'sawtooth'); }
-    else { say('หมดเวลา ไปต่อ! · Time up, keep running', 1.4); beep(160, 0.16, 'sawtooth'); }
+    if (index != null && index === q.correct) {
+      earn('extra', q.reward * mult());
+      if (rules >= 2) { sprint = BONUS_SPRINT_SECONDS; inv = Math.max(inv, BONUS_SPRINT_SECONDS + BONUS_INV_SECONDS); }
+      say(rules >= 2 ? `ตอบถูก! +${q.reward} คะแนน พุ่ง! 🚀 · Bonus +${q.reward}` : `ตอบถูก! +${q.reward} คะแนน · Bonus +${q.reward}`, 1.8);
+      beep(1200, 0.16, 'triangle'); beep(1600, 0.18, 'triangle');
+    } else {
+      if (rules >= 2) inv = Math.max(inv, BONUS_INV_SECONDS);
+      if (index != null) { say('ยังไม่ถูก ไปต่อ! · Not quite, keep running', 1.4); beep(160, 0.16, 'sawtooth'); }
+      else { say('หมดเวลา ไปต่อ! · Time up, keep running', 1.4); beep(160, 0.16, 'sawtooth'); }
+    }
     pendingBonus = null;
   }
 
@@ -644,12 +670,13 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     let dz = speed * (1 - (1 - ESTOP_FACTOR) * ease) * dt;
     if (tour) {
       dz *= (sprint > 0 ? SPRINT_FACTOR : stun > 0 ? STUN_FACTOR : think > 0 ? THINK_FACTOR : 1) * (gate ? GATE_FACTOR : 1);
-      sprint = Math.max(0, sprint - dt); think = Math.max(0, think - dt); stun = Math.max(0, stun - dt);
+      think = Math.max(0, think - dt); stun = Math.max(0, stun - dt);
       loto = Math.max(0, loto - dt); buddy = Math.max(0, buddy - dt);
       if (streak > 0 && (streak -= dt) <= 0) { streak = 0; earn('extra', STREAK_SCORE); say(`Zero Accident สำเร็จ! +${STREAK_SCORE}`, 1.8); beep(1200, 0.16, 'triangle'); }
       if (gate && (gate.z -= dz) < -1) resolveGate(null);
       if (buddy > 0) buddyStep();
-    }
+    } else if (sprint > 0) dz *= SPRINT_FACTOR;   // a right bonus answer
+    sprint = Math.max(0, sprint - dt);
     dist += dz;
     slow = Math.max(0, slow - dt); magnet = Math.max(0, magnet - dt); leftT += dt;
     if (comboT > 0 && (comboT -= dt) <= 0) combo = 0;
@@ -755,7 +782,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       if (tour || !hitKind || revives || index !== correct) return false;
       revives++;
       objs = objs.filter(o => o.z > 14);
-      inv = 2;
+      inv = rules >= 2 ? REVIVE_INV_SECONDS : 2;
       slide = py = vy = 0;
       hitKind = null;
       combo = 0;
@@ -786,14 +813,14 @@ export function replayTour(seed: number, tour: TourOptions, inputs: unknown): { 
 }
 
 /** Re-plays a submitted run: its score, how far it got (whole metres) and how many loot boxes were picked up; null if the replay is malformed. */
-export function replayRun(seed: number, ticks: unknown, inputs: unknown): { score: number; dist: number; loot: number } | null {
+export function replayRun(seed: number, ticks: unknown, inputs: unknown, rules: Rules = RULES): { score: number; dist: number; loot: number } | null {
   let loot = 0;
-  const game = createRun(seed, undefined, e => { if (e.type === 'loot') loot++; });
+  const game = createRun(seed, undefined, e => { if (e.type === 'loot') loot++; }, { rules });
   return replayInto(game, ticks, inputs) ? { score: game.score(), dist: Math.floor(game.view().dist), loot } : null;
 }
 
 /** Re-plays a submitted run. Returns the score, or null if the replay is malformed. */
-export const replayScore = (seed: number, ticks: unknown, inputs: unknown): number | null => replayRun(seed, ticks, inputs)?.score ?? null;
+export const replayScore = (seed: number, ticks: unknown, inputs: unknown, rules: Rules = RULES): number | null => replayRun(seed, ticks, inputs, rules)?.score ?? null;
 
 function replayInto(game: Run, ticks: unknown, inputs: unknown): boolean {
   if (!Number.isInteger(ticks) || (ticks as number) < 1 ||

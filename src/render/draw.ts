@@ -440,9 +440,37 @@ export function drawLight(c: Ctx, u: number) {
 }
 
 /** Shield bubble around the mascot, origin = centre. */
-export function drawShield(c: Ctx, u: number) {
-  c.fillStyle = 'rgba(90,210,255,.18)'; c.strokeStyle = 'rgba(120,225,255,.8)'; c.lineWidth = .03 * u;
-  c.beginPath(); c.ellipse(0, 0, .42 * u, .66 * u, 0, 0, 7); c.fill(); c.stroke();
+/** The PPE shield's soft blue glow round the mascot (a gradient, not a blur filter, so phones draw it too). Origin = middle of the body. */
+export function drawShieldGlow(c: Ctx, u: number) {
+  const r = .85 * u;
+  c.save(); c.scale(.65 / .85, 1);
+  const g = c.createRadialGradient(0, 0, 0, 0, 0, r);
+  g.addColorStop(0, 'rgba(120,220,255,.85)'); g.addColorStop(.5, 'rgba(120,220,255,.42)'); g.addColorStop(1, 'rgba(60,160,255,0)');
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill(); c.restore();
+}
+
+/**
+ * The PPE shield's ring of `tiles` hexagons turning round the waist on a glowing band: only the half behind the mascot
+ * (front = false) or the half in front. `t` (0..1) turns it on by one tile, so frames over 0..1 loop. Origin = middle of the body.
+ */
+export function drawShieldRing(c: Ctx, u: number, t: number, front: boolean, tiles: number) {
+  const cy = .05 * u, rx = .5 * u, ry = .13 * u, TAU = Math.PI * 2;
+  c.save();
+  c.globalAlpha = front ? .55 : .35;
+  c.strokeStyle = '#8fe6ff'; c.lineWidth = .037 * u; c.shadowColor = '#3fbfff'; c.shadowBlur = .11 * u;
+  c.beginPath(); c.ellipse(0, cy, rx, ry, 0, front ? 0 : Math.PI, front ? Math.PI : TAU); c.stroke();
+  const half: { ang: number; z: number }[] = [];
+  for (let k = 0; k < tiles; k++) { const ang = (k + t) * TAU / tiles, z = Math.sin(ang); if (z > 0 === front) half.push({ ang, z }); }
+  half.sort((a, b) => a.z - b.z);
+  c.shadowBlur = .063 * u; c.lineWidth = .0085 * u; c.strokeStyle = '#d8f6ff'; c.fillStyle = 'rgba(110,210,255,.45)';
+  for (const { ang, z } of half) {
+    const side = Math.abs(Math.cos(ang)), w = side > .8 ? .25 : 1 - side * .65, s = .058 * u * (1 + z * .15);   // edge-on at the sides
+    c.save(); c.translate(Math.cos(ang) * rx, cy + z * ry); c.scale(w, 1); c.globalAlpha = front ? .9 : .45;
+    c.beginPath();
+    for (let i = 0; i < 6; i++) { const q = i * TAU / 6 + Math.PI / 6; if (i) c.lineTo(Math.cos(q) * s, Math.sin(q) * s * 1.5); else c.moveTo(Math.cos(q) * s, Math.sin(q) * s * 1.5); }
+    c.closePath(); c.fill(); c.stroke(); c.restore();
+  }
+  c.restore();
 }
 
 /** Plain white disc, origin = centre, radius 0.5. Tinted at draw time for particles. */
