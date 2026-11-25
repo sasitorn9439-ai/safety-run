@@ -1,5 +1,5 @@
 import { AV_C, avParts, type AvatarParts } from '../../shared/avatar.js';
-import { drawFrontHead, drawFrontShoulders } from '../cosmetics/front.js';
+import { drawFrontHead, drawFrontShoulders, headPath } from '../cosmetics/front.js';
 import { DEFAULT_PALETTE } from '../cosmetics/skins.js';
 import type { Look } from '../cosmetics/types.js';
 import { lookOfWorn } from '../cosmetics/wardrobe.js';
@@ -43,6 +43,8 @@ function badge(c: Ctx, p: AvatarParts | null, R: number, size: number) {
 const VIEW_Y = -.71, VIEW_R = .48;
 /** how big the effect is drawn next to the head: its orbits and rising particles land in the ring between the head and the edge */
 const FX_SCALE = .8;
+/** where the middle of the body's effect sits in the avatar (head coordinates): the chin, so rings circle the chest, below the face */
+const FX_Y = -.5;
 
 /** an effect plays as a strip of this many frames, one loop of the effect, cycled by CSS (.av-fx in styles.css) */
 export const FX_FRAMES = 16;
@@ -61,18 +63,20 @@ function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number, t: number
   c.scale(k, k);
   // a trail left under the feet would fall outside the circle: lift those effects so the trail shows over the chest
   const fx = look.effect, phases = [t, (t + .5) % 1], lift = fx?.below ? fx.below * .7 : 0;
-  // the effect around the whole body, made smaller and centred on the head, at two moments of its loop half a loop apart so a
-  // sparse effect still shows; what sits behind the body is drawn first, then the shoulders, then what sits in front, then the head
+  // the effect around the whole body, made smaller, its middle at the chin (FX_Y), at two moments of its loop half a loop apart so
+  // a sparse effect still shows. What sits behind the body goes behind the mascot and what sits in front goes over it, so a ring
+  // wraps round the chest the way it wraps round the body in the game
   const effect = (part: 'back' | 'front') => {
     const draw = fx?.[part];
     if (!draw) return;
-    for (const ph of phases) { c.save(); c.scale(FX_SCALE, FX_SCALE); c.translate(0, .45 - lift); draw(c, ph, -.45); c.restore(); }
+    for (const ph of phases) { c.save(); c.translate(0, FX_Y - VIEW_Y); c.scale(FX_SCALE, FX_SCALE); c.translate(0, .45 - lift); draw(c, ph, -.45); c.restore(); }
   };
   effect('back');
-  c.save(); c.translate(0, -VIEW_Y); drawFrontShoulders(c, look.pal); c.restore();
+  c.save(); c.translate(0, -VIEW_Y); drawFrontShoulders(c, look.pal); drawFrontHead(c, look); c.restore();
+  // ...except over the face: particles floating up past the head pass behind it, so the face always shows
+  c.save(); c.translate(0, -VIEW_Y); c.beginPath(); c.rect(-1, -2, 2, 3); headPath(c, true); c.clip('evenodd'); c.translate(0, VIEW_Y);
   effect('front');
-  c.translate(0, -VIEW_Y);
-  drawFrontHead(c, look);
+  c.restore();
   c.restore();
 }
 

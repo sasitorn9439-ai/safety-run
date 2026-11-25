@@ -16,9 +16,9 @@ const tri = (c: Ctx, pts: readonly (readonly [number, number])[], fill: string) 
   c.fillStyle = fill; c.beginPath(); c.moveTo(pts[0]![0], pts[0]![1]); for (const p of pts.slice(1)) c.lineTo(p[0], p[1]); c.closePath(); c.fill();
 };
 
-/** the onigiri outline, the same path as the back view */
-function headPath(c: Ctx) {
-  c.beginPath();
+/** the onigiri outline, the same path as the back view (added to the current path, which it starts unless `keep`) */
+export function headPath(c: Ctx, keep = false) {
+  if (!keep) c.beginPath();
   c.moveTo(0, -.865); c.bezierCurveTo(.08, -.86, .24, -.74, .26, -.575);
   c.quadraticCurveTo(.28, -.46, 0, -.44);
   c.quadraticCurveTo(-.28, -.46, -.26, -.575);
