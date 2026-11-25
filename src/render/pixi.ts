@@ -10,7 +10,7 @@ import { FLOOR_FRAGMENT, FLOOR_VERTEX, floorShaderCompiles } from './floor-shade
 import { drawPropModel, BackdropFade, PROPS, sceneryOpacity, propItems, sideWall, type PropItem } from './scenery.js';
 import { ZONES } from '../../shared/zones.js';
 import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
-import type { MascotSet } from './pixel-mascot.js';
+import { RING_FRAMES, ringFrame, type MascotSet } from './pixel-mascot.js';
 import { DEFAULT_PALETTE } from '../cosmetics/skins.js';
 import type { Look } from '../cosmetics/types.js';
 import { PAD, ON_KINDS, POWERS, bonusArt, coinArt, lootArt, crateArt, dotArt, liftArt, powerArt, haloArt, hazardArt, lightArt, pillarArt, whitePillarArt, ppeArt, rasterize, runArt, shadowArt, shieldArt, slideArt, type Art } from './sprites.js';
@@ -55,6 +55,9 @@ class Pool {
   detach() { for (const s of this.items) { s.texture = Texture.EMPTY; s.visible = false; } this.n = 0; }
 }
 
+/** a look's mascot frames, plus the frames of the rings it wears (empty when none), which play on their own clock */
+type MascotTex = Record<PixelAnim | 'ringBack' | 'ringFront', Tex[]>;
+
 function place(s: Sprite, t: Tex, x: number, y: number, u: number, alpha = 1, z = 0) {
   s.texture = t.tex;
   s.anchor.set(t.ax, t.ay);
@@ -68,7 +71,7 @@ function place(s: Sprite, t: Tex, x: number, y: number, u: number, alpha = 1, z 
 interface Textures {
   hazards: Record<HazardKind, Tex>; on: Partial<Record<HazardKind, Tex>>; crate: Tex; ppe: Record<PpeType, Tex>;
   power: Record<PowerType, Tex>; lift: Tex;
-  shadow: Tex; halo: Tex; coin: Tex; bonus: Tex; loot: Tex; pillar: Tex; whitePillar: Tex; light: Tex; shield: Tex; dot: Tex; run: Tex[]; slide: Tex[]; mascot: Record<PixelAnim, Tex[]> | null;
+  shadow: Tex; halo: Tex; coin: Tex; bonus: Tex; loot: Tex; pillar: Tex; whitePillar: Tex; light: Tex; shield: Tex; dot: Tex; run: Tex[]; slide: Tex[]; mascot: MascotTex | null;
   flame: Texture; drillSmoke: Texture; smoke: Texture; cloud: Texture; backdrops: Texture[]; fog: Texture; props: (Tex | null)[];
 }
 
@@ -86,7 +89,7 @@ export class PixiRenderer implements GameRenderer {
   private maxDpr: number;
   private builtKey = '';
   /** each look's mascot frames (the player's own and the ghosts'), and the lane size they were drawn for */
-  private looks = new Map<Look, Record<PixelAnim, Tex[]>>();
+  private looks = new Map<Look, MascotTex>();
   private texBase = 0;
   private tx!: Textures;
   private lastNow = 0;
@@ -119,6 +122,9 @@ export class PixiRenderer implements GameRenderer {
   private actorPool: Pool;
   private fxPool: Pool;
   private playerSprite = new Sprite();
+  /** the rings the player wears (Effect.ring), behind and in front of the mascot */
+  private ringBackSprite = new Sprite();
+  private ringFrontSprite = new Sprite();
   private shieldSprite = new Sprite();
   private liftSprite = new Sprite();
   private playerShadow = new Sprite();
@@ -169,7 +175,7 @@ export class PixiRenderer implements GameRenderer {
     this.shadowPool = new Pool(this.shadowLayer);
     this.actorPool = new Pool(this.actorLayer);
     this.fxPool = new Pool(this.fxLayer);
-    this.actorLayer.addChild(this.liftSprite, this.shieldSprite, this.playerSprite);
+    this.actorLayer.addChild(this.liftSprite, this.shieldSprite, this.ringBackSprite, this.playerSprite, this.ringFrontSprite);
     this.shadowLayer.addChild(this.playerShadow);
   }
 
@@ -203,7 +209,7 @@ export class PixiRenderer implements GameRenderer {
   }
 
   /** the mascot's frames in `look`, drawn the first time they are asked for */
-  private mascotFor(look: Look | null): Record<PixelAnim, Tex[]> | null {
+  private mascotFor(look: Look | null): MascotTex | null {
     const m = this.pixel;
     if (!m) return null;
     const key = m.style === 'flat' && look ? look : m.look;
@@ -248,17 +254,19 @@ export class PixiRenderer implements GameRenderer {
   /** The stubby mascot: vector frames rasterised at the size they are shown (pixel style: a whole number of texels per art pixel, sampled NEAREST). */
   private pixelTextures(base: number, look: Look) {
     const m = this.pixel!, scale = m.scaleFor(base);
-    const out = {} as Record<PixelAnim, Tex[]>;
+    const out = {} as MascotTex;
     for (const anim of ['idle', 'run', 'jump', 'slide'] as const) {
       out[anim] = Array.from({ length: m.count(anim) }, (_, i) => { const art = m.art(anim, i, scale, look); return makeTex(art, base * scale, m.crisp); });
     }
+    const ring = (front: boolean) => look.effect?.ring ? Array.from({ length: RING_FRAMES }, (_, i) => makeTex(m.ring(look, i, front, scale)!, base * scale, m.crisp)) : [];
+    out.ringBack = m.style === 'flat' ? ring(false) : []; out.ringFront = m.style === 'flat' ? ring(true) : [];
     return out;
   }
 
   private destroyTextures() {
     if (!this.tx) return;
     for (const p of [this.envPool, this.shadowPool, this.actorPool, this.fxPool]) p.detach();
-    for (const s of [this.playerSprite, this.shieldSprite, this.liftSprite, this.playerShadow, this.backdrop, this.backdropOld, ...this.clouds, this.fog]) s.texture = Texture.EMPTY;
+    for (const s of [this.playerSprite, this.ringBackSprite, this.ringFrontSprite, this.shieldSprite, this.liftSprite, this.playerShadow, this.backdrop, this.backdropOld, ...this.clouds, this.fog]) s.texture = Texture.EMPTY;
     const t = this.tx;
     const all: Texture[] = [
       ...Object.values(t.hazards).map(x => x.tex), ...Object.values(t.ppe).map(x => x.tex), ...Object.values(t.power).map(x => x.tex), t.lift.tex, t.crate.tex, ...Object.values(t.on).map(x => x!.tex),
@@ -383,7 +391,7 @@ export class PixiRenderer implements GameRenderer {
     const sh = this.shadowPool, ac = this.actorPool;
     sh.begin(); ac.begin();
     this.list.build(f, cam, I, now);
-    this.playerSprite.visible = this.shieldSprite.visible = this.playerShadow.visible = this.liftSprite.visible = false;
+    this.playerSprite.visible = this.ringBackSprite.visible = this.ringFrontSprite.visible = this.shieldSprite.visible = this.playerShadow.visible = this.liftSprite.visible = false;
     for (let i = 0; i < this.list.n; i++) {
       const it = this.list.items[i]!;
       if (it.kind === 'player') { this.placePlayer(f, I, now); continue; }
@@ -394,6 +402,8 @@ export class PixiRenderer implements GameRenderer {
         const worn = tx.mascot && this.mascotFor(it.look);
         if (worn) { const pick = pixelFrame(gf, gI, GHOST_FX, now, this.pixel!.cfg); t = worn[pick.anim][pick.frame]!; }
         else { const P = pose(gf, cam, gI, GHOST_FX, now, this.pt); t = P.sliding ? tx.slide[P.frame]! : tx.run[P.frame]!; }
+        const k = ringFrame(now), back = worn?.ringBack[k], front = worn?.ringFront[k];
+        if (back && front) { place(ac.get(), back, it.x, it.y - up, it.u, it.fade, -it.z - .00001); place(ac.get(), front, it.x, it.y - up, it.u, it.fade, -it.z + .00001); }
         const s = ac.get();
         place(s, t, it.x, it.y - up, it.u, it.fade, -it.z);
         if (plain(it.look)) s.tint = GHOST_TINT;
@@ -469,10 +479,15 @@ export class PixiRenderer implements GameRenderer {
       ls.visible = true;
     }
     if (tx.mascot) {
-      const pick = pixelFrame(f, I, this.fx, now, this.pixel!.cfg), dpr = this.dpr;
-      place(ps, tx.mascot[pick.anim][pick.frame]!, snap(P.x, dpr), snap(P.feetY + P.bob, dpr), u, P.alpha, -0.0001);
+      const pick = pixelFrame(f, I, this.fx, now, this.pixel!.cfg), dpr = this.dpr, x = snap(P.x, dpr), y = snap(P.feetY + P.bob, dpr);
+      place(ps, tx.mascot[pick.anim][pick.frame]!, x, y, u, P.alpha, -0.0001);
       ps.rotation = 0; ps.visible = true;       // no lean: the frames carry it
       if (f.s.lift) ps.scale.set(ps.scale.x * P.xs, ps.scale.y * P.ys);   // except the springy squash on the man-lift
+      const k = ringFrame(now), back = tx.mascot.ringBack[k], front = tx.mascot.ringFront[k];
+      if (back && front) {
+        place(this.ringBackSprite, back, x, y, u, P.alpha, -0.00011); place(this.ringFrontSprite, front, x, y, u, P.alpha, -0.00009);
+        this.ringBackSprite.visible = this.ringFrontSprite.visible = true;
+      }
       return;
     }
     const t = P.sliding ? tx.slide[P.frame]! : tx.run[P.frame]!;

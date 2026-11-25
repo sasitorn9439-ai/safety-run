@@ -7,7 +7,7 @@ import { Camera, type Pt } from './camera.js';
 import { DrawList, Fx, GHOST_FX, TAU, entranceWires, envItems, interp, pose, type EnvItem, type Interp } from './fx.js';
 import { drawPropModel, BackdropFade, ENTRANCE_YARD_EDGE, PROPS, sceneryOpacity, propItems, sideWall, type PropItem } from './scenery.js';
 import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
-import type { MascotSet } from './pixel-mascot.js';
+import { RING_FRAMES, ringFrame, type MascotSet } from './pixel-mascot.js';
 import type { Look } from '../cosmetics/types.js';
 import { Sprite, SpriteSet } from './sprites.js';
 import { ZONES } from '../../shared/zones.js';
@@ -17,6 +17,9 @@ import type { Frame, GameRenderer } from './types.js';
  * Canvas2D renderer. The fallback for devices without WebGL2: same look and motion as the WebGL one, drawn with
  * pre-rendered sprites (with a hand-made mip chain) and vector quads for the floor.
  */
+/** a look's mascot frames, plus the frames of the rings it wears (empty when none), which play on their own clock */
+type MascotSprites = Record<PixelAnim | 'ringBack' | 'ringFront', Sprite[]>;
+
 export class Canvas2DRenderer implements GameRenderer {
   readonly kind = 'canvas';
   get mascot() { return this.pixel?.style ?? 'vector' as const; }
@@ -38,9 +41,9 @@ export class Canvas2DRenderer implements GameRenderer {
   private floorGrad!: CanvasGradient;
   private fogGrad!: CanvasGradient;
   private builtKey = '';
-  private pxSprites: Record<PixelAnim, Sprite[]> | null = null;
+  private pxSprites: MascotSprites | null = null;
   /** each look's mascot frames (the player's own and the ghosts'), for the current screen size */
-  private looks = new Map<Look, Record<PixelAnim, Sprite[]>>();
+  private looks = new Map<Look, MascotSprites>();
   private lastNow = 0;
   private slowFrames = 0;
   private env: EnvItem[] = [];
@@ -77,7 +80,7 @@ export class Canvas2DRenderer implements GameRenderer {
   }
 
   /** the mascot's frames in `look`, drawn the first time they are asked for */
-  private mascotFor(look: Look | null): Record<PixelAnim, Sprite[]> | null {
+  private mascotFor(look: Look | null): MascotSprites | null {
     const m = this.pixel;
     if (!m) return null;
     const key = m.style === 'flat' && look ? look : m.look;
@@ -86,10 +89,13 @@ export class Canvas2DRenderer implements GameRenderer {
       // a host sees new players every round: past a few looks, drop the ones nobody is wearing on screen
       if (this.looks.size >= 6) for (const l of this.looks.keys()) if (l !== m.look) this.looks.delete(l);
       const base = this.cam.lw * this.dpr, scale = m.scaleFor(base);
-      px = {} as Record<PixelAnim, Sprite[]>;
+      px = {} as MascotSprites;
       for (const anim of ['idle', 'run', 'jump', 'slide'] as const) {
         px[anim] = Array.from({ length: m.count(anim) }, (_, i) => { const art = m.art(anim, i, scale, key); return new Sprite(art.box, art, base * scale, 1); });
       }
+      const ring = (front: boolean) => key.effect?.ring && m.style === 'flat'
+        ? Array.from({ length: RING_FRAMES }, (_, i) => { const art = m.ring(key, i, front, scale)!; return new Sprite(art.box, art, base * scale, 1); }) : [];
+      px.ringBack = ring(false); px.ringFront = ring(true);
       this.looks.set(key, px);
     }
     return px;
@@ -290,7 +296,12 @@ export class Canvas2DRenderer implements GameRenderer {
         sprites.shadow.draw(ctx, it.x, it.y, it.u * .5 / (1 + gI.py * .3), dpr);
         ctx.globalAlpha = it.fade;
         const worn = this.pxSprites && this.mascotFor(it.look);
-        if (worn) { const pick = pixelFrame(gf, gI, GHOST_FX, now, this.pixel!.cfg); worn[pick.anim][pick.frame]!.draw(ctx, it.x, it.y - up, it.u, dpr); }
+        if (worn) {
+          const pick = pixelFrame(gf, gI, GHOST_FX, now, this.pixel!.cfg), k = ringFrame(now);
+          worn.ringBack[k]?.draw(ctx, it.x, it.y - up, it.u, dpr);
+          worn[pick.anim][pick.frame]!.draw(ctx, it.x, it.y - up, it.u, dpr);
+          worn.ringFront[k]?.draw(ctx, it.x, it.y - up, it.u, dpr);
+        }
         else { const P = pose(gf, cam, gI, GHOST_FX, now, this.c); (P.sliding ? sprites.slide : sprites.run)[P.frame]!.draw(ctx, it.x, it.y - up, it.u, dpr); }
         ctx.globalAlpha = 1;
         continue;
@@ -356,9 +367,11 @@ export class Canvas2DRenderer implements GameRenderer {
     const pick = pixelFrame(f, I, this.fx, now, this.pixel!.cfg);
     const crisp = this.pixel!.crisp;          // pixel art must not be smoothed; the smooth style is drawn 1:1
     if (crisp) ctx.imageSmoothingEnabled = false;
-    const sprite = this.pxSprites![pick.anim][pick.frame]!, x = snap(P.x, dpr), y = snap(P.feetY + P.bob, dpr);
+    const sprite = this.pxSprites![pick.anim][pick.frame]!, x = snap(P.x, dpr), y = snap(P.feetY + P.bob, dpr), k = ringFrame(now);
+    this.pxSprites!.ringBack[k]?.draw(ctx, x, y, P.u, dpr);
     if (f.s.lift) { ctx.save(); ctx.translate(x, y); ctx.scale(P.xs, P.ys); sprite.draw(ctx, 0, 0, P.u, dpr); ctx.restore(); }   // springy squash on the man-lift
     else sprite.draw(ctx, x, y, P.u, dpr);
+    this.pxSprites!.ringFront[k]?.draw(ctx, x, y, P.u, dpr);
     if (crisp) ctx.imageSmoothingEnabled = true;
   }
 

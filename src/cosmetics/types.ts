@@ -50,8 +50,12 @@ export interface Effect extends Base {
   slot: 'effect'; back?(c: Ctx, t: number, cy: number): void; front?(c: Ctx, t: number, cy: number): void;
   /** how far below the feet it draws, when that is more than the usual 0.34 (a trail that reaches toward the camera) */
   below?: number;
-  /** a ring round the body that sweeps up and down it: an avatar draws it once per frame and lets it cross the face */
-  ring?: true;
+  /**
+   * Rings round the body that sweep up and down it on their own, slower clock (RING_MS in effects.ts), not the animation's:
+   * `back` and `front` leave them out, and whoever draws the mascot draws these with `t` from ringPhase. They sit at the body's
+   * height `cy` like the rest.
+   */
+  ring?: { back(c: Ctx, t: number, cy: number): void; front(c: Ctx, t: number, cy: number): void };
 }
 export type Cosmetic = Skin | Hat | Effect;
 
