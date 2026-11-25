@@ -20,6 +20,8 @@ const DWELL_MS = 2500, ROTATE_MS = 8000;
 const BOARD_MS = 500;
 /** the music goes into its last gear this many seconds before time is up */
 const FINAL_SECONDS = 25;
+/** no report from a phone for this many ticks (2 s) counts as signal lost */
+const LOST_TICKS = 120;
 const hostKey = (code: string) => `srHost:${code}`;
 
 /** Host login: the admin key opens a room, which then lives at /tournament?host=CODE (the token stays in this tab). */
@@ -166,10 +168,22 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
     channel.send({ t: 'board', board: [...races].map(([s, r]) => [s, r.run.score(), r.live.tick, r.live.dist, r.live.lane, r.live.jumps, r.live.slides]) });
   }, BOARD_MS);
 
-  /** auto camera: a question beats a new leader, which beats taking turns */
+  /** a phone that stopped reporting (no signal): its replay on the big screen is frozen, so nobody wants to watch it */
+  const isLost = (slot: Slot, serverNow: number) => {
+    const race = races.get(slot);
+    const el = race?.elapsed(serverNow) ?? 0;
+    return !!race && el > 0 && !race.run.finished && el - race.reported > LOST_TICKS;
+  };
+
+  /** auto camera: only players with a signal; a question beats a new leader, which beats taking turns */
   function camera(now: number) {
-    if (!auto || now - focusSince < 600) return;
-    const slots = [...races.keys()];
+    if (!auto) return;
+    const serverNow = clock.now();
+    const slots = [...races.keys()].filter(s => !isLost(s, serverNow));
+    if (!slots.length) return;
+    // the one on screen lost signal: move off them straight away
+    if (!slots.includes(focus)) { look([...slots].sort((a, b) => scoreOf(b) - scoreOf(a))[0]!, 'สัญญาณผู้เล่นหาย · สลับกล้อง'); return; }
+    if (now - focusSince < 600) return;
     const gated = slots.filter(s => races.get(s)!.run.view().tour!.gate);
     if (gated.length) { if (!gated.includes(focus)) look(gated[0]!, 'กำลังตอบคำถาม'); return; }
     const top = [...slots].sort((a, b) => scoreOf(b) - scoreOf(a))[0];
@@ -217,7 +231,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
       const ranked = room.players.map(pl => ({ pl, race: races.get(pl.slot)! })).filter(x => x.race).sort((a, b) => b.race.run.score() - a.race.run.score());
       const cards = ranked.map(({ pl, race }, i) => {
         const v = race.run.view(), t = v.tour!;
-        const lost = el > 0 && !race.run.finished && race.elapsed(serverNow) - race.reported > 120;
+        const lost = isLost(pl.slot, serverNow);
         return `<li data-slot="${pl.slot}" class="${pl.slot === focus ? 'on' : ''}"><i class="m${i + 1}">${i + 1}</i>${avImg(pl.avatar, 40)}<div><b>${esc(avName(pl.avatar))}</b><span>${Math.floor(v.dist)} ม. · ตอบถูก ${t.correct} · ชน ${t.crashes}${lost ? ' · <em>สัญญาณหาย</em>' : ''}</span><div class="t-fx">${fxHtml(t)}</div></div><strong>${race.run.score()}</strong></li>`;
       }).join('');
       if (cards !== lastCards) { lastCards = cards; $('hCards').innerHTML = cards; }
