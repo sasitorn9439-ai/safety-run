@@ -196,9 +196,8 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
         race.advance(el);
       }
       const v = race.run.view(), t = v.tour!;
-      const others = ghosts.place(seat!.slot, Math.max(0, el), dt);
-      for (const g of others) g.look = lookOfWorn(room?.players.find(p => p.slot === g.slot)?.look);
-      renderer.render({ ...race.frame(), ghosts: others }, now);
+      // the phone shows only your own run: the other players' ghosts and scores are for the big screen
+      renderer.render({ ...race.frame(), ghosts: [] }, now);
       hud.update({
         score: race.run.score(), coins: v.coins, dbl: v.dbl, got: v.got, shield: v.shield, toast: v.toast, toastT: v.toastT, sur: v.sur,
         zone: { index: v.zone, n: v.zoneN }, combo: v.combo, mult: v.mult, dist: v.dist, pb: 0,
@@ -207,7 +206,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
       $('tClock').classList.toggle('hurry', t.ticksLeft * STEP <= 10);
       $('tFx').innerHTML = fxHtml(t);
       gatePanel.update(t.gate);
-      rank(race.run.score(), v.dist, others);
+      rank(race.run.score());
       if (race.run.finished && !finishing) {
         finishing = true;
         hud.show(false); $('tRace').classList.remove('on'); showScreen('tResult'); $('resHead').textContent = 'หมดเวลา!'; void submit(); }
@@ -216,19 +215,12 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
   }
   requestAnimationFrame(frame);
 
-  /** the standings strip: my own score is live, the others are what the host last sent, with how far ahead or behind they run */
+  /** the strip at the top shows only my own live score; everyone's standings are on the big screen and the result page */
   let lastRank = '';
-  function rank(mine: number, myDist: number, others: { slot: Slot; dist: number }[]) {
+  function rank(mine: number) {
     if (!room || !seat) return;
-    const rows = room.players.map(p => ({ p, score: p.slot === seat!.slot ? mine : board.find(b => b[0] === p.slot)?.[1] ?? 0 }))
-      .sort((a, b) => b.score - a.score);
-    const gap = (slot: Slot) => {
-      const g = others.find(o => o.slot === slot);
-      if (!g) return '';
-      const m = Math.round(g.dist - myDist);
-      return `<small>${m > 0 ? `+${m}` : m} ม.</small>`;
-    };
-    const html = rows.map((r, i) => `<li class="${r.p.slot === seat!.slot ? 'me' : ''}"><i>${i + 1}</i>${avImg(r.p.avatar, 22)}<b>${r.score}</b>${gap(r.p.slot)}</li>`).join('');
+    const me = room.players.find(p => p.slot === seat!.slot);
+    const html = me ? `<li class="me">${avImg(me.avatar, 22)}<b>${mine}</b></li>` : '';
     if (html !== lastRank) { lastRank = html; $('tRank').innerHTML = html; }
   }
 
