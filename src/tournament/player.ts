@@ -1,7 +1,7 @@
 import { STEP, type Action } from '../../shared/sim.js';
 import { avName, avImg } from '../lib/avatar.js';
 import type { Sfx } from '../lib/audio.js';
-import { $, esc } from '../lib/dom.js';
+import { $, digitsOnly, esc } from '../lib/dom.js';
 import { LS } from '../lib/storage.js';
 import type { GameRenderer } from '../render/index.js';
 import { Hud } from '../ui/hud.js';
@@ -27,6 +27,7 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
   const q = new URLSearchParams(location.search);
   $<HTMLInputElement>('roomCode').value = q.get('room') ?? seat?.code ?? '';
   $<HTMLInputElement>('tEmpId').value = LS.get<string>('srEmpId') ?? '';
+  digitsOnly($<HTMLInputElement>('tEmpId'));
   $('itemList').innerHTML = itemListHtml();
   $('howBtn').onclick = () => showScreen('howOv');
   $('howClose').onclick = () => showScreen('tMenu');

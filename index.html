@@ -48,7 +48,7 @@
 <button class="btn alt prize-btn" id="prizeBtn" type="button" aria-haspopup="dialog">🏆 ดูของรางวัล Top 7 · Prizes</button>
 <button class="btn alt ward-btn" id="wardBtn" type="button" aria-haspopup="dialog"><canvas class="ward-ico chest-art" aria-hidden="true"></canvas>กล่องสุ่ม &amp; ตู้เสื้อผ้า · Wardrobe <span class="ward-badge" id="wardBadge" hidden></span></button>
 <form id="login" autocomplete="off">
-<label class="field">รหัสพนักงาน · Employee ID<input id="empId" maxlength="15" required autocapitalize="characters"></label>
+<label class="field">รหัสพนักงาน · Employee ID<input id="empId" maxlength="4" required inputmode="numeric" pattern="[0-9]{4}" autocomplete="off"></label>
 <p class="msg" id="loginMsg"></p>
 <button class="btn" id="startBtn" type="submit">เริ่มวิ่ง · Start</button>
 </form>

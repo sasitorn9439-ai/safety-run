@@ -52,7 +52,7 @@
 <p class="sub">แข่งสด 3 คนพร้อมกันบนจอกลาง เก็บการ์ด <b>Safety Check</b> แล้ววิ่งเข้าประตูคำตอบที่ถูกเพื่อพุ่งแซงคู่แข่ง<br>ระวังตัวเลือกหลอก!</p>
 <form id="joinForm" autocomplete="off">
 <label class="field">รหัสห้อง · Room code<input id="roomCode" maxlength="8" required autocapitalize="characters"></label>
-<label class="field">รหัสพนักงาน · Employee ID<input id="tEmpId" maxlength="15" required autocapitalize="characters"></label>
+<label class="field">รหัสพนักงาน · Employee ID<input id="tEmpId" maxlength="4" required inputmode="numeric" pattern="[0-9]{4}" autocomplete="off"></label>
 <p class="msg" id="joinMsg"></p>
 <button class="btn" type="submit">เข้าห้องแข่ง · Join</button>
 </form>

@@ -3,7 +3,7 @@ import type { Action } from '../shared/sim.js';
 import { api, isFinalFinishError, type BoardResp, type FinishResp, type StartResp } from './lib/api.js';
 import { avImg } from './lib/avatar.js';
 import { Sfx } from './lib/audio.js';
-import { $, esc } from './lib/dom.js';
+import { $, digitsOnly, esc } from './lib/dom.js';
 import { LS } from './lib/storage.js';
 import { Game, type GameState, type Pending, type Session } from './game/game.js';
 import { createRenderer, type GameRenderer } from './render/index.js';
@@ -20,7 +20,7 @@ type OverlayId = (typeof OVERLAYS)[number];
 const show = (id: OverlayId | null) => { for (const o of OVERLAYS) $(o).classList.toggle('on', o === id); };
 
 const ERR: Record<string, string> = {
-  bad_id: 'รหัสพนักงานไม่ถูกต้อง (ตัวอักษร/ตัวเลข 3–15 ตัว) · Invalid employee ID',
+  bad_id: 'รหัสพนักงานไม่ถูกต้อง (ตัวเลข 4 หลักเท่านั้น) · Employee ID must be 4 digits',
   no_name: 'กรุณากรอกชื่อ · Please enter your name',
   busy: 'มีการเริ่มเล่นรหัสนี้พร้อมกันจากอีกเครื่อง ลองใหม่ · Try again',
   server: 'ระบบขัดข้อง ลองใหม่อีกครั้ง · Server error, try again',
@@ -208,6 +208,7 @@ export async function startApp() {
 
   /* ---------- login / start ---------- */
   { const lp = LS.get<{ id?: string }>('srPlayer'); if (lp) ($('empId') as HTMLInputElement).value = lp.id || ''; if (lp?.id) void loadWardrobe(lp.id); }
+  digitsOnly($('empId') as HTMLInputElement);
   // the wardrobe follows the employee ID typed in: a different ID shows that player's boxes, before any run (a blank or
   // malformed ID shows none)
   {
@@ -217,7 +218,7 @@ export async function startApp() {
       typing = window.setTimeout(() => {
         const id = ($('empId') as HTMLInputElement).value.trim().toUpperCase().replace(/\s+/g, '');
         if (id === wardId) return;
-        if (/^[A-Z0-9-]{3,15}$/.test(id)) { void loadWardrobe(id); return; }
+        if (/^[0-9]{4}$/.test(id)) { void loadWardrobe(id); return; }
         wardId = ''; wardState = null;
         renderer.setLook(lookOf(EMPTY_WARDROBE)); game.invalidate(); wardrobe.refresh();
       }, 400);
@@ -247,7 +248,7 @@ export async function startApp() {
   $('login').onsubmit = e => {
     e.preventDefault();
     const id = ($('empId') as HTMLInputElement).value.trim().toUpperCase().replace(/\s+/g, ''), m = $('loginMsg');
-    if (!/^[A-Z0-9-]{3,15}$/.test(id)) { m.textContent = ERR.bad_id!; return; }
+    if (!/^[0-9]{4}$/.test(id)) { m.textContent = ERR.bad_id!; return; }
     void startRun(id, m, $<HTMLButtonElement>('startBtn'), 'เริ่มวิ่ง · Start');
   };
 

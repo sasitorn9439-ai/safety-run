@@ -38,28 +38,28 @@ describe('tournament rooms', () => {
   it('seats three players, and the same employee again in their own seat', async () => {
     const { code } = await room();
     const seats = [];
-    for (const id of ['E001', 'E002', 'E003']) seats.push((await call({ action: 'join', code, id })).body.slot);
+    for (const id of ['2001', '2002', '2003']) seats.push((await call({ action: 'join', code, id })).body.slot);
     expect(seats).toEqual([0, 1, 2]);
-    expect((await call({ action: 'join', code, id: 'E004' })).body.error).toBe('full');
-    expect((await call({ action: 'join', code, id: 'e002' })).body.slot).toBe(1);
-    expect((await call({ action: 'join', code: 'ZZZZ', id: 'E005' })).status).toBe(404);
+    expect((await call({ action: 'join', code, id: '2004' })).body.error).toBe('full');
+    expect((await call({ action: 'join', code, id: ' 2002 ' })).body.slot).toBe(1);
+    expect((await call({ action: 'join', code: 'ZZZZ', id: '2005' })).status).toBe(404);
   });
 
   it('lets only the host start, and no one picks the stage or the time', async () => {
     const { code, hostToken } = await room();
-    await call({ action: 'join', code, id: 'E001' });
+    await call({ action: 'join', code, id: '2001' });
     expect((await call({ action: 'start', code })).status).toBe(403);
     expect((await call({ action: 'config', code, hostToken, stage: 'chemical', duration: 60 })).status).toBe(400);
     const s = await call({ action: 'start', code, hostToken });
     expect(s.body).toMatchObject({ phase: 'running', startAt: T0 + COUNTDOWN_MS, duration: TOUR_DURATION });
     expect(STAGES).toContain(s.body.stage);
     expect(typeof s.body.seed).toBe('number');
-    expect((await call({ action: 'join', code, id: 'E009' })).body.error).toBe('started');
+    expect((await call({ action: 'join', code, id: '2009' })).body.error).toBe('started');
   });
 
   it('scores a race from its replay, once the race has had time to run', async () => {
     const { code, hostToken } = await room();
-    const a = (await call({ action: 'join', code, id: 'E001' })).body, b = (await call({ action: 'join', code, id: 'E002' })).body;
+    const a = (await call({ action: 'join', code, id: '2001' })).body, b = (await call({ action: 'join', code, id: '2002' })).body;
     const { seed, startAt, stage } = (await call({ action: 'start', code, hostToken })).body;
     const end = startAt + TOUR_DURATION * 1000;
 
@@ -76,7 +76,7 @@ describe('tournament rooms', () => {
 
   it('closes a race whose results never all came in', async () => {
     const { code, hostToken } = await room();
-    await call({ action: 'join', code, id: 'E001' });
+    await call({ action: 'join', code, id: '2001' });
     const { startAt } = (await call({ action: 'start', code, hostToken })).body;
     const later = startAt + TOUR_DURATION * 1000 + RESULT_GRACE_MS + 1;
     expect((await call({ action: 'state', code }, later)).body.phase).toBe('finished');
@@ -84,7 +84,7 @@ describe('tournament rooms', () => {
 
   it('a rematch keeps the players and deals a new track', async () => {
     const { code, hostToken } = await room();
-    await call({ action: 'join', code, id: 'E001' });
+    await call({ action: 'join', code, id: '2001' });
     const first = (await call({ action: 'start', code, hostToken })).body.seed;
     const again = await call({ action: 'reset', code, hostToken });
     expect(again.body).toMatchObject({ phase: 'lobby', startAt: null, players: [{ slot: 0, score: null }] });
@@ -94,7 +94,7 @@ describe('tournament rooms', () => {
 
   it('draws the stage at random for each race', async () => {
     const { code, hostToken } = await room();
-    await call({ action: 'join', code, id: 'E001' });
+    await call({ action: 'join', code, id: '2001' });
     const seen = new Set<string>();
     for (let i = 0; i < 40; i++) {
       seen.add((await call({ action: 'start', code, hostToken })).body.stage);
@@ -110,7 +110,7 @@ describe('realtime tokens', () => {
   it('signs a token for the host and for a seated player, each only for its own way on its own room', async () => {
     process.env.ABLY_API_KEY = 'appId.keyId:secret';
     const { code, hostToken } = await room();
-    const { slot, token } = (await call({ action: 'join', code, id: 'E001' })).body;
+    const { slot, token } = (await call({ action: 'join', code, id: '2001' })).body;
     const caps = async (b: Body) => {
       const r = await call({ action: 'realtime', code, ...b });
       expect(r.status).toBe(200);
@@ -127,18 +127,18 @@ describe('realtime tokens', () => {
     process.env.ABLY_API_KEY = 'appId.keyId:secret';
     const clientIdIn = async () => {
       const { code } = await room();
-      const { slot, token } = (await call({ action: 'join', code, id: 'E001' })).body;
+      const { slot, token } = (await call({ action: 'join', code, id: '2001' })).body;
       return (await call({ action: 'realtime', code, slot, token })).body.tokenRequest.clientId as string;
     };
     const first = await clientIdIn();
     expect(first).toMatch(/^emp-[0-9a-f]{16}$/);
-    expect(first).not.toContain('E001');
+    expect(first).not.toContain('2001');
     expect(await clientIdIn()).toBe(first);
   });
 
   it('refuses anyone without a seat, and says so when realtime is not set up', async () => {
     const { code } = await room();
-    const { slot } = (await call({ action: 'join', code, id: 'E001' })).body;
+    const { slot } = (await call({ action: 'join', code, id: '2001' })).body;
     expect((await call({ action: 'realtime', code, slot, token: 'x' })).body.error).toBe('realtime');
     process.env.ABLY_API_KEY = 'appId.keyId:secret';
     expect((await call({ action: 'realtime', code, slot, token: 'x' })).status).toBe(403);
