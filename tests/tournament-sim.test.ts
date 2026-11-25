@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GATES, STEP, createRun, replayScore, replayTour, type Action, type InputEntry, type Run, type TourOptions } from '../shared/sim.js';
+import { AUDIT_PASS_SCORE, GATES, GATE_SCORE, STEP, createRun, replayScore, replayTour, type Action, type InputEntry, type Run, type TourOptions } from '../shared/sim.js';
 import { think } from './bot.js';
 
 const TOUR: TourOptions = { stage: 'tour', durationTicks: 60 / STEP };
@@ -51,6 +51,34 @@ describe('tournament run', () => {
     expect(stats(wrong.run).correct).toBe(0);
     expect(stats(wrong.run).wrong).toBeGreaterThanOrEqual(2);
     expect(right.run.view().dist).toBeGreaterThan(wrong.run.view().dist + 100);
+  });
+
+  it('pays points for every right answer, more than the pickups can make up', () => {
+    for (const seed of [3, 11, 42]) {
+      const right = race(seed, { answer: 'right' }), wrong = race(seed, { answer: 'wrong' });
+      const { correct } = stats(right.run);
+      expect(right.run.view().earned.extra).toBeGreaterThanOrEqual(correct * GATE_SCORE);
+      expect(right.run.score() - wrong.run.score()).toBeGreaterThan(correct * GATE_SCORE);
+      expect(right.run.view().mult).toBe(1);
+    }
+  });
+
+  it('pays GATE_SCORE for a question card and AUDIT_PASS_SCORE for a Spot Audit, the moment the right gate is run through', () => {
+    const run = createRun(99, undefined, undefined, { tour: TOUR });
+    const paid: [boolean, number][] = [];
+    let audited = false;
+    while (!run.finished) {
+      if (!audited && run.tick >= 300 && run.input('audit')) audited = true;
+      const v = run.view(), gate = v.tour!.gate;
+      if (gate) { const want = gate.correct - 1; if (v.lane !== want) run.input(v.lane < want ? 'right' : 'left'); }
+      else think(run);
+      const before = run.view().tour!.correct, extra = run.view().earned.extra;
+      run.step();
+      if (run.view().tour!.correct > before) paid.push([gate!.audit, run.view().earned.extra - extra]);
+    }
+    expect(paid.some(([audit]) => audit)).toBe(true);
+    expect(paid.some(([audit]) => !audit)).toBe(true);
+    for (const [audit, pts] of paid) expect(pts).toBe(audit ? AUDIT_PASS_SCORE : GATE_SCORE);
   });
 
   it('puts the three gates across the lanes and clears the way to them', () => {
