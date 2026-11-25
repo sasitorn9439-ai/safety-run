@@ -25,7 +25,8 @@ function drawThumb(cv: HTMLCanvasElement, item: Cosmetic, locked: boolean) {
   const dpr = Math.min(2, devicePixelRatio || 1), size = cv.clientWidth || 72;
   cv.width = cv.height = Math.round(size * dpr);
   const c = cv.getContext('2d')!, look = lookWith(item);
-  const [x0, y0, x1, y1] = item.slot === 'hat' ? [-.55, -1.55, .55, -.35] : flatBox({ ...DEFAULT_LOOK, effect: look.effect });
+  // an effect that reaches high above (a beam from the sky) is cut off at the usual height, so the mascot stays the same size
+  const [x0, y0, x1, y1] = item.slot === 'hat' ? [-.55, -1.55, .55, -.35] : flatBox({ ...DEFAULT_LOOK, effect: look.effect && { ...look.effect, above: 0 } });
   const u = cv.width / Math.max(x1 - x0, y1 - y0);
   c.save(); c.translate(cv.width / 2 - (x0 + x1) / 2 * u, cv.height / 2 - (y0 + y1) / 2 * u); c.scale(u, u);
   drawPuppet(c, idle.pose(0) as Parameters<typeof drawPuppet>[1], look, .3);

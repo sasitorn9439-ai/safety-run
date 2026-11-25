@@ -1,7 +1,8 @@
 /**
  * Thirty effects, composed from a few motions (rise, fall, orbit, trail behind) and shapes, plus glows and wings.
  * A motion places n particles evenly along one path and slides them one gap per animation loop, so the loop seams never show
- * and a quick run loop still looks like a slow drift. Everything stays within ±0.7 sideways and between y −1.35 and 0.3.
+ * and a quick run loop still looks like a slow drift. Everything stays within ±0.7 sideways and between y −1.35 and 0.3, except
+ * trails (which say how far `below` they reach) and the sky beam (which says how far `above`).
  */
 import { drawCoin, type Ctx } from '../render/draw.js';
 import type { Effect, Rarity } from './types.js';
@@ -78,7 +79,7 @@ const cross: Shape = (c, x, y, r, col) => { dot(c, x, y, r * 1.1, '#ffffff', 0);
 
 /* ---------- motions ---------- */
 type Draw = (c: Ctx, t: number, cy: number) => void;
-interface Part { back?: Draw; front?: Draw; /** lowest y it reaches, when below the usual frame */ below?: number }
+interface Part { back?: Draw; front?: Draw; /** lowest y it reaches, when below the usual frame */ below?: number; /** how high it reaches, when above the usual frame */ above?: number }
 const fade = (u: number) => Math.sin(Math.PI * u);
 /** each particle's colour comes from its place on the path, so the colours travel with it */
 const pick = (colors: readonly string[], u: number, n: number) => colors[Math.floor(u * n + .001) % colors.length]!;
@@ -204,13 +205,47 @@ const wings = (fill: string, edge: string, feathers = 4): Part => ({
     }
   },
 });
-/** a column of light standing on the mascot */
-const pillar = (color: string): Part => ({
+/** where the sky beam starts, high above the head (the mascot is about 1.1 tall) */
+const BEAM_TOP = -3.1;
+/**
+ * A beam of light pouring down from the sky onto the mascot: it fades in from nothing high above (so the top of the frame never
+ * shows), widens as it comes down and pools on the ground at the feet. Soft edges come from nested cones, brightest in the middle;
+ * a few brighter rays shimmer inside it and motes of dust drift down through it. `rgb` is "r, g, b".
+ */
+const skyBeam = (rgb: string, n = 6): Part => ({
   back(c, t) {
-    const g = c.createLinearGradient(-.3, 0, .3, 0);
-    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, color); g.addColorStop(1, 'rgba(255,255,255,0)');
-    c.save(); c.globalAlpha *= .4 + .08 * Math.sin(t * TAU); c.fillStyle = g; c.fillRect(-.3, -1.35, .6, 1.4); c.restore();
+    const top = BEAM_TOP, foot = .04, breathe = 1 + .1 * Math.sin(t * TAU);
+    /** the half-width of a cone `w` wide at the feet, at height y */
+    const half = (w: number, y: number) => w * (.32 + .68 * (y - top) / (foot - top));
+    const body = c.createLinearGradient(0, top, 0, foot);
+    body.addColorStop(0, `rgba(${rgb}, 0)`); body.addColorStop(.4, `rgba(${rgb}, .7)`); body.addColorStop(1, `rgba(${rgb}, 1)`);
+    c.save(); c.fillStyle = body;
+    for (const [w, a] of [[.5, .12], [.38, .14], [.26, .16], [.14, .2]] as const) {
+      c.globalAlpha = a * breathe; c.beginPath();
+      c.moveTo(-half(w, top), top); c.lineTo(half(w, top), top); c.lineTo(w, foot); c.lineTo(-w, foot); c.closePath(); c.fill();
+    }
+    c.restore();
+    // rays: thin bright streaks that brighten and dim in turn
+    const ray = c.createLinearGradient(0, top, 0, foot);
+    ray.addColorStop(0, 'rgba(255,255,255,0)'); ray.addColorStop(.45, 'rgba(255,255,255,.9)'); ray.addColorStop(1, 'rgba(255,255,255,.3)');
+    c.save(); c.fillStyle = ray;
+    for (const [k, s] of [[0, -.55], [1, .1], [2, .6]] as const) {
+      c.globalAlpha = .18 + .14 * Math.sin(t * TAU + k * 2.1); c.beginPath();
+      c.moveTo(half(.5, top) * s - .015, top); c.lineTo(half(.5, top) * s + .015, top); c.lineTo(.5 * s + .04, foot); c.lineTo(.5 * s - .04, foot); c.closePath(); c.fill();
+    }
+    c.restore();
+    // a pool of light where it lands
+    const pool = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+    pool.addColorStop(0, 'rgba(255,255,255,.9)'); pool.addColorStop(.4, `rgba(${rgb}, .6)`); pool.addColorStop(1, `rgba(${rgb}, 0)`);
+    c.save(); c.globalAlpha *= .55 * breathe; c.translate(0, foot); c.scale(.58, .13); c.fillStyle = pool; c.beginPath(); c.arc(0, 0, 1, 0, TAU); c.fill(); c.restore();
+    // dust motes drifting down the beam
+    for (let k = 0; k < n; k++) {
+      const u = ((k + t) / n) % 1, y = top + .5 + u * (foot - top - .55), x = half(.4, y) * Math.sin(k * 2.7 + u * 2);
+      c.save(); c.globalAlpha *= fade(u) * .85; glowDot(c, x, y, .022, '#ffffff', 0); c.restore();
+    }
   },
+  // the pool's lower edge stays inside the usual 0.34; the beam's faded top is the highest it draws
+  above: -BEAM_TOP + .02,
 });
 /** rainbow bands streaming back from the feet toward the camera: in front of the mascot, starting below its feet, fading in */
 const rainbow: Part = {
@@ -243,6 +278,7 @@ const fx = (id: string, name: string, rarity: Rarity, ...parts: Part[]): Effect 
   back: (c, t, cy) => { for (const p of parts) p.back?.(c, t, cy); },
   front: (c, t, cy) => { for (const p of parts) p.front?.(c, t, cy); },
   ...(parts.some(p => p.below) ? { below: Math.max(...parts.map(p => p.below ?? 0)) } : {}),
+  ...(parts.some(p => p.above) ? { above: Math.max(...parts.map(p => p.above ?? 0)) } : {}),
 });
 
 const PARTY = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb'];
@@ -275,6 +311,6 @@ export const EFFECTS: readonly Effect[] = [
   fx('comet', 'ดาวหาง · Comet tail', 'epic', trail(glowDot, ['#ffd740', '#ff6e40', '#ffab40'], 7, .05, .06), feetFire(['#ff6e40', '#ffd740'])),
   fx('angel', 'ปีกนางฟ้า · Angel wings', 'epic', wings('#ffffff', '#e3f2fd'), rise(sparkle, ['#ffffff'], 4, .04)),
   fx('phoenix', 'ปีกฟีนิกซ์ · Phoenix wings', 'legendary', aura('#ff6d00', .7, .5), wings('#ff6d00', '#ffd600', 5), feetFire(['#ff3d00', '#ffab00', '#ffd600'])),
-  fx('holy', 'แสงศักดิ์สิทธิ์ · Holy light', 'legendary', pillar('rgba(255,245,180,.95)'), aura('#fff59d', .6, .5), rise(sparkle, ['#ffffff', '#fff176'], 7, .05, .3)),
+  fx('holy', 'แสงศักดิ์สิทธิ์ · Holy light', 'legendary', skyBeam('255, 245, 180'), aura('#fff59d', .6, .5), rise(sparkle, ['#ffffff', '#fff176'], 7, .05, .3)),
   fx('safetyhero', 'ฮีโร่ความปลอดภัย · Safety hero', 'legendary', aura('#00e676', .7, .5), orbit(cross, ['#2e9e47'], 4, .06, .5, .16), rise(star, ['#ffd400', '#ffffff'], 5, .04)),
 ];

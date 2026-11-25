@@ -39,6 +39,8 @@ export interface Effect extends Base {
   slot: 'effect'; back?(c: Ctx, t: number, cy: number): void; front?(c: Ctx, t: number, cy: number): void;
   /** how far below the feet it draws, when that is more than the usual 0.34 (a trail that reaches toward the camera) */
   below?: number;
+  /** how far above the feet it draws, when that is more than the usual 1.42 (a beam of light pouring down from the sky) */
+  above?: number;
 }
 export type Cosmetic = Skin | Hat | Effect;
 
