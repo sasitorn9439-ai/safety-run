@@ -20,7 +20,7 @@ export const showScreen = (id: (typeof SCREENS)[number] | null) => { for (const 
 /** a phone in the tournament: join a room, wait in the lobby, race, send the race for scoring, see the standings */
 export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void) {
   const clock = new Clock(), hud = new Hud();
-  const gatePanel = new GatePanel({ root: $('tGate'), head: $('tGateHead'), q: $('tGateQ'), opts: $('tGateOpts'), bar: $('tGateBar'), pts: $('tGatePts') });
+  const gatePanel = new GatePanel({ root: $('tGate'), head: $('tGateHead'), q: $('tGateQ'), opts: $('tGateOpts'), bar: $('tGateBar') });
   let seat = LS.get<Seat>('srTourSeat'), room: Room | null = null, race: Race | null = null, channel: Channel | null = null;
   let board: Board = [], ghosts = new Ghosts(), audits = 0, submitted = false, finishing = false, poll = 0;
 

@@ -39,7 +39,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
   showScreen(null);
   renderer.resize();
   const clock = new Clock();
-  const gatePanel = new GatePanel({ root: $('hGate'), head: $('hGateHead'), q: $('hGateQ'), opts: $('hGateOpts'), bar: $('hGateBar'), pts: $('hGatePts') });
+  const gatePanel = new GatePanel({ root: $('hGate'), head: $('hGateHead'), q: $('hGateQ'), opts: $('hGateOpts'), bar: $('hGateBar') });
   let room: Room | null = null, channel: Channel | null = null, poll = 0;
   let races = new Map<Slot, Race>(), raceSeed: number | null = null;
   let focus: Slot = 0, auto = true, focusSince = 0, leader: Slot | null = null, camWhy = '';
