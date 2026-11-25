@@ -59,6 +59,7 @@ export function drawSideSlide(c: Ctx, p: SlidePose, look: Look = DEFAULT_LOOK, t
   const BODY = pal.body, RED_D = pal.capeD, RED_L = pal.capeL;
   const leg = (a: Pt, b: Pt, w: number, bend?: Pt) => limb(c, a, b, w, pal.edge, pal.sleeve, bend);
   const foot = (at: Pt, angle: number) => shoe(c, at, angle, pal.shoeD, pal.shoeL);
+  look.hat?.behind?.(c, cy);
   look.effect?.back?.(c, t, cy);
   c.save(); c.translate(-.1, 0);                      // centre the whole pose: the dust and cape trail far more to the right than the leg reaches to the left
   const { hip, lean } = p;

@@ -22,8 +22,6 @@ const star = (c: Ctx, x: number, y: number, r: number, color: string) => {
 };
 const HALF = [Math.PI, Math.PI * 2] as const;
 const TAU_H = Math.PI * 2;
-/** where the golden miner's lamp lights the floor ahead (head coordinates, up the screen from the mascot) */
-const MINER_POOL = -1.95;
 
 /** a safety helmet: dome, ridge and a short brim all round */
 function hardHat(c: Ctx, shell: string, shade: string) {
@@ -184,14 +182,8 @@ export const HATS: readonly Hat[] = [
     rr(c, -.18, -.86, .36, .05, .025, '#7cb342');
   }),
   { ...h('miner', 'หมวกเหมืองทองคำ · Golden miner', 'legendary', c => {
-    // from behind: the lamp faces away and tilts down, so its beam runs ahead (up the screen) to a pool of light on the floor in
-    // front; what shows of the helmet is the elastic strap round the back and the battery pack clipped to it
-    const beam = c.createLinearGradient(0, -.95, 0, MINER_POOL);
-    beam.addColorStop(0, 'rgba(255,250,200,.5)'); beam.addColorStop(1, 'rgba(255,250,200,.18)');
-    c.fillStyle = beam; c.beginPath(); c.moveTo(-.09, -.95); c.lineTo(-.34, MINER_POOL); c.lineTo(.34, MINER_POOL); c.lineTo(.09, -.95); c.closePath(); c.fill();
-    const pool = c.createRadialGradient(0, 0, 0, 0, 0, 1);
-    pool.addColorStop(0, 'rgba(255,250,200,.7)'); pool.addColorStop(1, 'rgba(255,250,200,0)');
-    c.save(); c.translate(0, MINER_POOL); c.scale(.42, .11); c.fillStyle = pool; c.beginPath(); c.arc(0, 0, 1, 0, TAU_H); c.fill(); c.restore();
+    // from behind: the elastic strap round the back of the helmet and the battery pack clipped to it (the lamp's light falls
+    // on the floor round the mascot, drawn behind it: see `behind`)
     hardHat(c, '#ffd700', '#c9a000');
     rr(c, -.25, -.8, .5, .045, .02, '#3a3f48');
     rr(c, -.07, -.83, .14, .1, .025, '#3a3f48'); rr(c, -.045, -.81, .09, .02, .01, '#ffd700');
@@ -203,7 +195,15 @@ export const HATS: readonly Hat[] = [
     ell(c, 0, -.86, .05, .05, '#fffde7');
     c.fillStyle = 'rgba(255,250,200,.35)'; c.beginPath(); c.moveTo(-.04, -.88); c.lineTo(-.22, -1.28); c.lineTo(.22, -1.28); c.lineTo(.04, -.88); c.closePath(); c.fill();
     star(c, -.18, -.68, .035, '#ffffff');
-  }), above: -MINER_POOL + .45 },   // room for the pool when a jump stretches the body up
+  }), behind: (c, cy) => {
+    // the lamp's light pours down from the helmet to the floor and pools round the feet; the body hides the middle of it
+    const top = cy - .5, beam = c.createLinearGradient(0, top, 0, .02);
+    beam.addColorStop(0, 'rgba(255,250,200,.15)'); beam.addColorStop(1, 'rgba(255,250,200,.5)');
+    c.fillStyle = beam; c.beginPath(); c.moveTo(-.1, top); c.lineTo(-.46, .02); c.lineTo(.46, .02); c.lineTo(.1, top); c.closePath(); c.fill();
+    const pool = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+    pool.addColorStop(0, 'rgba(255,250,200,.75)'); pool.addColorStop(1, 'rgba(255,250,200,0)');
+    c.save(); c.translate(0, .02); c.scale(.55, .12); c.fillStyle = pool; c.beginPath(); c.arc(0, 0, 1, 0, TAU_H); c.fill(); c.restore();
+  } },
   h('phoenix', 'หงอนฟีนิกซ์ · Phoenix crest', 'legendary', c => {
     for (const [a, len, col] of [[-.5, .32, '#ff3d00'], [-.25, .4, '#ff9100'], [0, .46, '#ffd600'], [.25, .4, '#ff9100'], [.5, .32, '#ff3d00']] as const) {
       c.save(); c.translate(0, -.82); c.rotate(a);
