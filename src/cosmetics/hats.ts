@@ -162,11 +162,11 @@ export const HATS: readonly Hat[] = [
     rr(c, -.2, -.84, .4, .05, .02, '#ffd400');
   }),
   h('propeller', 'หมวกใบพัด · Propeller', 'epic', c => {
-    ell(c, 0, -.74, .25, .24, '#e53935', Math.PI, Math.PI * 1.5); ell(c, 0, -.74, .25, .24, '#1e88e5', Math.PI * 1.5, Math.PI * 2);
-    c.fillStyle = '#ffd400'; c.beginPath(); c.moveTo(0, -.74); c.ellipse(0, -.74, .25, .24, 0, Math.PI * 1.3, Math.PI * 1.7); c.closePath(); c.fill();
-    rr(c, -.01, -1.04, .02, .08, .01, '#616161');
-    ell(c, -.14, -1.04, .14, .03, '#43a047', 0, 7, -.08); ell(c, .14, -1.04, .14, .03, '#fbc02d', 0, 7, .08);
-    ell(c, 0, -1.04, .025, .025, '#424242');
+    ell(c, 0, -.68, .25, .24, '#e53935', Math.PI, Math.PI * 1.5); ell(c, 0, -.68, .25, .24, '#1e88e5', Math.PI * 1.5, Math.PI * 2);
+    c.fillStyle = '#ffd400'; c.beginPath(); c.moveTo(0, -.68); c.ellipse(0, -.68, .25, .24, 0, Math.PI * 1.3, Math.PI * 1.7); c.closePath(); c.fill();
+    rr(c, -.01, -.945, .02, .04, .01, '#616161');
+    ell(c, -.14, -.945, .14, .03, '#43a047', 0, 7, -.08); ell(c, .14, -.945, .14, .03, '#fbc02d', 0, 7, .08);
+    ell(c, 0, -.965, .035, .035, '#424242');   // the knob also hides the tip of the crystal, which reaches above the lowered dome
   }),
   h('halo', 'วงแหวนนางฟ้า · Halo', 'epic', c => {
     c.strokeStyle = 'rgba(255,236,120,.45)'; c.lineWidth = .07; c.beginPath(); c.ellipse(0, -1.1, .2, .06, 0, 0, 7); c.stroke();
