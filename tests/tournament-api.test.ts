@@ -38,14 +38,14 @@ describe('tournament rooms', () => {
     expect(code).toMatch(/^[A-Z0-9]{4}$/);
   });
 
-  it('seats three players, and the same employee again in their own seat', async () => {
+  it('seats eight players, and the same employee again in their own seat', async () => {
     const { code } = await room();
     const seats = [];
-    for (const id of ['2001', '2002', '2003']) seats.push((await call({ action: 'join', code, id })).body.slot);
-    expect(seats).toEqual([0, 1, 2]);
-    expect((await call({ action: 'join', code, id: '2004' })).body.error).toBe('full');
+    for (const id of ['2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008']) seats.push((await call({ action: 'join', code, id })).body.slot);
+    expect(seats).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    expect((await call({ action: 'join', code, id: '2009' })).body.error).toBe('full');
     expect((await call({ action: 'join', code, id: ' 2002 ' })).body.slot).toBe(1);
-    expect((await call({ action: 'join', code: 'ZZZZ', id: '2005' })).status).toBe(404);
+    expect((await call({ action: 'join', code: 'ZZZZ', id: '2010' })).status).toBe(404);
   });
 
   it('shows what each player wears, as of their latest join, and only what they own', async () => {

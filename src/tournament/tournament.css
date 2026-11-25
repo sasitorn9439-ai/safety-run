@@ -35,7 +35,8 @@
 .t-gate-bar u{display:block;height:100%;background:var(--y);transform-origin:left}
 
 /* ---------- phone: lobby, items, results ---------- */
-.t-seats{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
+.t-seats{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.t-seats li span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .t-seats li{display:flex;align-items:center;gap:10px;grid-template-columns:none;min-height:48px}
 .t-seats li.me{outline:2px solid var(--y)}
 .t-seats .empty{color:var(--muted)}
@@ -43,6 +44,7 @@
 .t-items li b{display:block;height:auto;background:none;color:var(--y);font-size:16px;place-items:initial}
 .t-items li span{display:block;font-size:14px;color:var(--secondary)}
 .board li.me{outline:2px solid var(--y)}
+.board .you{color:var(--y);font-weight:600}
 .board li{grid-template-columns:28px 1fr auto}
 
 /* ---------- host: the big screen ---------- */
@@ -57,6 +59,7 @@ body.host .hud,body.host .t-race{display:none}
 .h-code{margin:12px 0 0;font-size:22px}
 .h-code b{color:var(--y);font-size:44px;letter-spacing:.12em}
 .h-setup{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;align-self:center}
+.t-seats.big{grid-template-columns:none}
 .t-seats.big li{font-size:18px}
 .t-seats .kick{margin-left:auto;width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer}
 .btn:disabled{opacity:.45;cursor:not-allowed}
@@ -65,8 +68,10 @@ body.host .hud,body.host .t-race{display:none}
 .h-clock{display:flex;flex-direction:column;align-items:center;padding:8px;border-radius:12px;background:#111}
 .h-clock b{font-size:52px;line-height:1.1;color:var(--y);font-variant-numeric:tabular-nums}
 .h-clock span{color:var(--muted);font-size:14px}
-.h-cards{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+/* eight runners: compact rows, and the list scrolls if the screen is short */
+.h-cards{list-style:none;margin:0;padding:0;display:grid;gap:6px;min-height:0;overflow-y:auto}
 .h-cards li{display:grid;grid-template-columns:28px 40px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px;border-radius:12px;background:var(--surface);border:2px solid transparent;cursor:pointer;font-size:15px}
+.h-cards li{padding:6px 10px}
 .h-cards li.on{border-color:var(--y)}
 .h-cards li b{display:block;height:auto;background:none;color:var(--ink);font-size:16px;place-items:initial}
 .h-cards li span{display:block;color:var(--muted);font-size:13px}
@@ -88,7 +93,6 @@ body.host .hud,body.host .t-race{display:none}
 .h-gate .t-gate-bar{height:14px;border-radius:7px}
 .h-podium{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
 .h-podium li{display:grid;grid-template-columns:28px 56px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border-radius:12px;background:var(--surface)}
-.h-podium li.p1{background:#2a2410;outline:2px solid var(--y)}
 .h-podium li b{display:block;height:auto;background:none;color:var(--ink);font-size:18px;place-items:initial}
 .h-podium li span{display:block;color:var(--muted);font-size:14px}
 .h-podium strong{font-size:30px;color:var(--y)}

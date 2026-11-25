@@ -6,7 +6,7 @@ import { lookOfWorn } from '../cosmetics/wardrobe.js';
 import { Music } from '../lib/music.js';
 import { LS } from '../lib/storage.js';
 import type { GameRenderer } from '../render/index.js';
-import { Clock, DELAY_TICKS, STAGE_NAMES, errText, fmtTime, openChannel, tourApi, type Channel, type Msg, type Room, type Slot } from './net.js';
+import { Clock, DELAY_TICKS, STAGE_NAMES, errText, fmtTime, openChannel, tourApi, SLOTS, type Channel, type Msg, type Room, type Slot } from './net.js';
 import { Race } from './race.js';
 import { showScreen } from './player.js';
 import { GatePanel, fxHtml } from './ui.js';
@@ -117,7 +117,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
     if (lobby) {
       stopRace();
       $('hCount').textContent = String(r.players.length);
-      $('hSeats').innerHTML = [0, 1, 2].map(s => {
+      $('hSeats').innerHTML = SLOTS.map(s => {
         const p = r.players.find(x => x.slot === s);
         return `<li>${p ? `${avImg(p.avatar, 48, p.look)}<span>${esc(avName(p.avatar))}</span><button type="button" class="kick" data-kick="${s}" aria-label="เอาออก">✕</button>` : '<span class="empty">รอผู้เล่นสแกน QR…</span>'}</li>`;
       }).join('');
@@ -210,14 +210,13 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
   function frame(now: number) {
     if (room && races.size) {
       const serverNow = clock.now();
-      let left = room.duration;
-      for (const race of races.values()) {
-        race.advance(Math.min(race.elapsed(serverNow) - DELAY_TICKS, race.reported));
-        left = Math.min(left, race.run.view().tour!.ticksLeft * STEP);
-      }
+      for (const race of races.values()) race.advance(Math.min(race.elapsed(serverNow) - DELAY_TICKS, race.reported));
       camera(now);
       const [seenSlot, seen] = races.has(focus) ? [focus, races.get(focus)!] : races.entries().next().value!;
       const el = seen.elapsed(serverNow);
+      // the clock runs on the server's time (as far behind as the replays), not on the replays: one frozen with no signal, or all
+      // of them when every phone has dropped, must not stop it
+      const left = Math.max(0, room.duration - Math.max(0, el - DELAY_TICKS) * STEP);
       count(el < 0 ? Math.ceil(-el * STEP) : 0);
       if (room.phase === 'running') music.setMode(el < 0 ? 'lobby' : left <= FINAL_SECONDS ? 'final' : 'race');
       // everyone in what they wear: the runner the camera follows, and the others as ghosts
@@ -242,7 +241,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
 
   function podium() {
     const ranked = [...room!.players].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || (b.correct ?? 0) - (a.correct ?? 0));
-    $('hPodiumList').innerHTML = ranked.map((p, i) => `<li class="p${i + 1}"><i class="m${i + 1}">${i + 1}</i>${avImg(p.avatar, 56, p.look)}<div><b>${esc(avName(p.avatar))}</b><span>${p.score == null ? 'ไม่ได้ส่งผล' : `ตอบถูก ${p.correct} ข้อ`}</span></div><strong>${p.score ?? '—'}</strong></li>`).join('');
+    $('hPodiumList').innerHTML = ranked.map((p, i) => `<li><i class="m${i + 1}">${i + 1}</i>${avImg(p.avatar, 56, p.look)}<div><b>${esc(avName(p.avatar))}</b><span>${p.score == null ? 'ไม่ได้ส่งผล' : `ตอบถูก ${p.correct} ข้อ`}</span></div><strong>${p.score ?? '—'}</strong></li>`).join('');
   }
 
   // dev only: lets the end-to-end script compare what the big screen saw with the server's verified scores

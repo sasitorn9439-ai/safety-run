@@ -94,14 +94,6 @@ const buddy: IconLayer[] = [
   L('hands', 'M40 80H60', undefined, INK, 8, 'round'),
 ];
 
-const streak: IconLayer[] = [
-  L('ribbon-l', 'M30 8L44 8L52 40L38 40Z', '#2f80ed', INK, 2.6),
-  L('ribbon-r', 'M70 8L56 8L48 40L62 40Z', '#e8323a', INK, 2.6),
-  L('medal', ell(50, 64, 28, 28), '#ffd400', INK, 3),
-  L('medal-ring', ell(50, 64, 20, 20), undefined, '#e8b400', 3),
-  L('zero', ell(50, 64, 8, 11), undefined, INK, 5),
-];
-
 const audit: IconLayer[] = [
   L('board', rr(16, 14, 68, 80, 8), '#b98149', INK, 3),
   L('paper', rr(24, 24, 52, 62, 3), '#ffffff', INK, 2),
@@ -123,7 +115,7 @@ const gate = (i: number): IconLayer[] => [
 
 export const POWER_ICONS: Record<PowerType, readonly IconLayer[]> = {
   estop, broom, lift, toolbox, firstaid: PPE_ICONS.firstaid,
-  quiz, loto, foam, buddy, streak, audit, gate0: gate(0), gate1: gate(1), gate2: gate(2),
+  quiz, loto, foam, buddy, audit, gate0: gate(0), gate1: gate(1), gate2: gate(2),
 };
 export const POWER_TYPES = Object.keys(POWER_ICONS) as PowerType[];
 

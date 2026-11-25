@@ -1,9 +1,10 @@
 import { STEP, type InputEntry, type StageId } from '../../shared/sim.js';
 import type { TokenRequest } from '@ably/pubsub-device';
-import { tourTopic } from '../../shared/tour-channels.js';
+import { TOUR_SEATS, tourTopic } from '../../shared/tour-channels.js';
 import { api, type ApiResult } from '../lib/api.js';
 
-export type Slot = 0 | 1 | 2;
+export type Slot = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export const SLOTS = Array.from({ length: TOUR_SEATS }, (_, i) => i as Slot);
 export type RoomPhase = 'lobby' | 'running' | 'finished';
 /** `look`: what the player wears (cosmetic slot → item id); missing in rooms made before it was sent */
 export interface RoomPlayer { slot: Slot; avatar: number; look?: Record<string, string>; score: number | null; correct: number | null }
@@ -54,9 +55,12 @@ export interface Channel { send(m: Msg): void; close(): void }
 const ABLY = import.meta.env.VITE_REALTIME === 'ably';
 /**
  * A phone reports its race this often. On Ably the other phones hear the reports directly, so their ghosts are only this plus one
- * hop behind; a room of three then costs about 128 messages a second (Free: 500). Supabase's Free limit (100) allows 250 ms.
+ * hop behind. A full room of 8 at 200 ms: every phone publishes 5 a second to `up` (40 in all, under Ably Free's 50 per channel),
+ * each phone hears the other 7 (35 a second plus the board, under 50 per connection), and the room costs about 380 messages a second
+ * counting every delivery (Free: 500 for the whole account). On Supabase the phones don't hear `up`: a full room is about 82 a second
+ * at 250 ms (Free: 100).
  */
-export const SEND_MS = ABLY ? 100 : 250;
+export const SEND_MS = ABLY ? 200 : 250;
 /** the big screen runs each race this far behind the phone (in ticks), so the phone's next report has arrived before it gets there */
 export const DELAY_TICKS = Math.round((SEND_MS + 350) / 1000 / STEP);
 export type Role = 'host' | 'player';
@@ -143,7 +147,7 @@ export const STAGE_NAMES: Record<StageId, string> = {
 export const fmtTime = (secs: number) => `${Math.floor(secs / 60)}:${String(Math.floor(secs % 60)).padStart(2, '0')}`;
 export const TOUR_ERR: Record<string, string> = {
   room: 'ไม่พบห้องนี้ ตรวจรหัสห้องอีกครั้ง',
-  full: 'ห้องเต็มแล้ว (3 คน)',
+  full: `ห้องเต็มแล้ว (${TOUR_SEATS} คน)`,
   started: 'การแข่งขันเริ่มไปแล้ว',
   bad_id: 'รหัสพนักงานไม่ถูกต้อง (ตัวเลข 4 หลักเท่านั้น)',
   key: 'รหัส Host ไม่ถูกต้อง',

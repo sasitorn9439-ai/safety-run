@@ -61,7 +61,7 @@ async function realtimeToken(room: TourRoom, host: boolean, b: Json): Promise<Re
 }
 
 /**
- * Tournament rooms: the host creates one (admin key), up to three players join by employee id and the host starts it. Every
+ * Tournament rooms: the host creates one (admin key), up to TOUR_SEATS (8) players join by employee id and the host starts it. Every
  * race lasts TOUR_DURATION and its stage is drawn at random when it starts. Each phone plays the race itself; its inputs are
  * replayed here with the room's seed for the score.
  */

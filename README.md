@@ -75,30 +75,34 @@ extras (officer, bonus questions, Safety Week x2), each on its own row. The sim 
 
 ## Tournament (`/tournament`)
 
-A live race for three players on one big screen. The host opens `/tournament`, presses **เป็น Host**, enters the admin key and gets a
+A live race for up to eight players (`TOUR_SEATS`) on one big screen. The host opens `/tournament`, presses **เป็น Host**, enters the admin key and gets a
 room with a QR code. Players scan it (`/tournament?room=CODE`), enter their employee ID and wait in the lobby. The host starts the race;
 every race lasts 2 minutes and its stage (one plant area, or the whole plant) is drawn at random when it starts. The host can kick a player in the lobby and
 start a rematch with the same players.
 
-* **Same track for everyone.** All three phones run `shared/sim.ts` in tournament mode (`RunOptions.tour`) on the room's seed. A crash
+* **Same track for everyone.** All the phones run `shared/sim.ts` in tournament mode (`RunOptions.tour`) on the room's seed. A crash
   costs about a second instead of ending the run, and the race ends on the clock. The normal power-ups and bonus coins are replaced
   by the tournament items, which draw from their own random streams so the track never changes.
 * **Safety Check.** A row of question cards across all three lanes every 650 m. The world slows down and three gates (A/B/C) come up
   with the answers. Run through the right one for points and a Safety Sprint (2× speed for 3 s); the wrong one slows you down. A right
   answer pays 500 if you take your lane as soon as the gates come up, falling to 100 if you take it at the last moment (`gateScore`,
-  timed from your last lane change; a yellow bar shows the time left). That is far more than the pickups: the
-  near-miss multiplier is off in a tournament. The questions are
+  timed from your last lane change; a yellow bar shows the time left). The race is about the questions: besides them a tournament
+  only scores the metres run, coins (1 point each, no multiplier) and picking up a Spot Audit. PPE, near misses and the surprises
+  (Safety Officer, Coin Rain, Safety Week, Golden Helmet) pay nothing. The questions are
   trick questions (`shared/trick-questions.ts`), the same ones in the same order for every player.
 * **Items:** LOTO Lock (moving hazards stop for 8 s), fire extinguisher (clears your lane ahead), Buddy System (auto-dodge for 5 s),
-  Zero Accident (+100 for 15 s without a crash, lost on a crash) and Spot Audit (+30, and the player in the lead gets a question:
+  and Spot Audit (+30, and the player in the lead gets a question:
   +150 for the right gate, slower for the wrong one). A Spot Audit arrives as an `audit` input, so it is part of the replay.
 * **The big screen doesn't stream video.** Each phone sends its `[tick, action]` presses, with where it is and how many times it has
-  jumped and slid, every 250 ms. The host runs the three races itself, 0.6 s behind, and shows one of them: the one with a question up, a
+  jumped and slid, every 200 ms on Ably (250 ms on Supabase). The host runs every race itself, about 0.6 s behind, and shows one of them: the one with a question up, a
   new leader, or each in turn (or the one you tap). Twice a second it sends the standings and every runner's position down to the phones,
-  which draw the others as ghosts ahead of or behind them. On Ably the phones also hear each other's reports directly, every 100 ms, so
-  a ghost is about 70 ms behind (`SEND_MS` and `DELAY_TICKS` in `src/tournament/net.ts`).
+  which draw the others as ghosts ahead of or behind them. On Ably the phones also hear each other's reports directly
+  (`SEND_MS` and `DELAY_TICKS` in `src/tournament/net.ts`).
   A room has two one-way channels (`safety-run-tour:CODE-up` phones → host, `safety-run-tour:CODE-down` host → phones), and each side
   receives only what is meant for it: every delivery counts against the realtime plan's messages per second.
+  A full room of 8 on Ably costs about 378 messages a second, and fits Ably Free's limits: 40/s published on `up` (limit 50 per
+  channel), 37/s received by each phone (limit 50 per connection), and 378/s for the whole account (limit 500). So run one full
+  room at a time on Free. A 2-minute race is about 50 000 messages, roughly 120 races in Free's 6M a month.
 * **Scores** come from `api/tournament` replaying each phone's presses with the room's seed (`replayTour`). Ties go to the most right
   answers. Tournament results are kept apart from the main leaderboard (`safety_run_tour_*` tables).
 

@@ -35,7 +35,7 @@ import { POWER_ICONS, POWER_TYPES, powerIconSvg } from '../src/render/power-icon
 
 describe('power-up icons', () => {
   it('has one for every power-up', () => {
-    expect([...POWER_TYPES].sort()).toEqual(['audit', 'broom', 'buddy', 'estop', 'firstaid', 'foam', 'gate0', 'gate1', 'gate2', 'lift', 'loto', 'quiz', 'streak', 'toolbox']);
+    expect([...POWER_TYPES].sort()).toEqual(['audit', 'broom', 'buddy', 'estop', 'firstaid', 'foam', 'gate0', 'gate1', 'gate2', 'lift', 'loto', 'quiz', 'toolbox']);
   });
   it('only uses supported path commands and stays inside the 100x100 box', () => {
     for (const t of POWER_TYPES) for (const l of POWER_ICONS[t]) {
