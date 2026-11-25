@@ -5,7 +5,7 @@ import { HAZARD_KINDS, PPE, type HazardKind, type PpeType } from '../../shared/h
 import type { PowerType, SimEvent } from '../../shared/sim.js';
 import { BACKDROP_MARGIN, FOG_HEIGHT, makeCloud, morningBirds, morningClouds, makeBackdrop, makeFog } from './backdrop.js';
 import { Camera, type Pt } from './camera.js';
-import { DrawList, Fx, GHOST_FX, RUN_FRAMES, SLIDE_FRAMES, entranceWires, envItems, interp, pose, type EnvItem } from './fx.js';
+import { DrawList, Fx, GHOST_FX, RUN_FRAMES, SHIELD_FRAMES, SLIDE_FRAMES, entranceWires, envItems, interp, pose, type EnvItem } from './fx.js';
 import { FLOOR_FRAGMENT, FLOOR_VERTEX, floorShaderCompiles } from './floor-shader.js';
 import { drawPropModel, BackdropFade, PROPS, sceneryOpacity, propItems, sideWall, type PropItem } from './scenery.js';
 import { ZONES } from '../../shared/zones.js';
@@ -13,7 +13,7 @@ import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
 import { RING_FRAMES, ringFrame, type MascotSet } from './pixel-mascot.js';
 import { DEFAULT_PALETTE } from '../cosmetics/skins.js';
 import type { Look } from '../cosmetics/types.js';
-import { PAD, ON_KINDS, POWERS, bonusArt, coinArt, lootArt, crateArt, dotArt, liftArt, powerArt, haloArt, hazardArt, lightArt, pillarArt, whitePillarArt, ppeArt, rasterize, runArt, shadowArt, shieldArt, slideArt, type Art } from './sprites.js';
+import { PAD, ON_KINDS, POWERS, bonusArt, coinArt, lootArt, crateArt, dotArt, liftArt, powerArt, haloArt, hazardArt, lightArt, pillarArt, whitePillarArt, ppeArt, rasterize, runArt, shadowArt, shieldGlowArt, shieldRingArt, slideArt, type Art } from './sprites.js';
 import type { Frame, GameRenderer } from './types.js';
 
 /** A texture plus the numbers needed to place it: anchor (normalised) and how many texture pixels one art unit is. */
@@ -71,7 +71,7 @@ function place(s: Sprite, t: Tex, x: number, y: number, u: number, alpha = 1, z 
 interface Textures {
   hazards: Record<HazardKind, Tex>; on: Partial<Record<HazardKind, Tex>>; crate: Tex; ppe: Record<PpeType, Tex>;
   power: Record<PowerType, Tex>; lift: Tex;
-  shadow: Tex; halo: Tex; coin: Tex; bonus: Tex; loot: Tex; pillar: Tex; whitePillar: Tex; light: Tex; shield: Tex; dot: Tex; run: Tex[]; slide: Tex[]; mascot: MascotTex | null;
+  shadow: Tex; halo: Tex; coin: Tex; bonus: Tex; loot: Tex; pillar: Tex; whitePillar: Tex; light: Tex; shieldGlow: Tex; shieldBack: Tex[]; shieldFront: Tex[]; dot: Tex; run: Tex[]; slide: Tex[]; mascot: MascotTex | null;
   flame: Texture; drillSmoke: Texture; smoke: Texture; cloud: Texture; backdrops: Texture[]; fog: Texture; props: (Tex | null)[];
 }
 
@@ -125,7 +125,10 @@ export class PixiRenderer implements GameRenderer {
   /** the rings the player wears (Effect.ring), behind and in front of the mascot */
   private ringBackSprite = new Sprite();
   private ringFrontSprite = new Sprite();
+  /** the PPE shield: its glow, and its ring's halves behind and in front of the mascot */
   private shieldSprite = new Sprite();
+  private shieldBackSprite = new Sprite();
+  private shieldFrontSprite = new Sprite();
   private liftSprite = new Sprite();
   private playerShadow = new Sprite();
 
@@ -175,7 +178,7 @@ export class PixiRenderer implements GameRenderer {
     this.shadowPool = new Pool(this.shadowLayer);
     this.actorPool = new Pool(this.actorLayer);
     this.fxPool = new Pool(this.fxLayer);
-    this.actorLayer.addChild(this.liftSprite, this.shieldSprite, this.ringBackSprite, this.playerSprite, this.ringFrontSprite);
+    this.actorLayer.addChild(this.liftSprite, this.shieldSprite, this.shieldBackSprite, this.ringBackSprite, this.playerSprite, this.ringFrontSprite, this.shieldFrontSprite);
     this.shadowLayer.addChild(this.playerShadow);
   }
 
@@ -244,7 +247,8 @@ export class PixiRenderer implements GameRenderer {
     for (const t of PPE) ppe[t] = mk(ppeArt(t));
     this.tx = {
       hazards, ppe, power, lift: mk(liftArt), on: Object.fromEntries(ON_KINDS.map(k => [k, mk(hazardArt(k, true))])) as Partial<Record<HazardKind, Tex>>, crate: mk(crateArt),
-      shadow: mk(shadowArt), halo: mk(haloArt), coin: mk(coinArt), bonus: mk(bonusArt), loot: mk(lootArt), pillar: mk(pillarArt), whitePillar: mk(whitePillarArt), light: mk(lightArt), shield: mk(shieldArt), dot: mk(dotArt),
+      shadow: mk(shadowArt), halo: mk(haloArt), coin: mk(coinArt), bonus: mk(bonusArt), loot: mk(lootArt), pillar: mk(pillarArt), whitePillar: mk(whitePillarArt), light: mk(lightArt), dot: mk(dotArt),
+      shieldGlow: mk(shieldGlowArt), shieldBack: Array.from({ length: SHIELD_FRAMES }, (_, i) => mk(shieldRingArt(i, false))), shieldFront: Array.from({ length: SHIELD_FRAMES }, (_, i) => mk(shieldRingArt(i, true))),
       run: Array.from({ length: RUN_FRAMES }, (_, i) => mk(runArt(i))),
       slide: Array.from({ length: SLIDE_FRAMES }, (_, i) => mk(slideArt(i))),
       mascot: null,
@@ -274,11 +278,11 @@ export class PixiRenderer implements GameRenderer {
   private destroyTextures() {
     if (!this.tx) return;
     for (const p of [this.envPool, this.shadowPool, this.actorPool, this.fxPool]) p.detach();
-    for (const s of [this.playerSprite, this.ringBackSprite, this.ringFrontSprite, this.shieldSprite, this.liftSprite, this.playerShadow, this.backdrop, this.backdropOld, ...this.clouds, this.fog]) s.texture = Texture.EMPTY;
+    for (const s of [this.playerSprite, this.ringBackSprite, this.ringFrontSprite, this.shieldSprite, this.shieldBackSprite, this.shieldFrontSprite, this.liftSprite, this.playerShadow, this.backdrop, this.backdropOld, ...this.clouds, this.fog]) s.texture = Texture.EMPTY;
     const t = this.tx;
     const all: Texture[] = [
       ...Object.values(t.hazards).map(x => x.tex), ...Object.values(t.ppe).map(x => x.tex), ...Object.values(t.power).map(x => x.tex), t.lift.tex, t.crate.tex, ...Object.values(t.on).map(x => x!.tex),
-      t.shadow.tex, t.halo.tex, t.coin.tex, t.bonus.tex, t.loot.tex, t.pillar.tex, t.whitePillar.tex, t.light.tex, t.shield.tex, t.dot.tex, ...t.run.map(x => x.tex), ...t.slide.map(x => x.tex), ...t.backdrops, t.flame, t.drillSmoke, t.smoke, t.cloud, t.fog, ...t.props.flatMap(x => x ? [x.tex] : []),
+      t.shadow.tex, t.halo.tex, t.coin.tex, t.bonus.tex, t.loot.tex, t.pillar.tex, t.whitePillar.tex, t.light.tex, t.shieldGlow.tex, ...t.shieldBack.map(x => x.tex), ...t.shieldFront.map(x => x.tex), t.dot.tex, ...t.run.map(x => x.tex), ...t.slide.map(x => x.tex), ...t.backdrops, t.flame, t.drillSmoke, t.smoke, t.cloud, t.fog, ...t.props.flatMap(x => x ? [x.tex] : []),
       ...[...this.looks.values()].flatMap(set => Object.values(set).flat().map(x => x.tex)),
     ];
     this.looks.clear();
@@ -399,7 +403,7 @@ export class PixiRenderer implements GameRenderer {
     const sh = this.shadowPool, ac = this.actorPool;
     sh.begin(); ac.begin();
     this.list.build(f, cam, I, now);
-    this.playerSprite.visible = this.ringBackSprite.visible = this.ringFrontSprite.visible = this.shieldSprite.visible = this.playerShadow.visible = this.liftSprite.visible = false;
+    this.playerSprite.visible = this.ringBackSprite.visible = this.ringFrontSprite.visible = this.shieldSprite.visible = this.shieldBackSprite.visible = this.shieldFrontSprite.visible = this.playerShadow.visible = this.liftSprite.visible = false;
     for (let i = 0; i < this.list.n; i++) {
       const it = this.list.items[i]!;
       if (it.kind === 'player') { this.placePlayer(f, I, now); continue; }
@@ -475,9 +479,12 @@ export class PixiRenderer implements GameRenderer {
     const P = pose(f, this.cam, I, this.fx, now, this.pt), u = P.u;
     place(sd, tx.shadow, P.x, P.groundY, P.shadowU, P.shadowAlpha);
     sd.visible = true;
-    if (P.shield) {
-      place(sh, tx.shield, P.x, P.feetY + P.bob - u * .52, u * P.shieldPulse, P.alpha, -0.0002);
-      sh.visible = true;
+    if (P.shield > 0) {
+      const y = P.feetY + P.bob - u * .52;
+      place(sh, tx.shieldGlow, P.x, y, u, P.shieldGlow, -0.0002);
+      place(this.shieldBackSprite, tx.shieldBack[P.shieldFrame]!, P.x, y, u, P.shield, -0.00012);
+      place(this.shieldFrontSprite, tx.shieldFront[P.shieldFrame]!, P.x, y, u, P.shield, -0.00008);
+      sh.visible = this.shieldBackSprite.visible = this.shieldFrontSprite.visible = true;
     }
     if ((f.s.lift ?? 0) > 0 && P.groundY > P.deckY + 2) {
       // the man-lift: its scissor stack reaches from the floor up to the deck the mascot bounces on

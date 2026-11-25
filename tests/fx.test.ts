@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ZMAX, type GameObject } from '../shared/sim.js';
 import { Camera } from '../src/render/camera.js';
-import { DrawList, Fx, HAZARD_SCALE, PPE_FAR_BOOST, RUN_FRAMES, envItems, interp, pose, type EnvItem } from '../src/render/fx.js';
+import { DrawList, Fx, HAZARD_SCALE, INV_ALPHA, SHIELD_FRAMES, SHIELD_WARN_SECONDS, shieldFrame, INV_BLINK_SECONDS, PPE_FAR_BOOST, RUN_FRAMES, envItems, interp, pose, type EnvItem } from '../src/render/fx.js';
 import { HAZARD_BOX } from '../src/render/draw.js';
 import type { Frame, SceneState } from '../src/render/types.js';
 
@@ -139,10 +139,23 @@ describe('pose', () => {
     expect(up.ys).toBeGreaterThan(1);
     expect(up.shadowU).toBeLessThan(ground.shadowU);
   });
-  it('uses the slide animation while sliding and flickers while invincible', () => {
+  it('shows the PPE shield while it lasts, flickering in its last SHIELD_WARN_SECONDS, its ring turning', () => {
+    expect(P({}).shield).toBe(0);
+    for (const shield of [8, SHIELD_WARN_SECONDS + .05]) expect(P({ shield }).shield).toBe(1);
+    expect(P({ shield: 1.9 }).shield).toBe(1);
+    expect(P({ shield: 1.8 }).shield).toBeLessThan(1);
+    expect(shieldFrame(0)).toBe(0);
+    const frames = new Set(Array.from({ length: 60 }, (_, i) => shieldFrame(i * 16)));
+    expect(frames.size).toBe(SHIELD_FRAMES);
+    for (const k of frames) expect(k).toBeGreaterThanOrEqual(0);
+  });
+  it('uses the slide animation while sliding; see-through while invincible, flickering as it is about to run out', () => {
     expect(P({ slide: .3 }).sliding).toBe(true);
+    expect(P({}).alpha).toBe(1);
+    for (const inv of [INV_BLINK_SECONDS + .05, 3.15, 7.95]) expect(P({ inv }).alpha).toBe(INV_ALPHA);
+    expect(P({ inv: .15 }).alpha).toBe(INV_ALPHA);
     expect(P({ inv: .05 }).alpha).toBe(1);
-    expect(P({ inv: .15 }).alpha).toBeLessThan(1);
+    expect(P({ inv: INV_BLINK_SECONDS - .05 }).alpha).toBe(1);
   });
 });
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createRun, replayScore, speedAt, COIN_SCORE, DYNAMIC_FROM, STEP_EASE, STEP_EVERY, STEP_GAIN, TOP_SPEED, FULL_SPEED_AT, MAX_INPUTS, MAX_SPEED, METRES_PER_POINT, PPE_SCORE, START_SPEED, type Action, type GameObject } from '../shared/sim.js';
+import { createRun, replayScore, speedAt, COIN_SCORE, DYNAMIC_FROM, STEP_EASE, STEP_EVERY, STEP_GAIN, TOP_SPEED, FULL_SPEED_AT, MAX_INPUTS, MAX_SPEED, METRES_PER_POINT, PPE_SCORE, START_SPEED, BONUS_GAP, BONUS_INV_SECONDS, BONUS_SECONDS, BONUS_SPRINT_SECONDS, REVIVE_INV_SECONDS, RULES, SPRINT_FACTOR, rulesOf, STEP, type Action, type GameObject, type Run } from '../shared/sim.js';
+import { think } from './bot.js';
 import golden from './golden.json';
+import goldenV1 from './golden-v1.json';
 
 // golden.json holds bot-played runs recorded against the current sim (tests/make-golden.test.ts): if one of these fails,
 // the sim changed, and a run that was open during a deploy would be rejected.
@@ -10,6 +12,29 @@ describe('replayScore matches the recorded runs', () => {
       expect(replayScore(g.seed, g.ticks, g.inputs)).toBe(g.score);
     });
   }
+});
+
+// golden-v1.json: runs recorded under rules 1, before the bonus question gave invincibility. A run from a client still on that
+// build is replayed by those rules, so these must keep their scores for as long as rules 1 is accepted.
+describe('replayScore under rules 1 matches the runs recorded then', () => {
+  for (const g of goldenV1 as unknown as { seed: number; ticks: number; inputs: [number, string | number][]; score: number }[]) {
+    it(`seed ${g.seed} → ${g.score}`, () => {
+      expect(replayScore(g.seed, g.ticks, g.inputs, 1)).toBe(g.score);
+    });
+  }
+  it('and the rules do make a difference to them', () => {
+    expect((goldenV1 as any[]).some(g => replayScore(g.seed, g.ticks, g.inputs, RULES) !== g.score)).toBe(true);
+  });
+});
+
+describe('rulesOf', () => {
+  it('reads a missing version as 1 (a build before versioning), takes 1 or 2, and refuses anything else', () => {
+    expect(rulesOf(undefined)).toBe(1);
+    expect(rulesOf(null)).toBe(1);
+    expect(rulesOf(1)).toBe(1);
+    expect(rulesOf(2)).toBe(2);
+    for (const v of [0, 3, '2', 1.5, {}]) expect(rulesOf(v)).toBeNull();
+  });
 });
 
 describe('replayScore validation', () => {
@@ -156,5 +181,69 @@ describe('score calibration', () => {
     let dist = 0;
     for (let tick = 0; tick < 10 * 60 * 60; tick++) dist += speedAt(dist) / 60;
     expect(Math.floor(dist / METRES_PER_POINT)).toBe(19840);
+  });
+});
+
+describe('invincibility after a question', () => {
+  /** a run stopped on a bonus question: the bot plays from just before the first bonus check until one comes up */
+  function atBonus() {
+    for (let seed = 1; seed < 200; seed++) {
+      const run = createRun(seed, () => {}, () => {}, { startDist: BONUS_GAP - 100 });
+      while (!run.finished && run.tick < 60 * 60) {
+        if (run.view().pendingBonus) return run;
+        think(run); run.step();
+      }
+    }
+    throw new Error('no bonus question came up');
+  }
+  const at = (run: Run) => ({ dist: run.view().dist, inv: run.view().inv });
+
+  it('a wrong answer leaves BONUS_INV_SECONDS of invincibility and no sprint', () => {
+    const run = atBonus(), q = run.view().pendingBonus!;
+    expect(run.answer((q.correct + 1) % q.options.length)).toBe(true);
+    expect(run.view().inv).toBe(BONUS_INV_SECONDS);
+    const a = at(run); run.step();
+    expect(run.view().dist - a.dist).toBeCloseTo(speedAt(a.dist) * STEP, 5);
+  });
+  it('running out of time counts the same as a wrong answer', () => {
+    const run = atBonus();
+    for (let i = 0; i < BONUS_SECONDS * 60 + 1 && run.view().pendingBonus; i++) run.step();
+    expect(run.view().pendingBonus).toBeNull();
+    expect(run.view().inv).toBeGreaterThan(BONUS_INV_SECONDS - 0.1);
+  });
+  it('a right answer sprints for BONUS_SPRINT_SECONDS, invincible for those and BONUS_INV_SECONDS more', () => {
+    const run = atBonus();
+    expect(run.answer(run.view().pendingBonus!.correct)).toBe(true);
+    expect(run.view().inv).toBe(BONUS_SPRINT_SECONDS + BONUS_INV_SECONDS);
+    let a = at(run); run.step();
+    expect(run.view().dist - a.dist).toBeCloseTo(speedAt(a.dist) * STEP * SPRINT_FACTOR, 5);
+    for (let i = 0; i < BONUS_SPRINT_SECONDS * 60; i++) run.step();
+    a = at(run); run.step();
+    expect(run.view().dist - a.dist).toBeCloseTo(speedAt(a.dist) * STEP, 5);
+  });
+  it('rules 1: no invincibility or sprint after a bonus question, 2 s after a revive', () => {
+    for (const seed of [1, 2, 3]) {
+      const run = createRun(seed, () => {}, () => {}, { rules: 1 });
+      while (!run.finished) run.step();
+      expect(run.answer(run.correct)).toBe(true);
+      expect(run.view().inv).toBe(2);
+    }
+    let run: Run | null = null;
+    for (let seed = 1; seed < 200 && !run; seed++) {
+      const r = createRun(seed, () => {}, () => {}, { startDist: BONUS_GAP - 100, rules: 1 });
+      while (!r.finished && r.tick < 60 * 60 && !r.view().pendingBonus) { think(r); r.step(); }
+      if (r.view().pendingBonus) run = r;
+    }
+    const inv0 = run!.view().inv;
+    expect(run!.answer(run!.view().pendingBonus!.correct)).toBe(true);
+    expect(run!.view().inv).toBe(inv0);
+    const a = at(run!); run!.step();
+    expect(run!.view().dist - a.dist).toBeCloseTo(speedAt(a.dist) * STEP, 5);
+  });
+  it('the second-chance question brings you back with REVIVE_INV_SECONDS of invincibility', () => {
+    const run = createRun(42, () => {}, () => {});
+    while (!run.finished) run.step();
+    expect(run.answer(run.correct)).toBe(true);
+    expect(run.view().inv).toBe(REVIVE_INV_SECONDS);
   });
 });

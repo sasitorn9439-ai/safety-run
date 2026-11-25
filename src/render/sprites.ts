@@ -1,8 +1,8 @@
 import type { HazardKind, PpeType } from '../../shared/hazards.js';
 import type { PowerType } from '../../shared/sim.js';
 import { HAZARD_KINDS, PPE } from '../../shared/hazards.js';
-import { HAZARD_BOX, drawBonusBadge, drawCoin, drawLootBox, drawCrate, drawLiftPlatform, drawPowerBadge, drawDot, drawHalo, drawHazard, drawLight, drawMascotRun, drawMascotSlide, drawPillar, drawPpeBadge, drawShadow, drawShield, type Ctx } from './draw.js';
-import { RUN_FRAMES, SLIDE_FRAMES } from './fx.js';
+import { HAZARD_BOX, drawBonusBadge, drawCoin, drawLootBox, drawCrate, drawLiftPlatform, drawPowerBadge, drawDot, drawHalo, drawHazard, drawLight, drawMascotRun, drawMascotSlide, drawPillar, drawPpeBadge, drawShadow, drawShieldGlow, drawShieldRing, type Ctx } from './draw.js';
+import { RUN_FRAMES, SHIELD_FRAMES, SHIELD_TILES, SLIDE_FRAMES } from './fx.js';
 import { POWER_TYPES } from './power-icons.js';
 
 export const PAD = 2;
@@ -31,7 +31,9 @@ export const shadowArt: Art = { box: [-.5, -.12, .5, .12], draw: drawShadow, sca
 export const pillarArt: Art = { box: [-.19, -7.2, .19, 0], draw: drawPillar, scale: .5, mips: true };
 export const whitePillarArt: Art = { ...pillarArt, draw: (c,u) => drawPillar(c,u,true) };
 export const lightArt: Art = { box: [-1.1, -.28, 1.1, .28], draw: drawLight, scale: .5, mips: true };
-export const shieldArt: Art = { box: [-.45, -.7, .45, .7], draw: drawShield, scale: MASCOT, mips: false };
+/** the PPE shield: a glow (soft, so half resolution is plenty) and frame `i` of the ring of tiles, behind or in front of the mascot */
+export const shieldGlowArt: Art = { box: [-.66, -.86, .66, .86], draw: drawShieldGlow, scale: MASCOT / 2, mips: false };
+export const shieldRingArt = (i: number, front: boolean): Art => ({ box: [-.72, -.34, .72, .42], draw: (c, u) => drawShieldRing(c, u, i / SHIELD_FRAMES, front, SHIELD_TILES), scale: MASCOT, mips: false });
 export const dotArt: Art = { box: [-.5, -.5, .5, .5], draw: drawDot, scale: .12, mips: false };
 // the mascot is always near z=0, so it doesn't need a mip chain
 export const runArt = (i: number): Art => ({ box: [-.4, -1.0, .4, .03], draw: (c, u) => { c.scale(u, u); drawMascotRun(c, i / RUN_FRAMES * Math.PI * 2); }, scale: MASCOT, mips: false });
@@ -94,6 +96,9 @@ export class SpriteSet {
   pillar: Sprite;
   whitePillar: Sprite;
   light: Sprite;
+  shieldGlow: Sprite;
+  shieldBack: Sprite[];
+  shieldFront: Sprite[];
 
   constructor(lw: number, dpr: number) {
     const mk = (art: Art) => new Sprite(art.box, art, lw * dpr * art.scale, art.mips ? 5 : 1);
@@ -111,6 +116,9 @@ export class SpriteSet {
     this.pillar = mk(pillarArt);
     this.whitePillar = mk(whitePillarArt);
     this.light = mk(lightArt);
+    this.shieldGlow = mk(shieldGlowArt);
+    this.shieldBack = Array.from({ length: SHIELD_FRAMES }, (_, i) => mk(shieldRingArt(i, false)));
+    this.shieldFront = Array.from({ length: SHIELD_FRAMES }, (_, i) => mk(shieldRingArt(i, true)));
     for (let i = 0; i < RUN_FRAMES; i++) this.run.push(mk(runArt(i)));
     for (let i = 0; i < SLIDE_FRAMES; i++) this.slide.push(mk(slideArt(i)));
   }

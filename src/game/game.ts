@@ -1,5 +1,5 @@
 import { HZ, type HazardKind } from '../../shared/hazards.js';
-import { STEP, createRun, type Action, type BonusQuiz, type InputEntry, type Run, type SimEvent } from '../../shared/sim.js';
+import { STEP, createRun, type Action, type BonusQuiz, type InputEntry, type Rules, type Run, type SimEvent } from '../../shared/sim.js';
 import type { Sfx } from '../lib/audio.js';
 import type { Frame, GameRenderer, PrevState, SceneState } from '../render/types.js';
 import type { Hud } from '../ui/hud.js';
@@ -9,7 +9,8 @@ export type GameState = 'menu' | 'tutor' | 'play' | 'pause' | 'resume' | 'over';
 
 /** `worn`: what the player wears (cosmetic slot → item id) when the run starts, which dresses the HUD avatar */
 export interface Session { id: string; token: string; run: number; runNo: number; avatar: number; seed: number; worn?: Readonly<Record<string, string>> }
-export interface Pending extends Session { score: number; ticks?: number; inputs?: readonly InputEntry[] }
+/** `rules`: the sim rules the run was played by; missing on a run saved by a build before versioning (rules 1) */
+export interface Pending extends Session { score: number; ticks?: number; inputs?: readonly InputEntry[]; rules?: Rules }
 
 const IDLE: SceneState = { dist: 0, lane: 0, px: 0, py: 0, vy: 0, slide: 0, inv: 0, shield: 0, objs: [] };
 const MAX_STEPS_PER_FRAME = 6;
@@ -119,6 +120,25 @@ export class Game {
     if (!this.run?.answer(index)) return false;
     this.inputs.push([this.run.tick, index]);
     this.snapshot(); this.alpha = 1; this.acc = 0;
+    this.setState('play');
+    return true;
+  }
+
+  /** A bonus question was answered: the sim takes it at once (so its clock can never run out under a result already on screen),
+   * then the run holds still, adding no ticks, until continueRun() */
+  answerBonus(index: number) {
+    if (!this.run?.view().pendingBonus || !this.run.answer(index)) return false;
+    this.inputs.push([this.run.tick, index]);
+    this.snapshot(); this.alpha = 1; this.acc = 0;
+    this.hud.count(0);
+    this.setState('pause');
+    return true;
+  }
+
+  /** back to running straight away after answerBonus() (no countdown: the answer left you invincible) */
+  continueRun() {
+    if (this.state !== 'pause') return false;
+    this.acc = 0;
     this.setState('play');
     return true;
   }
