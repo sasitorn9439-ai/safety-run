@@ -1,6 +1,10 @@
 import { HAZARD_KINDS, HZ, PPE } from '../shared/hazards.js';
 import { LIFT_HEIGHT, POWER_SECONDS, SLIDE_SECONDS, SPARK_HALF_CYCLE, START_SPEED, STEP, createRun, type Action, type GameObject, type PowerType } from '../shared/sim.js';
 import { ZONES } from '../shared/zones.js';
+import { CATALOG, lookOfWorn } from './cosmetics/wardrobe.js';
+import { SLOTS, type Slot } from './cosmetics/types.js';
+import { AV_N, avName } from '../shared/avatar.js';
+import { avatarURL } from './lib/avatar.js';
 import { createRenderer, type SceneState } from './render/index.js';
 import './dev.css';
 
@@ -27,6 +31,13 @@ export async function startDev() {
         <a href="/">← Safety Run</a>
         <h1>Dev Mode</h1>
         <p id="dev-renderer" role="status">Loading renderer…</p>
+        <fieldset><legend>Avatar</legend>
+          <div class="dev-avatar" id="dev-av"></div>
+          <output id="dev-av-name"></output>
+          <label>Avatar number <input id="dev-av-n" type="number" min="0" max="${AV_N * 2}" value="5"></label>
+          ${SLOTS.map(s => `<label>${s} <select id="dev-av-${s}"><option value="">—</option>${CATALOG.filter(c => c.slot === s).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></label>`).join('')}
+          <button id="dev-av-random" type="button">Random outfit</button>
+        </fieldset>
         <label>Asset or scene <select id="dev-asset"></select></label>
         <label>Distance <output id="dev-depth-value"></output>
           <input id="dev-depth" type="range" min="6" max="62" step=".5" value="18">
@@ -93,6 +104,25 @@ export async function startDev() {
     };
     place();
     for (const control of [asset, depth, lane]) control.addEventListener('input', place);
+
+    // avatar preview: the badge with nothing worn, the dressed head otherwise; the mascot on stage wears the same outfit
+    const avN = document.querySelector<HTMLInputElement>('#dev-av-n')!;
+    const avSlot = (s: Slot) => document.querySelector<HTMLSelectElement>(`#dev-av-${s}`)!;
+    const showAvatar = () => {
+      const worn: Partial<Record<Slot, string>> = {};
+      for (const s of SLOTS) if (avSlot(s).value) worn[s] = avSlot(s).value;
+      const n = Math.max(0, avN.valueAsNumber || 0);
+      document.querySelector<HTMLElement>('#dev-av')!.innerHTML = [160, 72, 36, 22].map(px => `<img src="${avatarURL(n, px * 2, worn)}" width="${px}" height="${px}" alt="">`).join('');
+      document.querySelector<HTMLOutputElement>('#dev-av-name')!.value = avName(n);
+      renderer.setLook(lookOfWorn(worn));
+    };
+    for (const control of [avN, ...SLOTS.map(avSlot)]) control.addEventListener('input', showAvatar);
+    document.querySelector<HTMLButtonElement>('#dev-av-random')!.onclick = () => {
+      for (const s of SLOTS) { const opts = avSlot(s).options; avSlot(s).selectedIndex = Math.floor(Math.random() * opts.length); }
+      avN.value = String(Math.floor(Math.random() * AV_N));
+      showAvatar();
+    };
+    showAvatar();
 
     function advance() {
       previous = motion.view();

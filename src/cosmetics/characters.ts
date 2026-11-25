@@ -5,7 +5,7 @@
  */
 import { rr, type Ctx } from '../render/draw.js';
 import { palette } from './skins.js';
-import type { Figure, Rarity, Skin } from './types.js';
+import type { Figure, FrontFigure, Rarity, Skin } from './types.js';
 
 const TAU = Math.PI * 2;
 const tri = (c: Ctx, pts: readonly (readonly [number, number])[], fill: string) => {
@@ -146,8 +146,90 @@ const dragon: Figure = {
   },
 };
 
+/** each custom skin from the front, for avatars (src/cosmetics/front.ts draws the face between `skin` and `over`) */
+const FRONT: Record<string, FrontFigure> = {
+  'dino': {
+    behind(c) { for (const [x, y, r] of [[-.15, -.8, .055], [0, -.87, .065], [.15, -.8, .055]] as const) tri(c, [[x - r, y + r], [x, y - r * 1.4], [x + r, y + r]], '#ffb300'); },
+    over(c) { for (const s of [-1, 1]) ell(c, s * .045, -.545, .012, .008, '#3d7d2c'); },
+  },
+  'robot': {
+    over(c) {
+      for (const s of [-1, 1]) { rr(c, s * .27 - .045, -.66, .09, .12, .03, '#455a64'); ell(c, s * .3, -.6, .022, .022, '#29b6f6'); }
+      c.strokeStyle = '#455a64'; c.lineWidth = .02; c.beginPath(); c.moveTo(0, -.86); c.lineTo(0, -.97); c.stroke();
+      ell(c, 0, -.98, .03, .03, '#ff5252');
+      for (const [x, y] of [[-.17, -.74], [.17, -.74]] as const) ell(c, x, y, .014, .014, '#90a4ae');
+    },
+    eyes: 'led',
+  },
+  'ninja': {
+    skin(c) { rr(c, -.25, -.66, .5, .12, .05, '#f3d9c6'); },                     // the gap in the mask
+    over(c) {
+      rr(c, -.26, -.73, .52, .065, .03, '#e53935');
+      ell(c, 0, -.698, .045, .035, '#b71c1c');
+    },
+    mouth: false,
+  },
+  'bear': {
+    behind(c) { for (const s of [-1, 1]) { ell(c, s * .2, -.79, .085, .08, '#8d6e63'); ell(c, s * .2, -.79, .045, .042, '#6d4c41'); } },
+    skin(c) { ell(c, 0, -.52, .09, .065, '#efe4df'); ell(c, 0, -.555, .03, .02, '#3e2723'); },
+  },
+  'bee': {
+    behind(c) {
+      c.strokeStyle = '#212121'; c.lineWidth = .02; c.lineCap = 'round';
+      for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * .08, -.83); c.quadraticCurveTo(s * .12, -.95, s * .2, -1.0); c.stroke(); ell(c, s * .2, -1.0, .03, .03, '#212121'); }
+    },
+    skin(c) { rr(c, -.26, -.72, .52, .045, .02, '#212121'); },
+  },
+  'fox': {
+    behind(c) {
+      for (const s of [-1, 1]) {
+        tri(c, [[s * .1, -.8], [s * .24, -1.0], [s * .27, -.7]], '#e65100');
+        tri(c, [[s * .13, -.79], [s * .23, -.95], [s * .24, -.73]], '#ffe0b2');
+        tri(c, [[s * .2, -.9], [s * .24, -1.0], [s * .26, -.88]], '#3e2723');
+      }
+    },
+    skin(c) {
+      c.fillStyle = '#fff8ee'; c.beginPath();
+      c.moveTo(-.27, -.56); c.quadraticCurveTo(-.12, -.6, 0, -.54); c.quadraticCurveTo(.12, -.6, .27, -.56);
+      c.quadraticCurveTo(.26, -.45, 0, -.44); c.quadraticCurveTo(-.26, -.45, -.27, -.56); c.fill();
+      ell(c, 0, -.55, .028, .02, '#3e2723');
+    },
+  },
+  'penguin': {
+    skin(c) {
+      c.fillStyle = '#ffffff'; c.beginPath();
+      c.moveTo(0, -.66); c.bezierCurveTo(-.05, -.72, -.22, -.72, -.21, -.58); c.quadraticCurveTo(-.2, -.46, 0, -.455);
+      c.quadraticCurveTo(.2, -.46, .21, -.58); c.bezierCurveTo(.22, -.72, .05, -.72, 0, -.66); c.fill();
+    },
+    over(c) { tri(c, [[-.045, -.55], [.045, -.55], [0, -.5]], '#ff9800'); },
+    mouth: false,
+  },
+  'alien': {
+    over(c) {
+      for (const s of [-1, 1]) tri(c, [[s * .2, -.66], [s * .36, -.82], [s * .25, -.55]], '#64dd17');
+      for (const [x, y, r] of [[-.08, -.78, .025], [.06, -.8, .02], [.12, -.74, .016]] as const) ell(c, x, y, r, r, '#7cb342');
+    },
+    eyes: 'big',
+  },
+  'unicorn': {
+    behind(c) { ['#ff8a80', '#ffd180', '#ffff8d', '#b9f6ca', '#80d8ff', '#ea80fc'].forEach((col, i) => ell(c, .2 + i * .012, -.78 + i * .06, .07, .045, col, .4)); },
+    over(c) {
+      tri(c, [[-.045, -.76], [0, -1.02], [.045, -.76]], '#ffd54f');
+      c.strokeStyle = '#ffb300'; c.lineWidth = .012;
+      for (const y of [-.8, -.86, -.92]) { const w = (y + 1.02) * .17; c.beginPath(); c.moveTo(-w, y + .01); c.lineTo(w, y - .015); c.stroke(); }
+    },
+  },
+  'dragon': {
+    behind(c) {
+      c.strokeStyle = '#ffcc80'; c.lineWidth = .04; c.lineCap = 'round';
+      for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * .14, -.8); c.quadraticCurveTo(s * .2, -.95, s * .3, -.98); c.stroke(); }
+    },
+    over(c) { for (const s of [-1, 1]) ell(c, s * .04, -.545, .012, .008, '#8e0000'); },
+  },
+};
+
 const s = (id: string, name: string, rarity: Rarity, colors: Parameters<typeof palette>[0], figure: Figure): Skin =>
-  ({ id: 'skin-' + id, slot: 'skin', name, rarity, pal: palette(colors), figure });
+  ({ id: 'skin-' + id, slot: 'skin', name, rarity, pal: palette(colors), figure: { ...figure, front: FRONT[id] } });
 
 export const CUSTOM_SKINS: readonly Skin[] = [
   s('dino', 'ไดโนเสาร์ · Dino', 'legendary', { body: '#8fd16a', cape: '#4f9a3a', head: '#a5dc84', gem: '#ffca28' }, dino),

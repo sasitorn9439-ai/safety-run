@@ -1,4 +1,7 @@
-/** Thirty hats, each drawn in head coordinates (see Hat in types.ts). The mascot is seen from behind, so this is the back of each hat. */
+/**
+ * Thirty hats, each drawn in head coordinates (see Hat in types.ts). The mascot is seen from behind, so `draw` is the back of each
+ * hat; `front` is given only where the front looks different (avatars show the front).
+ */
 import { rr, type Ctx } from '../render/draw.js';
 import type { Hat, Rarity } from './types.js';
 
@@ -34,14 +37,22 @@ function cap(c: Ctx, color: string, dark: string) {
   rr(c, -.26, -.76, .52, .04, .02, dark);
   ell(c, 0, -.985, .03, .03, dark);
 }
+/** the same cap from the front: crown panels and the bill over the forehead */
+function capFront(c: Ctx, color: string, dark: string) {
+  ell(c, 0, -.74, .26, .25, color, ...HALF);
+  line(c, [[0, -.985], [0, -.75]], dark, .012);
+  ell(c, 0, -.985, .03, .03, dark);
+  ell(c, 0, -.745, .3, .07, dark, 0, Math.PI);
+  ell(c, 0, -.75, .27, .045, color, 0, Math.PI);
+}
 
-const h = (id: string, name: string, rarity: Rarity, draw: (c: Ctx) => void): Hat => ({ id: 'hat-' + id, slot: 'hat', name, rarity, draw });
+const h = (id: string, name: string, rarity: Rarity, draw: (c: Ctx) => void, front?: (c: Ctx) => void): Hat => ({ id: 'hat-' + id, slot: 'hat', name, rarity, draw, ...front && { front } });
 
 export const HATS: readonly Hat[] = [
   h('hardhat', 'หมวกนิรภัยเหลือง · Hard hat', 'common', c => hardHat(c, '#ffd400', '#e0a800')),
   h('hardhat-white', 'หมวกนิรภัยขาว · Engineer hat', 'common', c => hardHat(c, '#f7f7f2', '#cfd3d6')),
-  h('cap', 'แก๊ปแดง · Red cap', 'common', c => cap(c, '#e53935', '#a32020')),
-  h('cap-blue', 'แก๊ปน้ำเงิน · Blue cap', 'common', c => cap(c, '#1e6fd0', '#11458a')),
+  h('cap', 'แก๊ปแดง · Red cap', 'common', c => cap(c, '#e53935', '#a32020'), c => capFront(c, '#e53935', '#a32020')),
+  h('cap-blue', 'แก๊ปน้ำเงิน · Blue cap', 'common', c => cap(c, '#1e6fd0', '#11458a'), c => capFront(c, '#1e6fd0', '#11458a')),
   h('beanie', 'หมวกไหมพรม · Beanie', 'common', c => {
     ell(c, 0, -.72, .27, .27, '#ff7043', ...HALF);
     for (let x = -.2; x <= .2; x += .1) rr(c, x - .02, -.92 + Math.abs(x) * .6, .04, .2 - Math.abs(x) * .6, .02, '#f4511e');

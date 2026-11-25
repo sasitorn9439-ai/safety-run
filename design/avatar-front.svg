@@ -1,0 +1,71 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+	<defs>
+		<clipPath clipPathUnits="userSpaceOnUse" id="cp1">
+			<path d="m256 512c-141.57 0-256-114.43-256-256 0-141.57 114.43-256 256-256 141.57 0 256 114.43 256 256 0 141.57-114.43 256-256 256z"/>
+		</clipPath>
+	</defs>
+	<style>
+		.s0 { fill: #0288d1 } 
+		.s1 { fill: none;stroke: #cdc1be;stroke-linecap: round;stroke-width: 48 } 
+		.s2 { fill: none;stroke: #fff7f4;stroke-linecap: round;stroke-width: 36.3 } 
+		.s3 { fill: #e7343e } 
+		.s4 { opacity: .3;fill: #ffffff } 
+		.s5 { fill: #fff7f4 } 
+		.s6 { fill: #b7212b } 
+		.s7 { fill: #ee3e46 } 
+		.s8 { fill: #fff9f6;stroke: #c9bcb9;stroke-width: 6.9 } 
+		.s9 { opacity: .35;fill: #ff788c } 
+		.s10 { fill: #231a18 } 
+		.s11 { fill: #ffffff } 
+		.s12 { fill: #7a1f24 } 
+		.s13 { fill: #ff7b86 } 
+		.s14 { fill: #c4222b } 
+		.s15 { fill: #fa5860 } 
+		.s16 { fill: none;stroke: #a81c25;stroke-linejoin: round;stroke-width: 4.8 } 
+	</style>
+	<g id="Clip-Path" clip-path="url(#cp1)">
+		<g>
+			<g id="background">
+				<path id="bg" fill-rule="evenodd" class="s0" d="m256 512c-141.57 0-256-114.43-256-256 0-141.57 114.43-256 256-256 141.57 0 256 114.43 256 256 0 141.57-114.43 256-256 256z"/>
+				<path id="bg copy" fill-rule="evenodd" class="s0" d="m256 512c-141.57 0-256-114.43-256-256 0-141.57 114.43-256 256-256 141.57 0 256 114.43 256 256 0 141.57-114.43 256-256 256z"/>
+			</g>
+			<g id="arms">
+				<path id="arm-left-outline" fill-rule="evenodd" class="s1" d="m192 405.33q-53.33-10.66-61.33 24"/>
+				<path id="arm-left" fill-rule="evenodd" class="s2" d="m192 405.33q-53.33-10.66-61.33 24"/>
+				<path id="mitt-left" fill-rule="evenodd" class="s3" d="m128 464c-16.52 0-29.87-11.92-29.87-26.67 0-14.75 13.35-26.67 29.87-26.67 16.52 0 29.87 11.92 29.87 26.67 0 14.75-13.35 26.67-29.87 26.67z"/>
+				<path id="mitt-left-glint" fill-rule="evenodd" class="s4" d="m136 436.8c-5.9 0-10.67-3.34-10.67-7.47 0-4.13 4.77-7.47 10.67-7.47 5.9 0 10.67 3.34 10.67 7.47 0 4.13-4.77 7.47-10.67 7.47z"/>
+				<path id="arm-right-outline" fill-rule="evenodd" class="s1" d="m320 405.33q53.33-10.66 61.33 24"/>
+				<path id="arm-right" fill-rule="evenodd" class="s2" d="m320 405.33q53.33-10.66 61.33 24"/>
+				<path id="arm-right copy" fill-rule="evenodd" class="s2" d="m320 405.33q53.33-10.66 61.33 24"/>
+				<path id="mitt-right" fill-rule="evenodd" class="s3" d="m384 464c-16.52 0-29.87-11.92-29.87-26.67 0-14.75 13.35-26.67 29.87-26.67 16.52 0 29.87 11.92 29.87 26.67 0 14.75-13.35 26.67-29.87 26.67z"/>
+				<path id="mitt-right-glint" fill-rule="evenodd" class="s4" d="m376 436.8c-5.9 0-10.67-3.34-10.67-7.47 0-4.13 4.77-7.47 10.67-7.47 5.9 0 10.67 3.34 10.67 7.47 0 4.13-4.77 7.47-10.67 7.47z"/>
+				<g id="body">
+					<path id="torso" fill-rule="evenodd" class="s5" d="m234.33 368h42.67c38.29 0 68.98 31.38 69.33 69.33v42.67c0 38.29-31.04 69.33-69.33 69.33h-42.67c-38.29 0-69.33-31.04-69.33-69.33v-42.67c0-38.29 31.04-69.33 69.33-69.33z"/>
+				</g>
+			</g>
+			<g id="scarf">
+				<path id="scarf-shade" class="s6" d="m176 384q80 21.33 160 0l-80 90.67z"/>
+				<path id="scarf" class="s7" d="m186.67 386.67q69.33 16 138.66 0l-69.33 74.66z"/>
+			</g>
+			<g id="head">
+				<path id="head" class="s8" d="m256 173.33c42.67 2.67 128 66.67 138.67 154.67q10.66 61.33-138.67 72-149.33-10.67-138.67-72c10.67-88 96-152 138.67-154.67z"/>
+			</g>
+			<g id="face">
+				<path id="blush-left" fill-rule="evenodd" class="s9" d="m165.33 365.87c-13.27 0-24-6.2-24-13.87 0-7.67 10.73-13.87 24-13.87 13.27 0 24 6.2 24 13.87 0 7.67-10.73 13.87-24 13.87z"/>
+				<path id="blush-right" fill-rule="evenodd" class="s9" d="m346.67 365.87c-13.27 0-24-6.2-24-13.87 0-7.67 10.73-13.87 24-13.87 13.27 0 24 6.2 24 13.87 0 7.67-10.73 13.87-24 13.87z"/>
+				<path id="eye-left" fill-rule="evenodd" class="s10" d="m202.67 339.74c-10.62 0-19.2-11.21-19.2-25.07 0-13.86 8.58-25.07 19.2-25.07 10.62 0 19.2 11.21 19.2 25.07 0 13.86-8.58 25.07-19.2 25.07z"/>
+				<path id="eye-left-hi" fill-rule="evenodd" class="s11" d="m196.27 314.66c-3.83 0-6.93-3.81-6.93-8.53 0-4.72 3.1-8.53 6.93-8.53 3.83 0 6.93 3.81 6.93 8.53 0 4.72-3.1 8.53-6.93 8.53z"/>
+				<path id="eye-right" fill-rule="evenodd" class="s10" d="m309.33 339.74c-10.62 0-19.2-11.21-19.2-25.07 0-13.86 8.58-25.07 19.2-25.07 10.62 0 19.2 11.21 19.2 25.07 0 13.86-8.58 25.07-19.2 25.07z"/>
+				<path id="eye-right-hi" fill-rule="evenodd" class="s11" d="m302.93 314.66c-3.83 0-6.93-3.81-6.93-8.53 0-4.72 3.1-8.53 6.93-8.53 3.83 0 6.93 3.81 6.93 8.53 0 4.72-3.1 8.53-6.93 8.53z"/>
+				<path id="mouth" class="s12" d="m232 349.33q24 2.67 48 0-24 34.67-48 0z"/>
+				<path id="tongue" fill-rule="evenodd" class="s13" d="m256 373.33c-6.49 0-11.73-2.86-11.73-6.4 0-3.54 5.24-6.4 11.73-6.4 6.49 0 11.73 2.86 11.73 6.4 0 3.54-5.24 6.4-11.73 6.4z"/>
+			</g>
+			<g id="gem">
+				<path id="gem-left" fill-rule="evenodd" class="s7" d="m256 101.33l-80 90.67 80 69.33z"/>
+				<path id="gem-right" fill-rule="evenodd" class="s14" d="m256 101.33l80 90.67-80 69.33z"/>
+				<path id="gem-highlight" fill-rule="evenodd" class="s15" d="m256 101.33l-80 90.67 53.33-10.67z"/>
+				<path id="gem-edge" fill-rule="evenodd" class="s16" d="m256 101.33l80 90.67-80 69.33-80-69.33z"/>
+			</g>
+		</g>
+	</g>
+</svg>

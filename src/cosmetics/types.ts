@@ -27,10 +27,21 @@ interface Base { id: string; name: string; rarity: Rarity }
  * `head` is in head coordinates (like a hat, drawn before the hat); `back` is in body coordinates over the cape (the camera
  * sees the mascot's back, so a tail points toward it). `t` is the frame's place in its animation.
  */
-export interface Figure { head?(c: Ctx, t: number): void; back?(c: Ctx, t: number): void }
+export interface Figure { head?(c: Ctx, t: number): void; back?(c: Ctx, t: number): void; front?: FrontFigure }
+/** a custom skin's head seen from the front (avatars only; the game shows the back) */
+export interface FrontFigure {
+  /** behind the head (spikes, ears, a mane) */
+  behind?(c: Ctx): void;
+  /** on the face, clipped to the head, under the eyes (a mask, a muzzle) */
+  skin?(c: Ctx): void;
+  /** over the face (a horn, a beak, a headband) */
+  over?(c: Ctx): void;
+  eyes?: 'led' | 'big';
+  mouth?: false;
+}
 export interface Skin extends Base { slot: 'skin'; pal: Palette; figure?: Figure }
 /** drawn right after the head, in head coordinates: the head spans y −0.865…−0.44 and x ±0.27, its crystal reaches up to y −0.995 */
-export interface Hat extends Base { slot: 'hat'; draw(c: Ctx): void }
+export interface Hat extends Base { slot: 'hat'; draw(c: Ctx): void; /** the hat from the front, when it differs from the back (avatars) */ front?(c: Ctx): void }
 /**
  * `t` is the frame's place in its animation (0…1, wraps for the run and idle loops). Effects repeat with period 1/n for an
  * n-fold pattern, so a fast run loop still reads as a calm drift. `cy` is the height of the body's centre (negative = up).

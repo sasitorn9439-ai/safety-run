@@ -1,4 +1,9 @@
-import { AV_C, avParts } from '../../shared/avatar.js';
+import { AV_C, avParts, type AvatarParts } from '../../shared/avatar.js';
+import { drawFrontHead, drawFrontShoulders } from '../cosmetics/front.js';
+import { DEFAULT_PALETTE } from '../cosmetics/skins.js';
+import type { Look } from '../cosmetics/types.js';
+import { lookOfWorn } from '../cosmetics/wardrobe.js';
+import type { Ctx } from '../render/draw.js';
 export { avName } from '../../shared/avatar.js';
 
 function glyph(c: CanvasRenderingContext2D, g: number, r: number) {
@@ -18,34 +23,77 @@ function glyph(c: CanvasRenderingContext2D, g: number, r: number) {
   if (g === 11) { c.save(); c.rotate(-Math.PI / 4); c.fillRect(-r * .12, -r * .15, r * .24, r * .9); P(); c.arc(0, -r * .35, r * .32, 0, 7); c.fill(); c.globalCompositeOperation = 'destination-out'; c.fillRect(-r * .1, -r * .72, r * .2, r * .34); c.restore(); }
 }
 
-const cache = new Map<string, string>();
+/** the badge's ring: silver or gold for the framed avatars, none for the rest */
+const ringColor = (p: AvatarParts) => p.f === 2 ? '#ffd400' : p.f === 1 ? '#dfe6ee' : 'rgba(0,0,0,0)';
 
-/** Avatar as a PNG data URL (cached). `size` is in device pixels. */
-export function avatarURL(n: number | null | undefined, size = 96): string {
-  const key = `${n}:${size}`;
-  const hit = cache.get(key);
+/** the plain avatar: the player's glyph on their colour */
+function badge(c: Ctx, p: AvatarParts | null, R: number, size: number) {
+  if (!p) { c.fillStyle = '#3a3f48'; c.beginPath(); c.arc(0, 0, R, 0, 7); c.fill(); return; }
+  c.fillStyle = ringColor(p); c.beginPath(); c.arc(0, 0, R, 0, 7); c.fill();
+  c.fillStyle = AV_C[p.c]![0]; c.beginPath(); c.arc(0, 0, p.f ? R * .86 : R, 0, 7); c.fill();
+  const g = document.createElement('canvas');
+  g.width = g.height = size;
+  const gc = g.getContext('2d')!;
+  gc.translate(R, R);
+  glyph(gc, p.g, R * .62);
+  c.drawImage(g, -R, -R);
+}
+
+/** the head-and-shoulders part of the mascot an avatar shows, in head coordinates */
+const VIEW_Y = -.71, VIEW_R = .48;
+/** how big the effect is drawn next to the head: its orbits and rising particles land in the ring between the head and the edge */
+const FX_SCALE = .8;
+
+/**
+ * The dressed avatar: the mascot's head from the front in what the player wears, on the player's own colour and frame (so two
+ * players in the same outfit still look different). The effect plays small behind the head, inside the circle.
+ */
+function dressed(c: Ctx, p: AvatarParts | null, look: Look, R: number) {
+  const inner = p?.f ? R * .86 : R;
+  if (p) { c.fillStyle = ringColor(p); c.beginPath(); c.arc(0, 0, R, 0, 7); c.fill(); }
+  c.fillStyle = p ? AV_C[p.c]![0] : '#3a3f48'; c.beginPath(); c.arc(0, 0, inner, 0, 7); c.fill();
+  c.save(); c.beginPath(); c.arc(0, 0, inner, 0, 7); c.clip();
+  const k = inner / VIEW_R;
+  c.scale(k, k);
+  // a trail left under the feet would fall outside the circle: lift those effects so the trail shows over the chest
+  const fx = look.effect, phases = [.15, .65], lift = fx?.below ? fx.below * .7 : 0;
+  // the effect around the whole body, made smaller and centred on the head, at two moments of its loop so a sparse effect
+  // still shows; what sits behind the body is drawn first, then the shoulders, then what sits in front, then the head over it
+  const effect = (part: 'back' | 'front') => {
+    const draw = fx?.[part];
+    if (!draw) return;
+    for (const t of phases) { c.save(); c.scale(FX_SCALE, FX_SCALE); c.translate(0, .45 - lift); draw(c, t, -.45); c.restore(); }
+  };
+  effect('back');
+  c.save(); c.translate(0, -VIEW_Y); drawFrontShoulders(c, look.pal); c.restore();
+  effect('front');
+  c.translate(0, -VIEW_Y);
+  drawFrontHead(c, look);
+  c.restore();
+}
+
+const cache = new WeakMap<Look, Map<string, string>>();
+
+/**
+ * Avatar as a PNG data URL (cached). `size` is in device pixels. `worn` is what the player wears (cosmetic slot → item id):
+ * with nothing on, the avatar is the plain badge; with anything on, it is the mascot's head dressed in it.
+ */
+export function avatarURL(n: number | null | undefined, size = 96, worn?: unknown): string {
+  const look = lookOfWorn(worn), key = `${n}:${size}`;
+  let byKey = cache.get(look);
+  if (!byKey) cache.set(look, byKey = new Map());
+  const hit = byKey.get(key);
   if (hit) return hit;
   const cv = document.createElement('canvas');
   cv.width = cv.height = size;
   const c = cv.getContext('2d')!, R = size / 2, p = avParts(n);
   c.translate(R, R);
-  if (!p) {
-    c.fillStyle = '#3a3f48'; c.beginPath(); c.arc(0, 0, R, 0, 7); c.fill();
-  } else {
-    c.fillStyle = p.f === 2 ? '#ffd400' : p.f === 1 ? '#dfe6ee' : 'rgba(0,0,0,0)';
-    c.beginPath(); c.arc(0, 0, R, 0, 7); c.fill();
-    c.fillStyle = AV_C[p.c]![0]; c.beginPath(); c.arc(0, 0, p.f ? R * .86 : R, 0, 7); c.fill();
-    const g = document.createElement('canvas');
-    g.width = g.height = size;
-    const gc = g.getContext('2d')!;
-    gc.translate(R, R);
-    glyph(gc, p.g, R * .62);
-    c.drawImage(g, -R, -R);
-  }
+  if (look.pal === DEFAULT_PALETTE && !look.hat && !look.effect) badge(c, p, R, size);
+  else dressed(c, p, look, R);
   const url = cv.toDataURL();
-  cache.set(key, url);
+  byKey.set(key, url);
   return url;
 }
 
-export const avImg = (n: number | null | undefined, size: number) =>
-  `<img class="av" src="${avatarURL(n, size * 2)}" width="${size}" height="${size}" alt="">`;
+export const avImg = (n: number | null | undefined, size: number, worn?: unknown) =>
+  `<img class="av" src="${avatarURL(n, size * 2, worn)}" width="${size}" height="${size}" alt="">`;

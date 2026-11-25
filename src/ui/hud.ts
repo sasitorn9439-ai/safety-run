@@ -97,9 +97,10 @@ export class Hud {
     this.el.coinImg.src = coinURL();
   }
 
-  setAvatar(n: number | null) {
+  /** `worn`: what the player wears (cosmetic slot → item id), which dresses the avatar */
+  setAvatar(n: number | null, worn?: unknown) {
     this.el.av.style.display = n != null && n >= 0 ? 'block' : 'none';
-    if (n != null && n >= 0) this.el.av.src = avatarURL(n, 96);
+    if (n != null && n >= 0) this.el.av.src = avatarURL(n, 96, worn);
     this.el.hud.classList.toggle('noav', !(n != null && n >= 0));
   }
 

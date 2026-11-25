@@ -119,7 +119,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
       $('hCount').textContent = String(r.players.length);
       $('hSeats').innerHTML = [0, 1, 2].map(s => {
         const p = r.players.find(x => x.slot === s);
-        return `<li>${p ? `${avImg(p.avatar, 48)}<span>${esc(avName(p.avatar))}</span><button type="button" class="kick" data-kick="${s}" aria-label="เอาออก">✕</button>` : '<span class="empty">รอผู้เล่นสแกน QR…</span>'}</li>`;
+        return `<li>${p ? `${avImg(p.avatar, 48, p.look)}<span>${esc(avName(p.avatar))}</span><button type="button" class="kick" data-kick="${s}" aria-label="เอาออก">✕</button>` : '<span class="empty">รอผู้เล่นสแกน QR…</span>'}</li>`;
       }).join('');
       $<HTMLButtonElement>('hStart').disabled = !r.players.length;
     }
@@ -227,12 +227,12 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
       gatePanel.update(seen.run.view().tour!.gate);
       $('hClock').textContent = fmtTime(el < 0 ? room.duration : left);
       const p = room.players.find(x => x.slot === focus);
-      $('hCam').innerHTML = p ? `${avImg(p.avatar, 36)}<b>${esc(avName(p.avatar))}</b><span>${esc(auto ? camWhy || 'กล้องอัตโนมัติ' : 'เลือกเอง')}</span>` : '';
+      $('hCam').innerHTML = p ? `${avImg(p.avatar, 36, p.look)}<b>${esc(avName(p.avatar))}</b><span>${esc(auto ? camWhy || 'กล้องอัตโนมัติ' : 'เลือกเอง')}</span>` : '';
       const ranked = room.players.map(pl => ({ pl, race: races.get(pl.slot)! })).filter(x => x.race).sort((a, b) => b.race.run.score() - a.race.run.score());
       const cards = ranked.map(({ pl, race }, i) => {
         const v = race.run.view(), t = v.tour!;
         const lost = isLost(pl.slot, serverNow);
-        return `<li data-slot="${pl.slot}" class="${pl.slot === focus ? 'on' : ''}"><i class="m${i + 1}">${i + 1}</i>${avImg(pl.avatar, 40)}<div><b>${esc(avName(pl.avatar))}</b><span>${Math.floor(v.dist)} ม. · ตอบถูก ${t.correct} · ชน ${t.crashes}${lost ? ' · <em>สัญญาณหาย</em>' : ''}</span><div class="t-fx">${fxHtml(t)}</div></div><strong>${race.run.score()}</strong></li>`;
+        return `<li data-slot="${pl.slot}" class="${pl.slot === focus ? 'on' : ''}"><i class="m${i + 1}">${i + 1}</i>${avImg(pl.avatar, 40, pl.look)}<div><b>${esc(avName(pl.avatar))}</b><span>${Math.floor(v.dist)} ม. · ตอบถูก ${t.correct} · ชน ${t.crashes}${lost ? ' · <em>สัญญาณหาย</em>' : ''}</span><div class="t-fx">${fxHtml(t)}</div></div><strong>${race.run.score()}</strong></li>`;
       }).join('');
       if (cards !== lastCards) { lastCards = cards; $('hCards').innerHTML = cards; }
     }
@@ -242,7 +242,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
 
   function podium() {
     const ranked = [...room!.players].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || (b.correct ?? 0) - (a.correct ?? 0));
-    $('hPodiumList').innerHTML = ranked.map((p, i) => `<li class="p${i + 1}"><i class="m${i + 1}">${i + 1}</i>${avImg(p.avatar, 56)}<div><b>${esc(avName(p.avatar))}</b><span>${p.score == null ? 'ไม่ได้ส่งผล' : `ตอบถูก ${p.correct} ข้อ`}</span></div><strong>${p.score ?? '—'}</strong></li>`).join('');
+    $('hPodiumList').innerHTML = ranked.map((p, i) => `<li class="p${i + 1}"><i class="m${i + 1}">${i + 1}</i>${avImg(p.avatar, 56, p.look)}<div><b>${esc(avName(p.avatar))}</b><span>${p.score == null ? 'ไม่ได้ส่งผล' : `ตอบถูก ${p.correct} ข้อ`}</span></div><strong>${p.score ?? '—'}</strong></li>`).join('');
   }
 
   // dev only: lets the end-to-end script compare what the big screen saw with the server's verified scores
