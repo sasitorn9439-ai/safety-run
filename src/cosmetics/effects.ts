@@ -369,7 +369,7 @@ export const EFFECTS: readonly Effect[] = [
   fx('shadow', 'ออร่าเงามืด · Shadow aura', 'epic', aura('#4a148c', .7, .75), rise(puff, ['#311b92', '#4a148c', '#1a1a2e'], 6, .06, .35)),
   fx('electric', 'ไฟฟ้าแรงสูง · High voltage', 'epic', aura('#18ffff', .62, .5), orbit(bolt, ['#18ffff', '#ffffff'], 6, .06, .44, .18)),
   fx('galaxy', 'กาแล็กซี · Galaxy', 'epic', aura('#7c4dff', .7, .55), orbit(star, ['#ffffff', '#e1bee7'], 6, .035, .5, .14), orbit(dot, ['#80d8ff', '#ff80ab'], 4, .018, .36, .2, -.15)),
-  fx('comet', 'ดาวหาง · Comet tail', 'epic', trail(glowDot, ['#ffd740', '#ff6e40', '#ffab40'], 7, .05, .06), feetFire(['#ff6e40', '#ffd740'])),
+  fx('comet', 'ดาวหาง · Comet tail', 'epic', trail(glowDot, ['#ffd740', '#ff6e40', '#ffab40'], 11, .065, .08, 1.2), feetFire(['#ff6e40', '#ffd740'])),
   fx('angel', 'ปีกนางฟ้า · Angel wings', 'epic', wings('#ffffff', '#e3f2fd'), rise(sparkle, ['#ffffff'], 4, .04)),
   fx('phoenix', 'ปีกฟีนิกซ์ · Phoenix wings', 'legendary', aura('#ff6d00', .7, .5), wings('#ff6d00', '#ffd600', 5), feetFire(['#ff3d00', '#ffab00', '#ffd600'])),
   fx('holy', 'แสงศักดิ์สิทธิ์ · Holy light', 'legendary', pillar('rgba(255,245,180,.95)'), aura('#fff59d', .6, .5), rise(sparkle, ['#ffffff', '#fff176'], 7, .05, .3)),
