@@ -293,7 +293,7 @@ const fx = (id: string, name: string, rarity: Rarity, ...all: Part[]): Effect =>
   };
 };
 /** how long a ring takes to sweep down the body and back up (Effect.ring) */
-export const RING_MS = 2400;
+export const RING_MS = 1800;
 /** where a ring is in its sweep at time `now` (ms), 0…1 */
 export const ringPhase = (now: number) => (now % RING_MS) / RING_MS;
 
