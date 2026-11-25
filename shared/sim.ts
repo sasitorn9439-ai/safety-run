@@ -464,8 +464,10 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     }
     const z = speed * GATE_FACTOR * GATE_SECONDS;
     gate = { prompt, options: order.map(i => choices[i]!), correct: order.indexOf(0), audit, z, z0: z, picked: 0 };
-    // nothing in the way of the gates, and nothing new until they have gone by
-    objs = objs.filter(o => o.k === 'coin' || o.k === 'ppe' || o.z < 6 || o.z > z + 8);
+    // nothing in the way of the gates and nothing to pick up on the way (the question is all there is), and nothing new until they
+    // have gone by; a hazard already on top of you stays rather than vanish
+    const pickup = (o: GameObject) => o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus';
+    objs = objs.filter(o => o.z > z + 8 || (o.z < 6 && !pickup(o)));
     GATES.forEach((t, i) => objs.push({ k: 'power', t, l: i - 1, z }));
     next = Math.max(next, z + 10);
     say(audit ? 'Spot Audit! มีคนส่งผู้ตรวจมาหาคุณ' : 'Safety Check! วิ่งเข้าประตูคำตอบที่ถูก', 2);
