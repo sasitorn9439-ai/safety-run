@@ -52,6 +52,7 @@ export function createMemoryStore(file?: string): Store {
 
   return {
     async init() {},
+    async known(id) { return avatars.has(id) || runs.some(r => r.empId === id); },
     async avatarOf(id) {
       if (!avatars.has(id)) { avatars.set(id, avatars.size); save(); }
       return avatars.get(id)!;

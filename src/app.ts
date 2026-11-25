@@ -218,9 +218,13 @@ export async function startApp() {
       typing = window.setTimeout(() => {
         const id = ($('empId') as HTMLInputElement).value.trim().toUpperCase().replace(/\s+/g, '');
         if (id === wardId) return;
-        if (/^[0-9]{4}$/.test(id)) { void loadWardrobe(id); return; }
-        wardId = ''; wardState = null;
-        renderer.setLook(lookOf(EMPTY_WARDROBE)); game.invalidate(); wardrobe.refresh();
+        const none = () => {
+          wardId = ''; wardState = null;
+          renderer.setLook(lookOf(EMPTY_WARDROBE)); game.invalidate(); wardrobe.refresh();
+        };
+        // 4 digits, or an older all-digit id the server still knows (e.g. 000); the server says which
+        if (/^[0-9]{1,15}$/.test(id)) { void loadWardrobe(id).then(r => { if (!r && wardId === id) none(); }); return; }
+        none();
       }, 400);
     });
   }
@@ -248,7 +252,7 @@ export async function startApp() {
   $('login').onsubmit = e => {
     e.preventDefault();
     const id = ($('empId') as HTMLInputElement).value.trim().toUpperCase().replace(/\s+/g, ''), m = $('loginMsg');
-    if (!/^[0-9]{4}$/.test(id)) { m.textContent = ERR.bad_id!; return; }
+    if (!/^[0-9]{1,15}$/.test(id)) { m.textContent = ERR.bad_id!; return; }   // the server decides 4 digits vs an older id
     void startRun(id, m, $<HTMLButtonElement>('startBtn'), 'เริ่มวิ่ง · Start');
   };
 

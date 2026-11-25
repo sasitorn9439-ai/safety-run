@@ -88,7 +88,7 @@ export async function tournament(store: Store, tours: TourStore, b: Json, now = 
   if (action === 'join') {
     if (room.status !== 'lobby') return reply(409, { error: 'started' });
     const id = normId(b.id);
-    if (!idOk(id)) return reply(400, { error: 'bad_id' });
+    if (!await idOk(store, id)) return reply(400, { error: 'bad_id' });
     await store.init();
     const avatar = await store.avatarOf(id), token = newToken();
     const slot = await tours.join(code, { empId: id, avatar, tokenHash: sha(token) });

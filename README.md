@@ -154,7 +154,7 @@ One data file, `src/render/ppe-icons.ts`, draws them in the game (floating picku
 |---|---|
 | `POSTGRES_URL` | added automatically when the Supabase store is connected to the project |
 | `ADMIN_KEY` | password for `/admin` |
-| `ALLOWED_IDS` | optional comma-separated list of valid employee IDs; empty = any 4-digit number |
+| `ALLOWED_IDS` | optional comma-separated list of valid employee IDs; empty = any 4-digit number (an all-digit id that already played before the 4-digit rule, e.g. `000`, keeps working) |
 | `MAX_PLAYS` | optional cap on plays per employee; empty/0 = unlimited |
 | `ABLY_API_KEY` | the Ably key for the tournament's realtime channels (server only; restrict it to `safety-run-tour:*`, Publish + Subscribe) |
 | `VITE_REALTIME` | `ably` to use Ably (read at build time) |

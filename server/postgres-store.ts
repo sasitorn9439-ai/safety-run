@@ -95,6 +95,11 @@ export function createPostgresStore(url: string): Store {
       return ready;
     },
 
+    async known(id) {
+      const [r] = await sql`select exists (select 1 from safety_run_players where emp_id = ${id})
+        or exists (select 1 from safety_run_runs where emp_id = ${id}) as known`;
+      return !!r?.known;
+    },
     async avatarOf(id) {
       const [have] = await sql`select avatar from safety_run_players where emp_id = ${id}`;
       if (have) return have.avatar as number;

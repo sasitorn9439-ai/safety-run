@@ -20,6 +20,8 @@ export interface AdminRun {
 export interface Store {
   init(): Promise<void>;
   avatarOf(id: string): Promise<number>;
+  /** whether this employee id has played (or been given an avatar) before */
+  known(id: string): Promise<boolean>;
   usage(id: string): Promise<Usage>;
   /** claims run number `runNo` for the employee; null if another device got it first */
   createRun(r: { id: string; runNo: number; name: string; tokenHash: string; ua: string; seed: number }): Promise<number | null>;

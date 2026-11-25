@@ -40,6 +40,13 @@ describe('start', () => {
     expect(b.avatar).toBe(a.avatar);
     expect(((await start(store, { id: '1002' }, '')).body as Body).avatar).toBe(a.avatar + 1);
   });
+  it('lets an older all-digit id keep playing, but no new one that is not 4 digits', async () => {
+    expect((await start(store, { id: '000' }, '')).status).toBe(400);     // nobody has played as 000: new ids need 4 digits
+    await store.avatarOf('000'); await store.avatarOf('AB12');            // played before the 4-digit rule
+    expect((await start(store, { id: '000' }, '')).status).toBe(200);
+    expect((await start(store, { id: 'AB12' }, '')).status).toBe(400);    // letters stay refused
+    expect((await start(store, { id: '00' }, '')).status).toBe(400);
+  });
   it('honours MAX_PLAYS', async () => {
     process.env.MAX_PLAYS = '1';
     await start(store, { id: '1001' }, '');
