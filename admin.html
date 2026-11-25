@@ -10,11 +10,12 @@ h1{margin:0 0 4px;font-size:28px;font-weight:600}
 h2{margin:0;font-size:20px;font-weight:600}
 h3{margin:0 0 8px;font-size:15px;font-weight:600}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}
+textarea{width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:#141516;color:#fff;font:16px Kanit;resize:vertical}
 input,select{min-height:44px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:#1c1e20;color:#fff;font:16px Kanit}
 button{min-height:44px;padding:8px 16px;border:0;border-radius:8px;background:var(--ink);color:#141516;font:600 15px Kanit;cursor:pointer}
 button.alt{background:#2b2d30;color:#fff}
 td button{min-height:36px;padding:4px 12px;font-size:14px;margin-right:4px}
-#runs tr.hid td:not(:last-child){opacity:.55}
+:is(#runs,#players) tr.hid td:not(:last-child){opacity:.55}
 .msg{color:#ffb4a8;min-height:24px}
 #msg{color:var(--muted)}
 [hidden]{display:none!important}
@@ -22,10 +23,10 @@ td button{min-height:36px;padding:4px 12px;font-size:14px;margin-right:4px}
 .gate p{margin:0;color:var(--muted)}.gate .msg{color:#ffb4a8}
 .top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px;padding-bottom:20px;border-bottom:1px solid var(--line)}
 .top .row{margin:0}
-#runs th button{padding:0;min-height:28px;background:transparent;color:inherit;font:inherit}
-#runs th button::after{content:" ↕";color:var(--muted)}
-#runs th[aria-sort=ascending] button::after{content:" ↑";color:#ffd400}
-#runs th[aria-sort=descending] button::after{content:" ↓";color:#ffd400}
+:is(#runs,#players) th button{padding:0;min-height:28px;background:transparent;color:inherit;font:inherit}
+:is(#runs,#players) th button::after{content:" ↕";color:var(--muted)}
+:is(#runs,#players) th[aria-sort=ascending] button::after{content:" ↑";color:#ffd400}
+:is(#runs,#players) th[aria-sort=descending] button::after{content:" ↓";color:#ffd400}
 #filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,224px),1fr));gap:12px 16px;margin:0 0 16px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#1c1e20}
 #filters fieldset{min-width:0;margin:0;padding:0;border:0}
 #filters legend{margin-bottom:4px;color:var(--muted)}
@@ -76,9 +77,9 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 .heat td:hover{outline:2px solid #f4f5f7;outline-offset:-1px}
 #app{max-width:1600px;margin-inline:auto}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-#runs thead{background:#252729}
-#runs tbody tr:hover,#runs tbody tr:focus-within{background:#252729}
-#runs-note{color:var(--muted);font-variant-numeric:tabular-nums}
+:is(#runs,#players) thead{background:#252729}
+:is(#runs,#players) tbody tr:hover,:is(#runs,#players) tbody tr:focus-within{background:#252729}
+#runs-note,#players-note{color:var(--muted);font-variant-numeric:tabular-nums}
 .event-name{display:block;color:var(--muted);font-size:14px}
 .top h1,.gate h1{margin:0}
 .section-heading{margin:28px 0 12px}
@@ -97,9 +98,22 @@ input,select,button,summary{font-variant-numeric:tabular-nums}
 .runs-heading{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px;margin:28px 0 12px}
 .runs-heading .row{margin:0}
 .scroll{border:1px solid var(--line);border-radius:12px}
-#runs th button:focus-visible{outline-offset:0}
-#runs td{font-variant-numeric:tabular-nums}
+:is(#runs,#players) th button:focus-visible{outline-offset:0}
+:is(#runs,#players) td{font-variant-numeric:tabular-nums}
+.small-note{margin:8px 0 0;color:var(--muted);font-size:13px}
+.grant{display:grid;grid-template-columns:minmax(0,3fr) minmax(120px,1fr);gap:12px 16px;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.grant label{display:grid;gap:4px;color:var(--muted)}
+.grant input{background:#141516}
+.grant .row{grid-column:1/-1;margin:0}
+#g-msg{grid-column:1/-1;margin:0;color:var(--muted)}#g-msg:empty{display:none}
+#g-msg.err{color:#ffb4a8}
+.tabs{display:flex;gap:4px;margin:20px 0 0;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{min-height:44px;padding:8px 16px;border-radius:8px 8px 0 0;background:transparent;color:var(--muted);border-bottom:3px solid transparent}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+#p-search{min-height:36px;padding:4px 10px;font-size:14px}
+td.n .sub{color:var(--muted);font-size:12px}
 @media(max-width:760px){
+  .grant{grid-template-columns:minmax(0,1fr)}
   .charts{grid-template-columns:minmax(0,1fr)}
   .charts .wide{padding:16px}
   .pager{justify-content:flex-start}
@@ -119,6 +133,11 @@ input,select,button,summary{font-variant-numeric:tabular-nums}
   <div class="row"><button type="button" class="alt" id="refresh">รีเฟรช</button><button type="button" class="alt" id="logout">ออกจากระบบ</button></div>
 </header>
 <p id="msg" class="msg"></p>
+<nav class="tabs" role="tablist" aria-label="มุมมอง">
+  <button type="button" role="tab" id="tab-btn-runs" data-tab="runs" aria-controls="tab-runs" aria-selected="true">ภาพรวมและรอบการเล่น</button>
+  <button type="button" role="tab" id="tab-btn-players" data-tab="players" aria-controls="tab-players" aria-selected="false" tabindex="-1">ผู้เล่น</button>
+</nav>
+<div id="tab-runs" role="tabpanel" aria-labelledby="tab-btn-runs">
 <div class="section-heading"><h2>ภาพรวมการเล่น</h2><p>ตัวกรองมีผลกับทั้งภาพรวมและผลรายรอบ</p></div>
 <div id="stats" class="cards"></div>
 <div class="charts">
@@ -162,6 +181,33 @@ input,select,button,summary{font-variant-numeric:tabular-nums}
   <button type="button" class="alt" id="pg-last" aria-label="หน้าสุดท้าย">»</button>
   <label>แถวละ <select id="pg-size" aria-label="จำนวนแถวต่อหน้า"><option>25</option><option selected>50</option><option>100</option><option>200</option></select></label>
 </nav>
+</div>
+<div id="tab-players" role="tabpanel" aria-labelledby="tab-btn-players" hidden>
+<div class="runs-heading">
+<h2>ผู้เล่น</h2>
+<div class="row"><span id="players-note"></span><input id="p-search" type="search" placeholder="ค้นหารหัสหรือไอคอน" aria-label="ค้นหาผู้เล่น"><button type="button" id="p-export">ส่งออก CSV</button></div>
+</div>
+<div class="scroll"><table id="players"><thead>
+<tr>
+  <th scope="col"><button type="button" data-psort="id">รหัสพนักงาน</button></th>
+  <th scope="col"><button type="button" data-psort="avatar">ไอคอน</button></th>
+  <th scope="col"><button type="button" data-psort="maxDist">วิ่งไกลสุด</button></th>
+  <th scope="col"><button type="button" data-psort="best">คะแนนสูงสุด</button></th>
+  <th scope="col"><button type="button" data-psort="plays">จำนวนครั้ง</button></th>
+  <th scope="col"><button type="button" data-psort="chests">หีบสมบัติ</button></th>
+  <th scope="col"><button type="button" data-psort="lastPlayed">เล่นล่าสุด</button></th>
+  <th scope="col">จัดการ</th>
+</tr>
+</thead><tbody id="pb"></tbody></table></div>
+<p class="small-note" id="players-legend">หีบสมบัติ: เหลือ / ได้ทั้งหมด (เก็บจากการวิ่ง + แอดมินให้ + ฟรีจากของซ้ำครบ 5) · วิ่งไกลสุดนับเฉพาะรอบที่ส่งคะแนนหลังจากเริ่มเก็บระยะ</p>
+<div class="section-heading"><h2>แจกหีบสมบัติ</h2><p>ให้หีบกับรหัสพนักงานที่ระบุ หรือให้ทุกคนที่เคยเล่นแล้ว ให้ไปแล้วเอาคืนไม่ได้ กด "ให้หีบ" ในตารางเพื่อเพิ่มรหัสลงช่องนี้</p></div>
+<form id="grant" class="grant" autocomplete="off" aria-label="แจกหีบสมบัติ">
+  <label>รหัสพนักงาน<textarea id="g-ids" rows="3" placeholder="EMP001, EMP002 หรือบรรทัดละคน"></textarea></label>
+  <label>หีบต่อคน<input id="g-n" type="number" min="1" max="100" value="1" inputmode="numeric" required></label>
+  <div class="row"><button type="submit" id="g-some">ให้รายชื่อนี้</button><button type="button" class="alt" id="g-all">ให้ทุกคนที่เคยเล่น</button></div>
+  <p id="g-msg" role="status"></p>
+</form>
+</div>
 </main>
 <script type="module" src="/src/admin.ts"></script>
 </body></html>

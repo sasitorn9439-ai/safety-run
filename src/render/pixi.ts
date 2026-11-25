@@ -1,13 +1,18 @@
-import { Application, CanvasSource, Container, Mesh, MeshGeometry, Shader, Sprite, Texture, Ticker } from 'pixi.js';
+import { drillFire, makeDrillTexture } from './drill-fire.js';
+import { makeTankSmoke, tankSmoke } from './plant-bay.js';
+import { Application, CanvasSource, Container, Graphics, Mesh, MeshGeometry, Shader, Sprite, Texture, Ticker } from 'pixi.js';
 import { HAZARD_KINDS, PPE, type HazardKind, type PpeType } from '../../shared/hazards.js';
 import type { PowerType, SimEvent } from '../../shared/sim.js';
-import { BACKDROP_MARGIN, FOG_HEIGHT, makeBackdrop, makeFog } from './backdrop.js';
+import { BACKDROP_MARGIN, FOG_HEIGHT, makeCloud, morningBirds, morningClouds, makeBackdrop, makeFog } from './backdrop.js';
 import { Camera, type Pt } from './camera.js';
-import { DrawList, Fx, GHOST_FX, RUN_FRAMES, SLIDE_FRAMES, envItems, interp, pose, type EnvItem } from './fx.js';
+import { DrawList, Fx, GHOST_FX, RUN_FRAMES, SLIDE_FRAMES, entranceWires, envItems, interp, pose, type EnvItem } from './fx.js';
 import { FLOOR_FRAGMENT, FLOOR_VERTEX, floorShaderCompiles } from './floor-shader.js';
+import { drawPropModel, BackdropFade, PROPS, sceneryOpacity, propItems, sideWall, type PropItem } from './scenery.js';
+import { ZONES } from '../../shared/zones.js';
 import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
 import type { MascotSet } from './pixel-mascot.js';
-import { PAD, ON_KINDS, POWERS, bonusArt, coinArt, crateArt, dotArt, liftArt, powerArt, haloArt, hazardArt, lightArt, pillarArt, ppeArt, rasterize, runArt, shadowArt, shieldArt, slideArt, type Art } from './sprites.js';
+import type { Look } from '../cosmetics/types.js';
+import { PAD, ON_KINDS, POWERS, bonusArt, coinArt, lootArt, crateArt, dotArt, liftArt, powerArt, haloArt, hazardArt, lightArt, pillarArt, whitePillarArt, ppeArt, rasterize, runArt, shadowArt, shieldArt, slideArt, type Art } from './sprites.js';
 import type { Frame, GameRenderer } from './types.js';
 
 /** A texture plus the numbers needed to place it: anchor (normalised) and how many texture pixels one art unit is. */
@@ -58,8 +63,8 @@ function place(s: Sprite, t: Tex, x: number, y: number, u: number, alpha = 1, z 
 interface Textures {
   hazards: Record<HazardKind, Tex>; on: Partial<Record<HazardKind, Tex>>; crate: Tex; ppe: Record<PpeType, Tex>;
   power: Record<PowerType, Tex>; lift: Tex;
-  shadow: Tex; halo: Tex; coin: Tex; bonus: Tex; pillar: Tex; light: Tex; shield: Tex; dot: Tex; run: Tex[]; slide: Tex[]; mascot: Record<PixelAnim, Tex[]> | null;
-  backdrop: Texture; fog: Texture;
+  shadow: Tex; halo: Tex; coin: Tex; bonus: Tex; loot: Tex; pillar: Tex; whitePillar: Tex; light: Tex; shield: Tex; dot: Tex; run: Tex[]; slide: Tex[]; mascot: Record<PixelAnim, Tex[]> | null;
+  flame: Texture; drillSmoke: Texture; smoke: Texture; cloud: Texture; backdrops: Texture[]; fog: Texture; props: (Tex | null)[];
 }
 
 /**
@@ -84,7 +89,15 @@ export class PixiRenderer implements GameRenderer {
 
   // scene graph, back to front
   private world = new Container();
+  private birds = new Graphics();
+  private clouds = [new Sprite(), new Sprite(), new Sprite()];
   private backdrop = new Sprite();
+  /** the previous area's wall, under `backdrop` while that fades in */
+  private backdropOld = new Sprite();
+  private bd = new BackdropFade();
+  private propList: PropItem[] = [];
+  /** buildings' side walls, one Graphics each, redrawn every frame */
+  private walls: Graphics[] = [];
   private floor: Mesh<MeshGeometry, Shader>;
   private floorU: Record<string, number>;
   private envLayer = new Container();
@@ -125,6 +138,8 @@ export class PixiRenderer implements GameRenderer {
     this.dpr = this.maxDpr = Math.min(2, window.devicePixelRatio || 1);
     const uniforms = {
       uW: { value: 1, type: 'f32' }, uH: { value: 1, type: 'f32' }, uHy: { value: 0, type: 'f32' }, uBy: { value: 1, type: 'f32' },
+      uElectrical: { value: 0, type: 'f32' },
+      uEntrance: { value: 0, type: 'f32' },
       uLw: { value: 1, type: 'f32' }, uCamX: { value: 0, type: 'f32' }, uDist4: { value: 0, type: 'f32' },
     } as const;
     const shader = Shader.from({ gl: { vertex: FLOOR_VERTEX, fragment: FLOOR_FRAGMENT }, resources: { floorU: uniforms } });
@@ -137,7 +152,8 @@ export class PixiRenderer implements GameRenderer {
 
     this.envLayer.sortableChildren = true;
     this.actorLayer.sortableChildren = true;
-    this.world.addChild(this.backdrop, this.floor, this.envLayer, this.fog, this.shadowLayer, this.actorLayer, this.fxLayer);
+    // the fog lies on the floor, under the scenery: far scenery fades out by itself
+    this.world.addChild(this.backdropOld, this.backdrop, ...this.clouds, this.birds, this.floor, this.fog, this.envLayer, this.shadowLayer, this.actorLayer, this.fxLayer);
     this.flash.tint = 0x78e1ff; this.flash.visible = false;
     app.stage.addChild(this.world, this.flash);
 
@@ -166,11 +182,17 @@ export class PixiRenderer implements GameRenderer {
     this.fog.position.set(0, cam.hy);
     this.fog.width = cam.W; this.fog.height = (cam.H - cam.hy) * FOG_HEIGHT;
     this.flash.width = cam.W; this.flash.height = cam.H;
-    this.backdrop.width = cam.W + BACKDROP_MARGIN * 2; this.backdrop.height = cam.hy + 2;
+    for (const b of [this.backdrop, this.backdropOld]) { b.width = cam.W + BACKDROP_MARGIN * 2; b.height = cam.hy + 2; }
     this.build(false);
   }
 
   rebuild() { this.build(true); }
+
+  setLook(look: Look) {
+    if (this.pixel?.style !== 'flat' || this.pixel.look === look) return;
+    this.pixel.look = look;
+    this.build(true);
+  }
 
   private build(force: boolean) {
     const { cam } = this;
@@ -187,14 +209,15 @@ export class PixiRenderer implements GameRenderer {
     for (const t of PPE) ppe[t] = mk(ppeArt(t));
     this.tx = {
       hazards, ppe, power, lift: mk(liftArt), on: Object.fromEntries(ON_KINDS.map(k => [k, mk(hazardArt(k, true))])) as Partial<Record<HazardKind, Tex>>, crate: mk(crateArt),
-      shadow: mk(shadowArt), halo: mk(haloArt), coin: mk(coinArt), bonus: mk(bonusArt), pillar: mk(pillarArt), light: mk(lightArt), shield: mk(shieldArt), dot: mk(dotArt),
+      shadow: mk(shadowArt), halo: mk(haloArt), coin: mk(coinArt), bonus: mk(bonusArt), loot: mk(lootArt), pillar: mk(pillarArt), whitePillar: mk(whitePillarArt), light: mk(lightArt), shield: mk(shieldArt), dot: mk(dotArt),
       run: Array.from({ length: RUN_FRAMES }, (_, i) => mk(runArt(i))),
       slide: Array.from({ length: SLIDE_FRAMES }, (_, i) => mk(slideArt(i))),
       mascot: this.pixel ? this.pixelTextures(base) : null,
-      backdrop: canvasTex(makeBackdrop(cam, this.maxDpr)), fog: canvasTex(makeFog()),
+      flame: canvasTex(makeDrillTexture('flame')), drillSmoke: canvasTex(makeDrillTexture('smoke')), smoke: canvasTex(makeTankSmoke()), cloud: canvasTex(makeCloud()), backdrops: ZONES.map((_, z) => canvasTex(makeBackdrop(cam, this.maxDpr, z))), fog: canvasTex(makeFog()), props: PROPS.map(p => p.art ? mk(p.art) : null),
     };
-    this.backdrop.texture = this.tx.backdrop;
-    this.backdrop.width = cam.W + BACKDROP_MARGIN * 2; this.backdrop.height = cam.hy + 2;
+    for (const cloud of this.clouds) cloud.texture = this.tx.cloud;
+    this.backdrop.texture = this.tx.backdrops[this.bd.cur]!; this.backdropOld.texture = this.tx.backdrops[this.bd.prev]!;
+    for (const b of [this.backdrop, this.backdropOld]) { b.width = cam.W + BACKDROP_MARGIN * 2; b.height = cam.hy + 2; }
     this.fog.texture = this.tx.fog;
     this.fog.width = cam.W; this.fog.height = (cam.H - cam.hy) * FOG_HEIGHT;
   }
@@ -212,11 +235,11 @@ export class PixiRenderer implements GameRenderer {
   private destroyTextures() {
     if (!this.tx) return;
     for (const p of [this.envPool, this.shadowPool, this.actorPool, this.fxPool]) p.detach();
-    for (const s of [this.playerSprite, this.shieldSprite, this.liftSprite, this.playerShadow, this.backdrop, this.fog]) s.texture = Texture.EMPTY;
+    for (const s of [this.playerSprite, this.shieldSprite, this.liftSprite, this.playerShadow, this.backdrop, this.backdropOld, ...this.clouds, this.fog]) s.texture = Texture.EMPTY;
     const t = this.tx;
     const all: Texture[] = [
       ...Object.values(t.hazards).map(x => x.tex), ...Object.values(t.ppe).map(x => x.tex), ...Object.values(t.power).map(x => x.tex), t.lift.tex, t.crate.tex, ...Object.values(t.on).map(x => x!.tex),
-      t.shadow.tex, t.halo.tex, t.coin.tex, t.pillar.tex, t.light.tex, t.shield.tex, t.dot.tex, ...t.run.map(x => x.tex), ...t.slide.map(x => x.tex), t.backdrop, t.fog,
+      t.shadow.tex, t.halo.tex, t.coin.tex, t.bonus.tex, t.loot.tex, t.pillar.tex, t.whitePillar.tex, t.light.tex, t.shield.tex, t.dot.tex, ...t.run.map(x => x.tex), ...t.slide.map(x => x.tex), ...t.backdrops, t.flame, t.drillSmoke, t.smoke, t.cloud, t.fog, ...t.props.flatMap(x => x ? [x.tex] : []),
       ...(t.mascot ? Object.values(t.mascot).flat().map(x => x.tex) : []),
     ];
     for (const x of all) x.destroy(true);
@@ -239,19 +262,91 @@ export class PixiRenderer implements GameRenderer {
     this.world.position.set(this.shakeOff.x, this.shakeOff.y);
 
     // backdrop slides a little against the camera: far things move less than near things
-    this.backdrop.x = -BACKDROP_MARGIN - cam.camX * cam.lw * .16;
+    const bd = this.bd;
+    bd.update(I.dist, f.s.stageZone, dt);
+    this.backdrop.texture = tx.backdrops[bd.cur]!; this.backdrop.alpha = bd.t;
+    this.backdropOld.texture = tx.backdrops[bd.prev]!; this.backdropOld.visible = bd.t < 1;
+    const entrance = bd.cur === 0 ? bd.t : bd.prev === 0 ? 1 - bd.t : 0;
+    this.floorU.uEntrance = entrance;
+    this.floorU.uElectrical = bd.cur === 4 ? bd.t : bd.prev === 4 ? 1 - bd.t : 0;
+    const cloudAlpha = .7 * entrance;
+    let cloudIndex = 0;
+    morningClouds(cam.W, cam.hy, now, (x,y,w,h) => {
+      const cloud = this.clouds[cloudIndex++]!;
+      cloud.visible = cloudAlpha > 0; cloud.alpha = cloudAlpha;
+      cloud.position.set(x,y); cloud.width = w; cloud.height = h;
+    });
+    this.birds.clear();
+    this.birds.alpha = cloudAlpha;
+    if (cloudAlpha > 0) morningBirds(cam.W, cam.hy, now, (x, y, wing, lift) => {
+      this.birds.moveTo(x - wing, y - lift)
+        .quadraticCurveTo(x - wing * .4, y - 1, x, y + 1)
+        .quadraticCurveTo(x + wing * .4, y - 1, x + wing, y - lift)
+        .stroke({ color: '#405263', width: 1.4 });
+    });
+    this.backdrop.x = this.backdropOld.x = -BACKDROP_MARGIN - cam.camX * cam.lw * .16;
     this.floorU.uCamX = cam.camX;
     this.floorU.uDist4 = I.dist % 4;
 
     // pillars and ceiling lights
     const pool = this.envPool;
     pool.begin();
-    const n = envItems(I.dist, this.env);
+    const n = envItems(I.dist, this.env, f.s.stageZone);
     for (let i = 0; i < n; i++) {
       const it = this.env[i]!;
       const p = cam.project(it.l, it.z, it.light ? 6.5 : 0, this.pt);
-      place(pool.get(), it.light ? tx.light : tx.pillar, p.x, p.y, cam.lw * p.s, 1, -it.z);
+      place(pool.get(), it.light ? tx.light : it.white ? tx.whitePillar : tx.pillar, p.x, p.y, cam.lw * p.s, sceneryOpacity(it.z), -it.z);
     }
+    // the area's props along both sides
+    const m = propItems(I.dist, f.s.stageZone, this.propList);
+    let w = 0;
+    entranceWires(I.dist, f.s.stageZone, cam, (points, z) => {
+      let g = this.walls[w++];
+      if (!g) { g = new Graphics(); this.envLayer.addChild(g); this.walls.push(g); }
+      g.clear(); g.visible = true; g.alpha = sceneryOpacity(z); g.zIndex = -z;
+      g.moveTo(points[0]!, points[1]!);
+      for (let j = 2; j < points.length; j += 2) g.lineTo(points[j]!, points[j + 1]!);
+      g.stroke({ color: '#333840', width: 1.2 });
+    });
+    for (let i = 0; i < m; i++) {
+      const it = this.propList[i]!;
+      const p = cam.project(it.l, it.z, 0, this.pt);
+      const wall = PROPS[it.p]!.side;
+      if (wall?.plant === 'exit') {
+        drillFire(cam,it.l,it.z,it.drillSeed ?? 0,now,(kind,x,y,width,height,alpha) => {
+          const sprite = pool.get();
+          sprite.texture = kind === 'smoke' ? tx.drillSmoke : tx.flame;
+          sprite.anchor.set(.5); sprite.position.set(x,y);
+          sprite.width = width; sprite.height = height;
+          sprite.alpha = alpha*sceneryOpacity(it.z); sprite.zIndex = -(it.z+1);
+        });
+      }
+      if (wall?.plant === 'tanks') {
+        tankSmoke(cam,it.l,it.z,it.variant ?? 0,now,(x,y,size,alpha) => {
+          const puff = pool.get();
+          puff.texture = tx.smoke; puff.anchor.set(.5); puff.position.set(x,y);
+          puff.width = puff.height = size;
+          puff.alpha = alpha * sceneryOpacity(it.z); puff.zIndex = -(it.z + wall.depth + .1);
+        });
+      }
+      const model = PROPS[it.p]!.model;
+      if (model) {
+        let g = this.walls[w++];
+        if (!g) { g = new Graphics(); this.envLayer.addChild(g); this.walls.push(g); }
+        g.clear(); g.visible = true; g.alpha = sceneryOpacity(it.z); g.zIndex = -it.z;
+        drawPropModel(cam, it.l, it.z, model, !!it.raised, (pts,color) => { g!.poly(pts).fill(color); });
+      }
+      const sprite = tx.props[it.p];
+      if (sprite) place(pool.get(), sprite, p.x, p.y, cam.lw * p.s, sceneryOpacity(it.z), -it.z);
+      if (PROPS[it.p]!.side) {
+        let g = this.walls[w];
+        if (!g) { g = new Graphics(); this.envLayer.addChild(g); this.walls.push(g); }
+        g.clear(); g.visible = true; g.alpha = sceneryOpacity(it.z);
+        g.zIndex = -sideWall(it, cam, (pts, color) => { g!.poly(pts).fill(color); });
+        w++;
+      }
+    }
+    for (let i = w; i < this.walls.length; i++) this.walls[i]!.visible = false;
     pool.end();
 
     // objects and the mascot
@@ -297,11 +392,11 @@ export class PixiRenderer implements GameRenderer {
         s.scale.x *= it.sx;
         continue;
       }
-      if (it.kind === 'bonus') {
+      if (it.kind === 'bonus' || it.kind === 'loot') {
         place(sh.get(), tx.halo, it.x, it.y, it.u * 2, it.fade * it.halo);
         place(sh.get(), tx.shadow, it.x, it.gy, it.u * .6, it.fade * .5);
         const s = ac.get();
-        place(s, tx.bonus, it.x, it.y, it.u, it.fade, -it.z);
+        place(s, tx[it.kind], it.x, it.y, it.u, it.fade, -it.z);
         s.scale.x *= it.sx;
         continue;
       }

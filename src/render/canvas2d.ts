@@ -1,11 +1,16 @@
+import { drillFire, makeDrillTexture } from './drill-fire.js';
+import { makeTankSmoke, tankSmoke } from './plant-bay.js';
 import { ZMAX } from '../../shared/sim.js';
 import type { SimEvent } from '../../shared/sim.js';
-import { BACKDROP_MARGIN, FOG_HEIGHT, makeBackdrop } from './backdrop.js';
+import { BACKDROP_MARGIN, FOG_HEIGHT, makeCloud, morningBirds, morningClouds, makeBackdrop } from './backdrop.js';
 import { Camera, type Pt } from './camera.js';
-import { DrawList, Fx, GHOST_FX, TAU, envItems, interp, pose, type EnvItem, type Interp } from './fx.js';
+import { DrawList, Fx, GHOST_FX, TAU, entranceWires, envItems, interp, pose, type EnvItem, type Interp } from './fx.js';
+import { drawPropModel, BackdropFade, ENTRANCE_YARD_EDGE, PROPS, sceneryOpacity, propItems, sideWall, type PropItem } from './scenery.js';
 import { pixelFrame, snap, type PixelAnim } from './pixel-frames.js';
 import type { MascotSet } from './pixel-mascot.js';
+import type { Look } from '../cosmetics/types.js';
 import { Sprite, SpriteSet } from './sprites.js';
+import { ZONES } from '../../shared/zones.js';
 import type { Frame, GameRenderer } from './types.js';
 
 /**
@@ -21,7 +26,15 @@ export class Canvas2DRenderer implements GameRenderer {
   private ctx: CanvasRenderingContext2D;
   private dpr: number;
   private sprites!: SpriteSet;
-  private backdrop!: HTMLCanvasElement;
+  private drillTextures = { flame: makeDrillTexture('flame'), smoke: makeDrillTexture('smoke') };
+  private tankSmokeTexture = makeTankSmoke();
+  private cloud = makeCloud();
+  private backdrops: HTMLCanvasElement[] = [];
+  private bd = new BackdropFade();
+  private props: (Sprite | null)[] = [];
+  private propList: PropItem[] = [];
+  private sceneItems: { z: number; draw: () => void }[] = [];
+  private greenRoad!: CanvasGradient;
   private floorGrad!: CanvasGradient;
   private fogGrad!: CanvasGradient;
   private builtKey = '';
@@ -55,6 +68,12 @@ export class Canvas2DRenderer implements GameRenderer {
 
   rebuild() { this.build(true); }
 
+  setLook(look: Look) {
+    if (this.pixel?.style !== 'flat' || this.pixel.look === look) return;
+    this.pixel.look = look;
+    this.build(true);
+  }
+
   private build(force: boolean) {
     const { cam, dpr, ctx } = this;
     const key = [cam.W, cam.H, dpr].join('x');
@@ -70,7 +89,10 @@ export class Canvas2DRenderer implements GameRenderer {
       }
       this.pxSprites = px;
     }
-    this.backdrop = makeBackdrop(cam, dpr);
+    this.backdrops = ZONES.map((_, z) => makeBackdrop(cam, dpr, z));
+    this.props = PROPS.map(p => p.art ? new Sprite(p.art.box, p.art, cam.lw * dpr * p.art.scale, 5) : null);
+    this.greenRoad = ctx.createLinearGradient(0, cam.hy, 0, cam.H);
+    this.greenRoad.addColorStop(0, '#537c68'); this.greenRoad.addColorStop(1, '#78a187');
     this.floorGrad = ctx.createLinearGradient(0, cam.hy, 0, cam.H);
     this.floorGrad.addColorStop(0, '#55595f'); this.floorGrad.addColorStop(1, '#9b9fa5');
     this.fogGrad = ctx.createLinearGradient(0, cam.hy, 0, cam.hy + (cam.H - cam.hy) * FOG_HEIGHT);
@@ -93,7 +115,8 @@ export class Canvas2DRenderer implements GameRenderer {
     ctx.save();
     fx.shakeOffset(now, this.shakeOff);
     if (fx.shake > 0) ctx.translate(this.shakeOff.x, this.shakeOff.y);
-    this.drawScene(I.dist);
+    this.bd.update(I.dist, f.s.stageZone, dt);
+    this.drawScene(I.dist, f.s.stageZone, now);
     this.drawActors(f, I, now);
     this.drawParticles();
     ctx.restore();
@@ -125,13 +148,40 @@ export class Canvas2DRenderer implements GameRenderer {
     this.ctx.fill();
   }
 
-  private drawScene(dist: number) {
+  private drawScene(dist: number, stageZone: number | undefined, now: number) {
     const { ctx, cam, sprites, dpr } = this;
     const { W, H, hy, lw } = cam;
     // backdrop slides a little against the camera: far things move less than near things
-    ctx.drawImage(this.backdrop, -BACKDROP_MARGIN - cam.camX * lw * .16, 0, W + BACKDROP_MARGIN * 2, hy + 2);
+    const bx = -BACKDROP_MARGIN - cam.camX * lw * .16, bw = W + BACKDROP_MARGIN * 2, { bd } = this;
+    if (bd.t < 1) ctx.drawImage(this.backdrops[bd.prev]!, bx, 0, bw, hy + 2);
+    ctx.globalAlpha = bd.t; ctx.drawImage(this.backdrops[bd.cur]!, bx, 0, bw, hy + 2); ctx.globalAlpha = 1;
+    const entrance = bd.cur === 0 ? bd.t : bd.prev === 0 ? 1 - bd.t : 0;
+    ctx.globalAlpha = .7 * entrance;
+    if (ctx.globalAlpha > 0) morningClouds(W, hy, now, (x,y,w,h) => ctx.drawImage(this.cloud, x,y,w,h));
+    if (ctx.globalAlpha > 0) morningBirds(W, hy, now, (x, y, wing, lift) => {
+      ctx.beginPath(); ctx.moveTo(x - wing, y - lift);
+      ctx.quadraticCurveTo(x - wing * .4, y - 1, x, y + 1);
+      ctx.quadraticCurveTo(x + wing * .4, y - 1, x + wing, y - lift);
+      ctx.strokeStyle = '#405263'; ctx.lineWidth = 1.4; ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
     ctx.fillStyle = '#3d4148'; ctx.fillRect(0, hy, W, H - hy);
+    if (entrance > 0) {
+      ctx.globalAlpha = entrance; ctx.fillStyle = '#839866'; ctx.fillRect(0, hy, W, H - hy);
+      ctx.globalAlpha = 1;
+      this.quad(-ENTRANCE_YARD_EDGE, ENTRANCE_YARD_EDGE, -4, 100000, '#3d4148');
+    }
+    const electrical = bd.cur === 4 ? bd.t : bd.prev === 4 ? 1 - bd.t : 0;
+    if (electrical > 0) {
+      ctx.globalAlpha = electrical; ctx.fillStyle = '#46705e'; ctx.fillRect(0, hy, W, H - hy);
+      ctx.globalAlpha = 1;
+    }
     this.quad(-1.5, 1.5, -3, ZMAX, this.floorGrad);
+    if (electrical > 0) {
+      ctx.globalAlpha = electrical;
+      this.quad(-1.5, 1.5, -3, ZMAX, this.greenRoad);
+      ctx.globalAlpha = 1;
+    }
 
     // hazard tape on both edges: black base first, yellow on top, so no hairline seams between segments
     this.quad(-1.66, -1.5, -3, ZMAX, '#1a1a1a'); this.quad(1.5, 1.66, -3, ZMAX, '#1a1a1a');
@@ -142,15 +192,74 @@ export class Canvas2DRenderer implements GameRenderer {
     for (let z = -(dist % 4); z < ZMAX; z += 4) { this.addQuad(-.53, -.47, z, z + 1.8); this.addQuad(.47, .53, z, z + 1.8); }
     ctx.fill();
 
-    // pillars and ceiling lights, far to near
-    const n = envItems(dist, this.env);
-    const items = this.env.slice(0, n).sort((p, q) => q.z - p.z);
-    for (const it of items) {
-      const p = cam.project(it.l, it.z, it.light ? 6.5 : 0, this.a);
-      (it.light ? sprites.light : sprites.pillar).draw(ctx, p.x, p.y, lw * p.s, dpr);
-    }
-    // haze where the floor meets the wall
+    // haze where the floor meets the wall: on the floor only, under the scenery (far scenery fades out by itself)
     ctx.fillStyle = this.fogGrad; ctx.fillRect(0, hy, W, (H - hy) * FOG_HEIGHT);
+
+    // pillars, ceiling lights and the area's props along the sides, far to near
+    const items = this.sceneItems; items.length = 0;
+    entranceWires(dist, stageZone, cam, (points, z) => {
+      items.push({ z, draw: () => {
+        ctx.globalAlpha = sceneryOpacity(z); ctx.strokeStyle = '#333840'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(points[0]!, points[1]!);
+        for (let j = 2; j < points.length; j += 2) ctx.lineTo(points[j]!, points[j + 1]!);
+        ctx.stroke();
+      } });
+    });
+    const n = envItems(dist, this.env, stageZone);
+    for (let i = 0; i < n; i++) {
+      const it = this.env[i]!;
+      items.push({ z: it.z, draw: () => { const p = cam.project(it.l, it.z, it.light ? 6.5 : 0, this.a); ctx.globalAlpha = sceneryOpacity(it.z); (it.light ? sprites.light : it.white ? sprites.whitePillar : sprites.pillar).draw(ctx, p.x, p.y, lw * p.s, dpr); } });
+    }
+    const m = propItems(dist, stageZone, this.propList);
+    for (let i = 0; i < m; i++) {
+      const it = this.propList[i]!;
+      const wall = PROPS[it.p]!.side;
+      if (wall?.plant === 'exit') {
+        items.push({ z: it.z+1, draw: () => {
+          drillFire(cam,it.l,it.z,it.drillSeed ?? 0,now,(kind,x,y,w,h,alpha) => {
+            ctx.globalAlpha = alpha*sceneryOpacity(it.z);
+            ctx.drawImage(this.drillTextures[kind],x-w/2,y-h/2,w,h);
+          });
+        } });
+      }
+      if (wall?.plant === 'tanks') {
+        items.push({ z: it.z + wall.depth + .1, draw: () => {
+          tankSmoke(cam,it.l,it.z,it.variant ?? 0,now,(x,y,size,alpha) => {
+            ctx.globalAlpha = alpha * sceneryOpacity(it.z);
+            ctx.drawImage(this.tankSmokeTexture,x-size/2,y-size/2,size,size);
+          });
+        } });
+      }
+      const model = PROPS[it.p]!.model;
+      const sprite = this.props[it.p];
+      items.push({ z: it.z, draw: () => {
+        ctx.globalAlpha = sceneryOpacity(it.z);
+        if (model) drawPropModel(cam, it.l, it.z, model, !!it.raised, (pts,color) => {
+          ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(pts[0]!,pts[1]!);
+          for (let j=2;j<pts.length;j+=2) ctx.lineTo(pts[j]!,pts[j+1]!);
+          ctx.closePath(); ctx.fill();
+        });
+        if (sprite) {
+          const p = cam.project(it.l,it.z,0,this.a);
+          sprite.draw(ctx,p.x,p.y,lw*p.s,dpr);
+        }
+      } });
+      if (PROPS[it.p]!.side) {
+        // the building's side wall, sorted by its far end so what stands in front of it is drawn over it
+        const wallZ = it.z + PROPS[it.p]!.side!.depth;
+        items.push({ z: wallZ, draw: () => {
+          ctx.globalAlpha = sceneryOpacity(it.z);
+          sideWall(it, cam, (pts, color) => {
+            ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(pts[0]!, pts[1]!);
+            for (let k = 2; k < 8; k += 2) ctx.lineTo(pts[k]!, pts[k + 1]!);
+            ctx.closePath(); ctx.fill();
+          });
+        } });
+      }
+    }
+    items.sort((p, q) => q.z - p.z);
+    for (const it of items) it.draw();
+    ctx.globalAlpha = 1;
   }
 
   private drawActors(f: Frame, I: Interp, now: number) {
@@ -185,11 +294,11 @@ export class Canvas2DRenderer implements GameRenderer {
         ctx.globalAlpha = it.fade * .45; sprites.shadow.draw(ctx, it.x, it.gy, it.u * .55, dpr);
         ctx.globalAlpha = it.fade;
         ctx.save(); ctx.translate(it.x, it.y); ctx.scale(it.sx, 1); sprites.ppe[it.p].draw(ctx, 0, 0, it.u, dpr); ctx.restore();
-      } else if (it.kind === 'bonus') {
+      } else if (it.kind === 'bonus' || it.kind === 'loot') {
         ctx.globalAlpha = it.fade * it.halo; sprites.halo.draw(ctx, it.x, it.y, it.u * 2, dpr);
         ctx.globalAlpha = it.fade * .5; sprites.shadow.draw(ctx, it.x, it.gy, it.u * .6, dpr);
         ctx.globalAlpha = it.fade;
-        ctx.save(); ctx.translate(it.x, it.y); ctx.scale(it.sx, 1); sprites.bonus.draw(ctx, 0, 0, it.u, dpr); ctx.restore();
+        ctx.save(); ctx.translate(it.x, it.y); ctx.scale(it.sx, 1); sprites[it.kind].draw(ctx, 0, 0, it.u, dpr); ctx.restore();
       } else {
         if (it.k !== 'drop') sprites.shadow.draw(ctx, it.x, it.y, it.u * .95, dpr);
         ((it.blink && sprites.on[it.k]) || sprites.hazards[it.k]).draw(ctx, it.x, it.y, it.u, dpr);

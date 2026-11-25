@@ -39,7 +39,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
   showScreen(null);
   renderer.resize();
   const clock = new Clock();
-  const gatePanel = new GatePanel({ root: $('hGate'), head: $('hGateHead'), q: $('hGateQ'), opts: $('hGateOpts') });
+  const gatePanel = new GatePanel({ root: $('hGate'), head: $('hGateHead'), q: $('hGateQ'), opts: $('hGateOpts'), bar: $('hGateBar') });
   let room: Room | null = null, channel: Channel | null = null, poll = 0;
   let races = new Map<Slot, Race>(), raceSeed: number | null = null;
   let focus: Slot = 0, auto = true, focusSince = 0, leader: Slot | null = null, camWhy = '';
@@ -133,7 +133,8 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
   }
 
   setInterval(() => {
-    if (!channel || !races.size) return;
+    // the standings stop once every race is over: the podium comes from the server
+    if (!channel || !races.size || [...races.values()].every(r => r.run.finished)) return;
     // positions are the phones' own latest reports: the replay here runs DELAY_TICKS behind them
     channel.send({ t: 'board', board: [...races].map(([s, r]) => [s, r.run.score(), r.live.tick, r.live.dist, r.live.lane, r.live.jumps, r.live.slides]) });
   }, BOARD_MS);

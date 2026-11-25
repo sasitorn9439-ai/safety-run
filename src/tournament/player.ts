@@ -113,9 +113,14 @@ export function startPlayer(renderer: GameRenderer, sfx: Sfx, onHost: () => void
   }
 
   /* ---------- sending the race ---------- */
-  let sent = 0, lastFull = 0;
+  /** after the race ends a phone keeps reporting this long, so the big screen gets its last presses even if a report is lost */
+  const AFTER_END_MS = 2000;
+  let sent = 0, lastFull = 0, endedAt = 0;
   setInterval(() => {
     if (!race || !channel || !seat || race.run.tick <= 0) return;
+    if (!race.run.finished) endedAt = 0;
+    else if (!endedAt) endedAt = performance.now();
+    else if (performance.now() - endedAt > AFTER_END_MS) return;
     const full = performance.now() - lastFull > 2000;
     if (full) lastFull = performance.now();
     const from = full ? 0 : Math.max(0, Math.min(sent, race.inputs.length - 20));

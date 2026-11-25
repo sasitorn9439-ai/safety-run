@@ -6,6 +6,8 @@ import type { HazardKind, PpeType } from '../../shared/hazards.js';
 import type { PowerType } from '../../shared/sim.js';
 import { PPE_ICON_OF, drawPpeIcon } from './ppe-icons.js';
 import { drawPowerIcon } from './power-icons.js';
+import { DEFAULT_PALETTE } from '../cosmetics/skins.js';
+import type { Palette } from '../cosmetics/types.js';
 
 export type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
@@ -43,6 +45,37 @@ export function drawBonusBadge(c: Ctx, u: number) {
   c.fillStyle = 'rgba(255,255,255,.8)'; c.beginPath(); c.ellipse(-R * .48, -R * .5, R * .2, R * .09, -.7, 0, 7); c.fill();
   c.fillStyle = '#fff'; c.font = `800 ${R * 1.1}px Kanit`; c.textAlign = 'center'; c.textBaseline = 'middle';
   c.fillText('?', 0, R * .06); c.textBaseline = 'alphabetic';
+}
+
+/**
+ * Cosmetic loot box pickup: a wooden treasure chest with a domed lid, gold bands and a glowing gold lock with a question mark,
+ * centred on the origin. Spans x ±.34u and y -.38u….32u (inside sprites.ts lootArt).
+ */
+export function drawLootBox(c: Ctx, u: number) {
+  const R = u * .3;
+  // outline: straight sides, domed lid
+  c.fillStyle = INK; c.beginPath();
+  c.moveTo(-R * 1.12, R * 1.05); c.lineTo(-R * 1.12, -R * .3);
+  c.quadraticCurveTo(-R * 1.12, -R * 1.18, 0, -R * 1.18); c.quadraticCurveTo(R * 1.12, -R * 1.18, R * 1.12, -R * .3);
+  c.lineTo(R * 1.12, R * 1.05); c.closePath(); c.fill();
+  rr(c, -R, -R * .2, R * 2, R * 1.15, R * .08, '#8d5524');                       // the chest
+  c.fillStyle = '#a8683a'; c.beginPath();                                       // the lid
+  c.moveTo(-R, -R * .22); c.lineTo(-R, -R * .3); c.quadraticCurveTo(-R, -R * 1.06, 0, -R * 1.06);
+  c.quadraticCurveTo(R, -R * 1.06, R, -R * .3); c.lineTo(R, -R * .22); c.closePath(); c.fill();
+  c.strokeStyle = '#6b3d17'; c.lineWidth = R * .05;                             // planks
+  for (const y of [.25, .6]) { c.beginPath(); c.moveTo(-R, y * R); c.lineTo(R, y * R); c.stroke(); }
+  for (const x of [-.72, .72]) rr(c, x * R - R * .12, -R * .98, R * .24, R * 1.93, R * .05, '#e8b10c');   // gold bands
+  rr(c, -R, -R * .28, R * 2, R * .14, R * .05, '#e8b10c');
+  // the lock, glowing
+  c.fillStyle = 'rgba(255,212,0,.45)'; c.beginPath(); c.arc(0, R * .1, R * .55, 0, 7); c.fill();
+  rr(c, -R * .3, -R * .22, R * .6, R * .66, R * .12, INK);
+  rr(c, -R * .25, -R * .17, R * .5, R * .56, R * .1, '#ffd400');
+  c.fillStyle = '#7b2fd1'; c.font = `800 ${R * .46}px Kanit`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('?', 0, R * .12); c.textBaseline = 'alphabetic';
+  c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(-R * .45, -R * .82, R * .25, R * .07, -.3, 0, 7); c.fill();
+  c.fillStyle = '#fff'; c.beginPath();                                          // a sparkle on the lid
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, q = i % 2 ? R * .08 : R * .2; c.lineTo(R * .95 + Math.cos(a) * q, -R * 1.05 + Math.sin(a) * q); }
+  c.closePath(); c.fill();
 }
 
 /** The man-lift under the mascot: a platform at the origin and a scissor stack going down 1.4 u (the renderer stretches it to the ground). */
@@ -102,6 +135,31 @@ export function drawHazard(c: Ctx, k: HazardKind, u: number, blink = false) {
     rr(c, sign, g - u * .262, u * .04, u * .027, u * .009, '#473900');
     c.fillStyle = '#352900'; c.font = `800 ${u * .13}px Kanit`; c.textAlign = 'center';
     c.fillText('!', sign + u * .019, g - u * .065);
+    c.restore();
+  }
+  if (k === 'manhole') {
+    // Cast-iron rim, exposed shaft wall and recessed opening.
+    for (const [y, width, height, color] of [
+      [0, .48, .22, '#b2b6b7'], [0, .43, .18, '#535453'], [.024, .40, .14, '#191e22'],
+    ] as const) {
+      c.fillStyle = color; c.beginPath();
+      c.ellipse(0, y*u, width*u, height*u, 0, 0, Math.PI*2); c.fill();
+    }
+    c.strokeStyle = '#b7a16d'; c.lineWidth = .021*u;
+    for (const y of [-.115, -.061]) {
+      c.beginPath(); c.moveTo(-.11*u, y*u); c.lineTo(.07*u, y*u); c.stroke();
+    }
+    // Rest the cover across the far-right rim, tread facing up.
+    c.save(); c.translate(.32*u, -.30*u); c.scale(u, u*.44);
+    c.fillStyle = '#34393b'; c.beginPath(); c.arc(0, .055, .42, 0, Math.PI*2); c.fill();
+    c.fillStyle = '#858986'; c.beginPath(); c.arc(0, 0, .42, 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#535957'; c.lineWidth = .027;
+    c.beginPath(); c.arc(0, 0, .35, 0, Math.PI*2); c.stroke();
+    for (const y of [-.14, 0, .14]) {
+      for (const x of [-.16, .02]) {
+        c.beginPath(); c.moveTo(x, y+.05); c.lineTo(x+.09, y-.05); c.stroke();
+      }
+    }
     c.restore();
   }
   if (k === 'hose') {
@@ -236,6 +294,7 @@ export const HAZARD_BOX: Record<HazardKind, [number, number, number, number]> = 
   drop: [-.6, -.2, .6, .14],
   sparks: [-.62, -.78, .62, .06],
   spill: [-.62, -.54, .62, .24],
+  manhole: [-.51, -.60, .81, .25],
   hose: [-.56, -.5, .56, .2],
   pipe: [-.58, -2.02, .58, .06],
   pallet: [-.5, -1.22, .5, .06],
@@ -248,19 +307,22 @@ export const HAZARD_BOX: Record<HazardKind, [number, number, number, number]> = 
  * The head, seen from behind. The red crystal grows out of the crown: its base is hidden by the head, so what shows is a
  * two-tone red wedge rising above the head (as on the official sticker sheet, assets/mascot-reference/), not a diamond laid over it.
  */
-export function drawMascotHead(c: Ctx) {
+/** `gem` false leaves off the crystal on top: a custom skin is a different character, not the mascot in another colour */
+export function drawMascotHead(c: Ctx, pal: Palette = DEFAULT_PALETTE, gem = true) {
   // crystal first: the head is drawn over its base
   c.lineJoin = 'round';
   const poly = (pts: number[][], fill: string) => { c.fillStyle = fill; c.beginPath(); c.moveTo(pts[0]![0]!, pts[0]![1]!); for (const p of pts.slice(1)) c.lineTo(p[0]!, p[1]!); c.closePath(); c.fill(); };
   // everything is symmetric about x = 0, the mascot's centre line. The lower corners are tucked inside the head's outline.
-  poly([[-.15, -.825], [0, -.995], [0, -.76], [-.12, -.72]], '#ee3e46');         // left face, lit
-  poly([[0, -.995], [.15, -.825], [.12, -.72], [0, -.76]], '#c4222b');           // right face, in shade
-  poly([[-.15, -.825], [0, -.995], [-.06, -.86]], '#fa5860');                    // highlight on the upper left edge
-  c.strokeStyle = '#a81c25'; c.lineWidth = .009;
-  c.beginPath(); c.moveTo(-.15, -.825); c.lineTo(0, -.995); c.lineTo(.15, -.825); c.stroke();
+  if (gem) {
+    poly([[-.15, -.825], [0, -.995], [0, -.76], [-.12, -.72]], pal.gemL);          // left face, lit
+    poly([[0, -.995], [.15, -.825], [.12, -.72], [0, -.76]], pal.gemR);            // right face, in shade
+    poly([[-.15, -.825], [0, -.995], [-.06, -.86]], pal.gemHi);                    // highlight on the upper left edge
+    c.strokeStyle = pal.gemEdge; c.lineWidth = .009;
+    c.beginPath(); c.moveTo(-.15, -.825); c.lineTo(0, -.995); c.lineTo(.15, -.825); c.stroke();
+  }
 
   // a rounded triangle (an onigiri): the apex is smooth because the crystal's base sits right behind it
-  c.fillStyle = '#fff9f6'; c.strokeStyle = '#c9bcb9'; c.lineWidth = .013; c.beginPath();
+  c.fillStyle = pal.head; c.strokeStyle = pal.headEdge; c.lineWidth = .013; c.beginPath();
   c.moveTo(0, -.865); c.bezierCurveTo(.08, -.86, .24, -.74, .26, -.575);
   c.quadraticCurveTo(.28, -.46, 0, -.44);
   c.quadraticCurveTo(-.28, -.46, -.26, -.575);
@@ -345,24 +407,13 @@ export function drawMascotSlide(c: Ctx, progress: number) {
   drawMascotHead(c);
 }
 
-/** Safety officer (the surprise character), `S` px tall-ish, origin = body centre. Shown as a DOM image. */
-export function drawOfficer(c: Ctx, S: number, wave = 0) {
-  rr(c, -S * .2, -S * .05, S * .42, S * .6, S * .08, '#2f6fb3'); rr(c, -S * .2, -S * .05, S * .42, S * .42, S * .08, '#c6f04a'); c.fillStyle = '#2f6fb3'; c.fillRect(-S * .04, -S * .05, S * .08, S * .42);
-  c.fillStyle = '#1b1b1b'; c.font = `800 ${S * .07}px Kanit`; c.textAlign = 'center'; c.fillText('SAFETY', S * .01, S * .2);
-  c.save(); c.translate(-S * .18, 0); c.rotate(-2.2 + wave * .5); rr(c, -S * .045, 0, S * .09, S * .34, S * .04, '#c6f04a'); c.fillStyle = '#c98d63'; c.beginPath(); c.arc(0, S * .36, S * .055, 0, 7); c.fill(); c.restore();
-  c.fillStyle = '#c98d63'; c.beginPath(); c.arc(0, -S * .17, S * .13, 0, 7); c.fill();
-  c.fillStyle = '#222'; c.beginPath(); c.arc(-S * .045, -S * .18, S * .016, 0, 7); c.arc(S * .045, -S * .18, S * .016, 0, 7); c.fill();
-  c.strokeStyle = '#222'; c.lineWidth = S * .014; c.beginPath(); c.arc(0, -S * .14, S * .05, .2, Math.PI - .2); c.stroke();
-  c.fillStyle = '#fff'; c.beginPath(); c.arc(0, -S * .22, S * .15, Math.PI, 0); c.fill(); rr(c, -S * .19, -S * .24, S * .38, S * .05, S * .02, '#e6e6e6');
-}
-
 /* ---------- scenery (art units; origin as noted) ---------- */
 
 /** Corridor pillar, origin = bottom centre. 0.38 wide, 7.2 tall, hazard stripes at the base. */
-export function drawPillar(c: Ctx, u: number) {
+export function drawPillar(c: Ctx, u: number, white = false) {
   const w = .38 * u, h = 7.2 * u;
-  c.fillStyle = '#4a5059'; c.fillRect(-w / 2, -h, w, h);
-  c.fillStyle = '#5d646e'; c.fillRect(-w / 2, -h, w * .35, h);
+  c.fillStyle = white ? '#d5d9d8' : '#4a5059'; c.fillRect(-w / 2, -h, w, h);
+  c.fillStyle = white ? '#f5f6f2' : '#5d646e'; c.fillRect(-w / 2, -h, w * .35, h);
   const bh = .5 * u;
   for (let i = 0; i < 4; i++) { c.fillStyle = i % 2 ? '#1a1a1a' : '#ffd400'; c.fillRect(-w / 2, -bh + i * bh / 4, w, bh / 4); }
 }

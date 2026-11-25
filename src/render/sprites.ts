@@ -1,7 +1,7 @@
 import type { HazardKind, PpeType } from '../../shared/hazards.js';
 import type { PowerType } from '../../shared/sim.js';
 import { HAZARD_KINDS, PPE } from '../../shared/hazards.js';
-import { HAZARD_BOX, drawBonusBadge, drawCoin, drawCrate, drawLiftPlatform, drawPowerBadge, drawDot, drawHalo, drawHazard, drawLight, drawMascotRun, drawMascotSlide, drawPillar, drawPpeBadge, drawShadow, drawShield, type Ctx } from './draw.js';
+import { HAZARD_BOX, drawBonusBadge, drawCoin, drawLootBox, drawCrate, drawLiftPlatform, drawPowerBadge, drawDot, drawHalo, drawHazard, drawLight, drawMascotRun, drawMascotSlide, drawPillar, drawPpeBadge, drawShadow, drawShield, type Ctx } from './draw.js';
 import { RUN_FRAMES, SLIDE_FRAMES } from './fx.js';
 import { POWER_TYPES } from './power-icons.js';
 
@@ -25,9 +25,11 @@ export const ON_KINDS: readonly HazardKind[] = ['forklift', 'drop', 'sparks'];
 export const crateArt: Art = { box: [-.44, -1.16, .44, .02], draw: drawCrate, scale: OBJ, mips: true };
 export const coinArt: Art = { box: [-.25, -.25, .25, .25], draw: drawCoin, scale: OBJ, mips: true };
 export const bonusArt: Art = { box: [-.38, -.38, .38, .38], draw: drawBonusBadge, scale: OBJ, mips: true };
+export const lootArt: Art = { box: [-.4, -.45, .4, .36], draw: drawLootBox, scale: OBJ, mips: true };
 export const haloArt: Art = { box: [-1, -1, 1, 1], draw: drawHalo, scale: .5, mips: true };
 export const shadowArt: Art = { box: [-.5, -.12, .5, .12], draw: drawShadow, scale: OBJ, mips: true };
 export const pillarArt: Art = { box: [-.19, -7.2, .19, 0], draw: drawPillar, scale: .5, mips: true };
+export const whitePillarArt: Art = { ...pillarArt, draw: (c,u) => drawPillar(c,u,true) };
 export const lightArt: Art = { box: [-1.1, -.28, 1.1, .28], draw: drawLight, scale: .5, mips: true };
 export const shieldArt: Art = { box: [-.45, -.7, .45, .7], draw: drawShield, scale: MASCOT, mips: false };
 export const dotArt: Art = { box: [-.5, -.5, .5, .5], draw: drawDot, scale: .12, mips: false };
@@ -86,9 +88,11 @@ export class SpriteSet {
   halo: Sprite;
   coin: Sprite;
   bonus: Sprite;
+  loot: Sprite;
   power = {} as Record<PowerType, Sprite>;
   lift: Sprite;
   pillar: Sprite;
+  whitePillar: Sprite;
   light: Sprite;
 
   constructor(lw: number, dpr: number) {
@@ -101,9 +105,11 @@ export class SpriteSet {
     this.halo = mk(haloArt);
     this.coin = mk(coinArt);
     this.bonus = mk(bonusArt);
+    this.loot = mk(lootArt);
     for (const t of POWERS) this.power[t] = mk(powerArt(t));
     this.lift = mk(liftArt);
     this.pillar = mk(pillarArt);
+    this.whitePillar = mk(whitePillarArt);
     this.light = mk(lightArt);
     for (let i = 0; i < RUN_FRAMES; i++) this.run.push(mk(runArt(i)));
     for (let i = 0; i < SLIDE_FRAMES; i++) this.slide.push(mk(slideArt(i)));

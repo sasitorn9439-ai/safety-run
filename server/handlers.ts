@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
-import { replayScore, STEP } from '../shared/sim.js';
+import { replayRun, STEP } from '../shared/sim.js';
+import { equip, openBox, wardrobeFrom, type Pull } from '../src/cosmetics/wardrobe.js';
+import { SLOTS, type Slot } from '../src/cosmetics/types.js';
 import type { Store } from './store.js';
 
 export interface Reply { status: number; body: unknown; cache?: string }
@@ -51,9 +53,9 @@ export async function finish(store: Store, b: Json): Promise<Reply> {
   if (final == null) {
     const ticks = b.ticks;
     if (!Number.isInteger(ticks) || (ticks as number) * STEP > p.secs + 0.25) return reply(400, { error: 'invalid_replay' });
-    const score = replayScore(p.seed, ticks, b.inputs);
-    if (score == null) return reply(400, { error: 'invalid_replay' });
-    const saved = await store.finishRun(run, score, Math.round((ticks as number) * STEP));
+    const replay = replayRun(p.seed, ticks, b.inputs);
+    if (replay == null) return reply(400, { error: 'invalid_replay' });
+    const saved = await store.finishRun(run, { score: replay.score, secs: Math.round((ticks as number) * STEP), dist: replay.dist, loot: replay.loot });
     if (saved != null) final = saved;
     else {
       const existing = await store.runScore(run);
@@ -81,10 +83,64 @@ export async function admin(store: Store, b: Json): Promise<Reply> {
   await store.init();
   if (b.action === 'export') return reply(200, { rows: await store.adminExport() });
   if (b.action === 'runs') return reply(200, { runs: await store.adminRuns() });
+  if (b.action === 'players') return reply(200, { players: await store.adminPlayers() });
   if (b.action === 'hide') {
     const id = normId(b.id);
     if (!id || typeof b.hidden !== 'boolean') return reply(400, { error: 'id' });
     return reply(200, { id, hidden: b.hidden, found: await store.adminHide(id, b.hidden) });
+  }
+  if (b.action === 'grant') {
+    // n loot boxes to each listed employee (ids: "A1, B2" or ["A1", "B2"]), or to every player so far (all: true)
+    const n = Number(b.n);
+    if (!Number.isInteger(n) || n < 1 || n > 100) return reply(400, { error: 'n' });
+    if (b.all === true) return reply(200, { n, ...await store.grantBoxes('all', n) });
+    const raw = (Array.isArray(b.ids) ? b.ids : String(b.ids ?? '').split(/[,\s]+/)).map(normId).filter(Boolean);
+    const ids = [...new Set(raw)], bad = ids.filter(id => !idOk(id)), good = ids.filter(idOk);
+    if (!good.length || bad.length) return reply(400, { error: 'ids', bad });
+    return reply(200, { n, ...await store.grantBoxes(good, n) });
+  }
+  return reply(400, { error: 'action' });
+}
+
+const random = () => crypto.randomBytes(4).readUInt32BE() / 2 ** 32;
+
+/** at most this many boxes per open request */
+export const OPEN_MAX = 10;
+
+/**
+ * The player's cosmetics. Everything is decided here, never on the device: boxes are only those picked up on runs whose replay
+ * verified or that an admin handed out, the server rolls what a box gives, and only owned items can be worn.
+ * Actions: get (default), open { n = 1 } (up to OPEN_MAX boxes, fewer if fewer are left; items: { id, dupe, free }), equip { slot, item }.
+ */
+export async function wardrobe(store: Store, b: Json): Promise<Reply> {
+  const id = normId(b.id);
+  if (!idOk(id)) return reply(400, { error: 'bad_id' });
+  await store.init();
+  const read = async () => {
+    const s = await store.wardrobe(id);
+    return { opened: s.opened.length, w: wardrobeFrom(s.earned, s.opened, s.equipped) };
+  };
+  let { opened, w } = await read();
+  if (b.action === undefined || b.action === 'get') return reply(200, w);
+  if (b.action === 'equip') {
+    if (!SLOTS.includes(b.slot as Slot)) return reply(400, { error: 'slot' });
+    const item = b.item == null ? null : String(b.item), next = equip(w, b.slot as Slot, item);
+    if (next === w) return reply(400, { error: 'not_owned' });
+    await store.setEquipped(id, next.equipped as Record<string, string>);
+    return reply(200, next);
+  }
+  if (b.action === 'open') {
+    const n = b.n === undefined ? 1 : Number(b.n);
+    if (!Number.isInteger(n) || n < 1 || n > OPEN_MAX) return reply(400, { error: 'n' });
+    const pulls: Pull[] = [];
+    for (let clashes = 0; pulls.length < n && clashes < 3;) {
+      const r = openBox(w, random);
+      if (!r) break;
+      if (await store.addCosmetic(id, opened + 1, r.pull.item.id, r.pull.dupe)) { pulls.push(r.pull); opened++; w = r.wardrobe; }
+      else { clashes++; ({ opened, w } = await read()); }        // another device opened a box at the same moment: re-read, roll again
+    }
+    if (!pulls.length) return reply(409, { error: w.boxes ? 'busy' : 'no_box' });
+    return reply(200, { ...w, items: pulls.map(p => ({ id: p.item.id, dupe: p.dupe, free: p.free })) });
   }
   return reply(400, { error: 'action' });
 }

@@ -1,3 +1,4 @@
+import { ENTRANCE_YARD_EDGE } from './scenery.js';
 /**
  * The corridor floor as a fragment shader. For every pixel below the horizon it undoes the camera's perspective
  * projection (screen y → depth z, screen x → lane position l) and colours the pixel from (l, z): road, hazard tape,
@@ -24,6 +25,8 @@ precision highp float;
 in vec2 vUV;
 out vec4 finalColor;
 
+uniform float uEntrance;
+uniform float uElectrical;
 uniform float uW;
 uniform float uH;
 uniform float uHy;
@@ -63,8 +66,12 @@ void main() {
   float wl = fwidth(l);
   float wz = fwidth(z);
 
-  vec3 ground = vec3(0.2392, 0.2549, 0.2824);                       // #3d4148
+  float grass = smoothstep(${ENTRANCE_YARD_EDGE.toFixed(2)} - wl, ${ENTRANCE_YARD_EDGE.toFixed(2)} + wl, al);
+  vec3 ground = mix(vec3(61., 65., 72.), vec3(131., 152., 102.), uEntrance * grass) / 255.;
+  ground = mix(ground, vec3(70., 112., 94.) / 255., uElectrical);
   vec3 road = mix(vec3(0.3333, 0.3490, 0.3725), vec3(0.6078, 0.6235, 0.6471), vUV.y); // #55595f -> #9b9fa5
+  vec3 greenRoad = mix(vec3(83., 124., 104.), vec3(120., 161., 135.), vUV.y) / 255.;
+  road = mix(road, greenRoad, uElectrical);
   vec3 black = vec3(0.1020);
   vec3 yellow = vec3(1.0, 0.8314, 0.0);
 

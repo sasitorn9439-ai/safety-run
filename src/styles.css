@@ -126,13 +126,12 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 .banner.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
 .banner b{display:block;font:600 26px/1.15 Kanit,sans-serif;color:var(--c,#ffd400)}
 .banner span{display:block;font-size:15px;color:#fff}
-.officer{position:absolute;right:8px;bottom:26%;width:calc(100% - 16px);display:flex;justify-content:flex-end;align-items:flex-end;gap:2px;opacity:0;transform:translateX(8px);transition:opacity .3s,transform .4s ease-out}
+.officer{--portrait-width:min(34vw,150px);position:absolute;right:8px;bottom:26%;width:calc(100% - 16px);display:flex;justify-content:flex-end;align-items:flex-end;gap:2px;opacity:0;transform:translateX(8px);transition:opacity .3s,transform .4s ease-out}
 .officer.on{opacity:1;transform:none}
-.of{position:relative;flex:none;width:min(34vw,150px);aspect-ratio:1}
-.of img{position:absolute;inset:0;width:100%;height:100%}
-.of-a{animation:ofA .5s steps(1,end) infinite}.of-b{animation:ofB .5s steps(1,end) infinite}
-@keyframes ofA{0%{opacity:1}50%{opacity:0}}@keyframes ofB{0%{opacity:0}50%{opacity:1}}
-.bubble{position:relative;flex:1;max-width:260px;margin-bottom:34%;background:#fff;color:#111;border-radius:14px;padding:8px 12px 10px}
+.of{position:relative;flex:none;width:var(--portrait-width);aspect-ratio:394/360;background:url('../assets/officer/wave-strip.png') left bottom / 1200% 100% no-repeat}
+.officer.on .of{animation:officer-wave .9s steps(12,jump-none) infinite}
+@keyframes officer-wave{to{background-position:100% bottom}}
+.bubble{position:relative;flex:1;max-width:260px;margin-bottom:calc(var(--portrait-width) * .60 - 22px);background:#fff;color:#111;border-radius:14px;padding:8px 12px 10px}
 .bubble::after{content:"";position:absolute;right:-12px;bottom:14px;border:8px solid transparent;border-left:14px solid #fff;border-right:0}
 .bubble small{display:block;font-weight:600;font-size:13px;color:var(--o)}
 .bubble p{margin:2px 0 0;font-weight:600;font-size:15px;line-height:1.3}
@@ -152,7 +151,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 .tut-arrow.left{--r:180deg;--dx:-1;--dy:0}.tut-arrow.right{--r:0deg;--dx:1;--dy:0}
 .tut-arrow.up{--r:-90deg;--dx:0;--dy:-1}.tut-arrow.down{--r:90deg;--dx:0;--dy:1}
 @keyframes nudge{0%{opacity:.5;transform:translate(calc(var(--dx) * -28px),calc(var(--dy) * -28px))}50%{opacity:1;transform:none}100%{opacity:.5;transform:translate(calc(var(--dx) * 28px),calc(var(--dy) * 28px))}}
-@media (prefers-reduced-motion:reduce){.zone-tint.pulse,.chip.pop,.hud-coins.pop img,.toast.on,.count.on,.tut-arrow.on,.of-a,.of-b,.hud-ppe span.has{animation:none}.of-a{opacity:1}.of-b{opacity:0}.banner,.officer{transition:opacity .2s}}
+@media (prefers-reduced-motion:reduce){.zone-tint.pulse,.chip.pop,.hud-coins.pop img,.toast.on,.count.on,.tut-arrow.on,.officer.on .of,.hud-ppe span.has{animation:none}.banner,.officer{transition:opacity .2s}}
 .ov{z-index:3}
 .ov.how{z-index:4}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
@@ -161,12 +160,135 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 .how h2{margin:2px 0 12px;font-size:22px}
 .prize-btn{margin:0 0 16px}
 .news-ver{margin:-6px 0 12px;color:var(--muted);font-size:14px}
+.news-hi{background:none;color:var(--y);font-weight:600}
+.news-old{margin:16px 0 8px}
+.news-ico{position:static;width:26px;height:26px}
 .news-link{display:block;margin:8px auto 0;padding:6px 10px;background:none;border:0;color:var(--muted);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}
 
 .stats strong,.board,.hud{font-variant-numeric:tabular-nums}
+.tally{margin-top:8px;padding:4px 12px;border-radius:10px;background:var(--surface)}
+.tally-row{display:flex;align-items:center;justify-content:space-between;min-height:30px;font-size:14px;color:var(--muted)}
+.tally-row[hidden]{display:none}
+.tally-row + .tally-row{border-top:1px solid var(--line)}
+.tally-row em{font-style:normal;font-weight:600;font-size:16px;color:var(--y);font-variant-numeric:tabular-nums}
+.tally-pile{display:flex;align-items:center;gap:6px}
+.tally-pile b{min-width:2ch;font-size:18px;font-weight:600;color:var(--y);font-variant-numeric:tabular-nums;transition:opacity .3s}
+.tally-row.empty .tally-pile{opacity:.45}
+.tally-row.pop img,#sScoreBox.pop strong{animation:coin-pop .18s ease-out}
+.tally:not(:has(.tally-row:not([hidden]))){display:none}
+.tally-coin{position:fixed;z-index:50;pointer-events:none;animation:tally-fly ease-in forwards}
+@keyframes tally-fly{
+  0%{transform:translate(0,0) scale(1)}
+  50%{transform:translate(calc(var(--dx) * .5),calc(var(--dy) * .5 + var(--arc))) scale(1.25)}
+  100%{transform:translate(var(--dx),var(--dy)) scale(.7);opacity:.85}
+}
 .btn,.opt{transition:background-color .15s ease-out,border-color .15s ease-out}
 @media (hover:hover){
   .btn:not(.alt):not(:disabled):hover{background:#ffe553}
   .btn.alt:not(:disabled):hover,.opt:not(:disabled):hover{border-color:var(--muted)}
 }
 button:focus-visible,input:focus-visible{outline:2px solid var(--y);outline-offset:2px}
+
+/* ---------- wardrobe: loot boxes and cosmetics ---------- */
+.ward-btn{position:relative;display:flex;align-items:center;justify-content:center;gap:8px}
+.ward-ico{position:static;flex:none;width:24px;height:24px}
+.ward-badge{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;margin-left:4px;border-radius:11px;background:#ff4081;color:#fff;font-size:13px;font-weight:600;vertical-align:1px}
+.ward-badge[hidden]{display:none}
+.ward-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center}
+#wardPreview{position:static;width:100%;height:180px;border-radius:12px;background:radial-gradient(circle at 50% 70%,#3a3f48,#1b1e23)}
+.ward-box{text-align:center}
+.ward-box p{margin:0}
+.ward-box b{color:var(--y);font-size:28px;vertical-align:-3px}
+.ward-box .btn{margin-top:8px}
+.ward-gift{position:static;display:block;width:56px;height:56px;margin:0 auto}
+.ward-box .row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ward-box .row2 .btn{min-height:42px;padding:6px;font-size:15px}
+/* opening: a big box in the middle, tap it to shake it open, then the result card */
+.ov.ward-stage{z-index:5;background:radial-gradient(circle at 50% 42%,rgba(123,47,209,.35),rgba(10,10,12,.92) 62%);overflow:hidden}
+.ward-bigbox{position:relative;width:min(62vw,240px);aspect-ratio:1;padding:0;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent;filter:drop-shadow(0 0 var(--glow,0px) var(--r,#b388ff))}
+.ward-bigbox canvas{position:static;width:100%;height:100%}
+.ward-bigbox[hidden]{display:none}
+.ward-bigbox:focus-visible{outline:3px solid #fff;outline-offset:8px;border-radius:16px}
+.ward-bigbox.idle{animation:ward-bob 1.6s ease-in-out infinite}
+.ward-bigbox.shake{animation:ward-tap .42s ease-in-out}
+.ward-bigbox.open{animation:ward-open .45s ease-in forwards;pointer-events:none}
+.ward-x{position:absolute;right:4%;top:6%;padding:2px 10px;border-radius:14px;background:var(--y);color:#111;font:600 20px Kanit,sans-serif}
+.ward-x:empty{display:none}
+.ward-stage-x{position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;display:grid;place-items:center}
+.ward-stage-x svg{width:22px;height:22px}
+.ward-stage-x[hidden]{display:none}
+.ward-dust{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.ward-hint{margin:18px 0 0;min-height:24px;color:var(--secondary);text-align:center}
+.ward-flash{position:absolute;left:50%;top:46%;width:40px;height:40px;margin:-20px;border-radius:50%;background:var(--r,#fff);opacity:0;pointer-events:none}
+.ward-flash.go{animation:ward-flash .6s ease-out}
+@keyframes ward-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes ward-tap{0%,100%{transform:none}20%{transform:rotate(calc(-1deg*var(--k))) scale(1.04)}45%{transform:rotate(calc(1deg*var(--k))) scale(1.07)}70%{transform:rotate(calc(-.6deg*var(--k))) scale(1.04)}}
+@keyframes ward-open{0%{transform:scale(1)}35%{transform:scale(.9) rotate(-4deg)}100%{transform:scale(1.7);opacity:0;filter:brightness(3)}}
+@keyframes ward-flash{0%{opacity:.95;transform:scale(.2)}100%{opacity:0;transform:scale(14)}}
+.ward-result{position:relative;z-index:2;animation:coin-pop .35s ease-out;text-align:center}
+.ward-result[hidden]{display:none}
+/* what came out, centred: five to a row */
+.ward-won{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:8px 0}
+.ward-won>button{flex:0 0 calc((100% - 24px) / 5);min-width:0}
+.ward-won.one>button{flex:0 0 150px}
+.ward-won button.dupe{opacity:.8;cursor:default;pointer-events:none}
+.ward-won button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:10px;border:2px solid var(--r);background:#1b1e23;color:var(--ink);cursor:pointer;font:inherit}
+.ward-won button canvas{position:static;width:100%;aspect-ratio:1;height:auto}
+.ward-won.one button{width:150px;cursor:default}
+.ward-won button[aria-pressed="true"]{background:#2a2410;box-shadow:0 0 0 2px var(--y)}
+.ward-won.one button[aria-pressed="true"]{background:#1b1e23;box-shadow:0 0 18px var(--r)}
+.ward-won small{font-size:10px;line-height:1.15;color:var(--secondary)}
+.ward-won.one small{display:none}
+.ward-pick{margin:4px 0 10px}
+.ward-pick small{display:block;color:var(--r);font-weight:600;font-size:13px}
+.ward-pick b{display:block;font-size:20px;line-height:1.25}
+.ward-pick span{color:var(--muted);font-size:13px}
+.ward-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ward-actions .btn{min-height:44px;font-size:15px}
+.ward-actions .btn:disabled{opacity:.4}
+@media (prefers-reduced-motion:reduce){.ward-bigbox.idle,.ward-bigbox.shake{animation:none}.ward-bigbox.open{animation-duration:.01s}.ward-flash.go{animation:none}}
+/* the duplicate meter: five segments; full = a free box */
+.ward-meter{margin:6px 0 0;text-align:center}
+.ward-meter[hidden]{display:none}
+.ward-meter-bar{display:inline-grid;grid-template-columns:repeat(5,18px);gap:3px;vertical-align:middle}
+.ward-meter-bar i{height:8px;border-radius:4px;background:#3a3d36}
+.ward-meter-bar i.on{background:var(--y)}
+.ward-meter small{display:block;margin-top:2px;color:var(--muted);font-size:12px}
+.ward-meter-bar i.pop{animation:coin-pop .25s ease-out}
+.ward-won[hidden],.ward-pick[hidden]{display:none}
+.ward-free{display:block;margin-top:4px;color:var(--y);font-weight:600;font-size:15px}
+.ward-free[hidden]{display:none}
+.ward-free.pop{animation:coin-pop .35s ease-out}
+/* a duplicate on its way into the meter, and the stars when the meter fills */
+.ward-fly{position:absolute;z-index:3;border-radius:10px;border:2px solid var(--r);background:#1b1e23;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.45);overflow:hidden}
+.ward-fly canvas{position:static;width:100%;aspect-ratio:1;height:auto;margin-top:4px}
+.ward-star{position:absolute;z-index:3;width:12px;height:12px;margin:-6px;pointer-events:none;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
+.ward-how{text-align:left}
+.ward-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+.ward-tabs button{min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:500 15px Kanit,sans-serif;cursor:pointer}
+.ward-tabs button[aria-selected="true"]{background:var(--y);color:#111;border-color:var(--y)}
+/* the wardrobe fits the screen: only the item grid scrolls, so Close is always in view */
+#wardOv .card{display:flex;flex-direction:column;overflow:hidden}
+#wardOv .card>*{flex:none}
+.ward-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));align-content:start;gap:6px;margin-top:10px;flex:1 1 auto!important;min-height:96px;overflow:auto;overscroll-behavior:contain}
+.ward-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border-radius:10px;border:2px solid var(--line);border-bottom-color:var(--r,var(--line));background:#1b1e23;color:var(--ink);cursor:pointer;font:inherit}
+.ward-item canvas{position:static;width:60px;height:60px}
+.ward-item small{font-size:11px;line-height:1.2;color:var(--secondary)}
+/* names stay on one line; a name too long for its tile scrolls left in an endless loop (gap matches MARQUEE_GAP) */
+.ward-name{display:flex;align-items:center;justify-content:center;width:100%}
+.ward-name .ward-lock{flex:none}
+.ward-name .clip{min-width:0;overflow:hidden;white-space:nowrap}
+.ward-name .run{display:inline-flex}
+.ward-name.scroll{justify-content:flex-start}
+.ward-name.scroll .clip{flex:1;-webkit-mask-image:linear-gradient(90deg,transparent,#000 4px,#000 calc(100% - 4px),transparent);mask-image:linear-gradient(90deg,transparent,#000 4px,#000 calc(100% - 4px),transparent)}
+.ward-name.scroll .run{gap:24px;padding-left:4px;animation:ward-marquee var(--t,4s) linear infinite}
+@keyframes ward-marquee{from{transform:translateX(0)}to{transform:translateX(var(--shift,0))}}
+@media (prefers-reduced-motion:reduce){.ward-name.scroll .run{animation:none}}
+.ward-item.on{border-color:var(--y);background:#2a2410}
+.ward-item.locked{opacity:.75}
+.ward-item.trying{opacity:1;border-style:dashed;border-color:var(--y)}
+.ward-item.locked small{color:var(--muted)}
+.ward-none{display:grid;place-items:center;width:60px;height:60px;color:var(--muted)}
+.ward-none svg{width:30px;height:30px}
+.ward-lock{display:inline-block;width:10px;height:11px;margin-right:3px;vertical-align:-1px}
+.ward-item:focus-visible,.ward-tabs button:focus-visible{outline:3px solid #fff;outline-offset:2px}

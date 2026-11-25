@@ -4,6 +4,12 @@ export interface BoardResp { total: number; rank: number; top: { avatar: number;
 export interface AdminRow { id: string; avatar: number | null; plays: number; best: number | null; scores: string; startedAt: string; flagged: boolean; unfinished: number; hidden: boolean }
 export interface AdminRun { id: string; avatar: number | null; runNo: number; startedAt: string; finishedAt: string | null; secs: number | null; score: number | null; legacy: boolean; hidden: boolean }
 
+/** a player on the admin's Players tab; chests are picked up on runs (loot), handed out by admin (granted) and opened */
+export interface AdminPlayer {
+  id: string; avatar: number | null; hidden: boolean; plays: number; best: number | null; maxDist: number | null;
+  lastPlayed: string | null; loot: number; granted: number; free: number; opened: number;
+}
+
 export type ApiResult<T> = Partial<T> & { ok: boolean; status: number; error?: string };
 
 export async function api<T>(path: string, data?: unknown): Promise<ApiResult<T>> {

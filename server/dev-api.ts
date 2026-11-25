@@ -1,5 +1,5 @@
 import type { Plugin } from 'vite';
-import { admin, finish, leaderboard, start, type Reply } from './handlers.js';
+import { admin, finish, leaderboard, normId, start, wardrobe, type Reply } from './handlers.js';
 import type { ServerResponse } from 'node:http';
 import { createMemoryStore } from './memory-store.js';
 import { createMemoryTourStore } from './tour-store.js';
@@ -49,6 +49,12 @@ export function devApi(): Plugin {
           if (route === 'start' && post) return send(await start(store, body, ua));
           if (route === 'finish' && post) return send(await finish(store, body));
           if (route === 'admin' && post) return send(await admin(store, body));
+          if (route === 'wardrobe' && post) return send(await wardrobe(store, body));
+          // local only: this route exists in the vite dev server, there is no api/ function for it, so production can't hand out boxes
+          if (route === 'dev-boxes' && post) {
+            await store.grantBoxes([normId(body.id)], Math.max(1, Math.min(100, Math.floor(Number(body.n) || 10))));
+            return send(await wardrobe(store, { id: body.id }));
+          }
           if (route === 'tournament' && post) return send(await tournament(store, tours, body));
           if (route === 'relay' && post) {
             for (const r of relay.get(String(body.room)) ?? []) r.write(`data: ${JSON.stringify(body.msg)}\n\n`);

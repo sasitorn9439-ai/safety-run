@@ -1,4 +1,5 @@
 import type { GameObject, SimEvent } from '../../shared/sim.js';
+import type { Look } from '../cosmetics/types.js';
 
 /** Everything a renderer needs to know about the world at one instant. */
 export interface SceneState {
@@ -6,6 +7,8 @@ export interface SceneState {
   objs: readonly GameObject[];
   /** seconds left on the man-lift (the mascot rides a platform up to its feet) */
   lift?: number;
+  /** the scenery's area when it is fixed (a one-area tournament stage); otherwise it follows the distance */
+  stageZone?: number;
 }
 /** The state one simulation tick earlier; renderers blend prev → s by `alpha` so motion stays smooth at any refresh rate. */
 export interface PrevState { dist: number; px: number; py: number; slide: number }
@@ -33,4 +36,6 @@ export interface GameRenderer {
   render(f: Frame, now: number): void;
   /** Current render scale (device pixels per CSS pixel); drops on slow devices. */
   readonly renderScale: number;
+  /** Dress the mascot (flat set only; the others keep their look) and redraw its frames. */
+  setLook(look: Look): void;
 }

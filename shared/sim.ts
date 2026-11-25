@@ -79,11 +79,23 @@ const QUIZ_ROW_GAP = 9;
 export const ITEM_GAP = 300;
 /** the gates come up this many seconds after the card, with the world slowed to GATE_FACTOR meanwhile */
 export const GATE_SECONDS = 4.5, GATE_FACTOR = 0.5;
+/** while a question is up nothing to pick up lies before the gates or this many metres past them: no coins to chase or to read as a hint */
+export const GATE_CLEAR = 30;
 export const TOUR_SECONDS = { sprint: 3, think: 1.5, auditThink: 2.5, stun: 1.2, loto: 8, buddy: 5, streak: 15 } as const;
 /** speed multipliers: Safety Sprint, Stop & Think, the stumble after a crash */
 export const SPRINT_FACTOR = 2, THINK_FACTOR = 0.5, STUN_FACTOR = 0.35;
 /** points the sender of a Spot Audit gets */
 export const AUDIT_SCORE = 30;
+/**
+ * points for running through the right gate. A question card pays GATE_SCORE if you pick your lane the moment the gates come up,
+ * down to GATE_SCORE_MIN if you pick it at the last moment (see gateScore); a Spot Audit someone sent you pays a flat AUDIT_PASS_SCORE
+ */
+export const GATE_SCORE = 500, GATE_SCORE_MIN = 100, AUDIT_PASS_SCORE = 150;
+/** what a right question card pays when the answer was picked with `left` (1..0) of the gates' time still to go; steps of 10 */
+export const gateScore = (left: number) =>
+  GATE_SCORE_MIN + Math.round((GATE_SCORE - GATE_SCORE_MIN) * Math.max(0, Math.min(1, left)) / 10) * 10;
+/** points for getting through a whole Zero Accident streak without a crash */
+export const STREAK_SCORE = 100;
 const ITEM_WEIGHTS: Record<Exclude<TourItem, 'quiz'>, number> = { loto: 24, foam: 26, buddy: 18, streak: 18, audit: 14 };
 export const POWER_SECONDS = { estop: 5, broom: 8, lift: 5 } as const;
 /** E-Stop (stop work authority) slows the world to this fraction */
@@ -92,7 +104,8 @@ export const ESTOP_FACTOR = 0.6;
 export const LIFT_HEIGHT = 1.5;
 /** metres between two power-ups at the least */
 export const POWER_GAP = 450;
-/** near-miss combo: a late dodge counts, the combo lasts this long, and every 3 steps the multiplier (on coins, PPE and near-misses) goes up */
+/** near-miss combo: a late dodge counts, the combo lasts this long, and every 3 steps the multiplier (on coins, PPE and near-misses) goes up;
+ * a tournament has no multiplier, so the right answers count for more than the pickups */
 export const COMBO_SECONDS = 6;
 export const MULT_MAX = 4;
 export const NEAR_SCORE = 2;
@@ -104,9 +117,16 @@ export const BONUS_MIN = 50, BONUS_MAX = 300, BONUS_STEP = 10;
 /** seconds the run waits for an answer before giving up on its own (keeps a replay from ever waiting forever) */
 export const BONUS_SECONDS = 7;
 
+/**
+ * A cosmetic loot box: pure collectible, it never touches the score, so a run with or without one replays to the same points.
+ * A checkpoint every LOOT_GAP metres arms one with LOOT_CHANCE (its own random stream), so about one turns up every
+ * LOOT_GAP / LOOT_CHANCE metres of running: rare on purpose, so the cosmetics stay worth having.
+ */
+export const LOOT_GAP = 1000, LOOT_CHANCE = 0.06;
+
 /** Things the renderer may want to react to (particles, shake). Purely cosmetic: never feeds back into the sim. */
 export type SimEvent =
-  | { type: 'pickup' } | { type: 'coin' } | { type: 'saved' } | { type: 'near' } | { type: 'bonus' }
+  | { type: 'pickup' } | { type: 'coin' } | { type: 'saved' } | { type: 'near' } | { type: 'bonus' } | { type: 'loot' }
   | { type: 'power'; t: PowerType }
   | { type: 'crash'; kind: HazardKind };
 export type Emit = (event: SimEvent) => void;
@@ -121,7 +141,12 @@ export interface Pickup { k: 'ppe'; p: PpeType; l: number; z: number; gone?: boo
 export interface Coin { k: 'coin'; l: number; z: number; gone?: boolean }
 export interface Power { k: 'power'; t: PowerType; l: number; z: number; gone?: boolean }
 export interface BonusToken { k: 'bonus'; l: number; z: number; gone?: boolean }
-export type GameObject = Obstacle | Pickup | Coin | Power | BonusToken;
+export interface LootBox { k: 'loot'; l: number; z: number; gone?: boolean }
+export type Item = Pickup | Coin | Power | BonusToken | LootBox;
+export type GameObject = Obstacle | Item;
+const ITEM_KINDS: ReadonlySet<GameObject['k']> = new Set(['coin', 'ppe', 'power', 'bonus', 'loot']);
+/** something to pick up (as opposed to a hazard) */
+export const isItem = (o: GameObject): o is Item => ITEM_KINDS.has(o.k);
 
 /**
  * Scoring: the distance run adds 1 point per
@@ -140,14 +165,22 @@ export interface Surprise {
   sub?: string;
 }
 
+/** where the bonus came from, for the crash screen: coins (the mystery box's too), PPE, near misses, and the rest
+ * (Safety Officer, bonus questions, Safety Week x2 metres, the tournament's audit) */
+export type EarnKind = 'coin' | 'ppe' | 'near' | 'extra';
+
 export interface RunView {
   dist: number; lane: number; px: number; py: number; vy: number; slide: number;
   objs: GameObject[]; got: ReadonlySet<PpeType>;
   shield: number; inv: number; revives: number; coins: number; bonus: number;
+  /** the bonus split by where it came from; always sums to `bonus` */
+  earned: Readonly<Record<EarnKind, number>>;
   toast: string; toastT: number; flash: number;
   sur: Surprise | null; dbl: number; hitKind: HazardKind | null;
   /** which area we are in: index into ZONES, and how many areas have been entered (1-based) */
   zone: number; zoneN: number;
+  /** the tournament stage's one area (index into ZONES), or -1 when the area changes with distance */
+  stageZone: number;
   /** near-miss combo and its multiplier (1..MULT_MAX), seconds left before the combo runs out */
   combo: number; mult: number; comboT: number;
   /** seconds left on the E-Stop, the 5S broom and the man-lift; first-aid hearts in stock (0 or 1) */
@@ -159,7 +192,8 @@ export interface RunView {
 }
 
 /** a question whose answer gates are on their way: options[i] is the gate in lane i - 1 */
-export interface Gate { prompt: string; options: string[]; correct: number; audit: boolean; z: number }
+/** `z0` how far off the gates came up; `picked` how much of their time was left (z / z0) when the lane was last changed, 0 if never */
+export interface Gate { prompt: string; options: string[]; correct: number; audit: boolean; z: number; z0: number; picked: number }
 export interface TourView {
   ticksLeft: number;
   gate: Gate | null;
@@ -184,6 +218,8 @@ export interface Run {
   view(): RunView;
   score(): number;
 }
+
+const isPickup = (o: GameObject) => o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus';
 
 function seededRandom(seed: number) {
   let value = seed >>> 0;
@@ -241,6 +277,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   const powerRandom = seededRandom(seed ^ 0x9e3779b9);
   const boxRandom = seededRandom(seed ^ 0x85ebca6b);
   const bonusRandom = seededRandom(seed ^ 0x27d4eb2f);
+  const lootRandom = seededRandom(seed ^ 0x7feb352d);
   const questions = QB.flat();
   const [prompt, choices] = questions[Math.floor(quizRandom() * questions.length)]!;
   const options = shuffle(choices.map((text, index) => ({ text, index })), quizRandom);
@@ -253,11 +290,14 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   let objs: GameObject[] = [];
   const got = new Set<PpeType>();
   let shield = 0, inv = 1.2, revives = 0, coins = 0, bonus = 0, toast = '', toastT = 0, flash = 0;
+  const earned: Record<EarnKind, number> = { coin: 0, ppe: 0, near: 0, extra: 0 };
+  const earn = (k: EarnKind, n: number) => { bonus += n; earned[k] += n; };
   let nextSur = (Math.floor(dist / 1500) + 1) * 1500, sur: Surprise | null = null, lastSur = '', dbl = 0, dblAcc = 0, tick = 0;
   let hitKind: HazardKind | null = null;
   let slow = 0, magnet = 0, lift = 0, hearts = 0, lastPower = dist;
   let combo = 0, comboT = 0, leftLane = 0, leftT = 9;
   let nextBonusCheck = (Math.floor(dist / BONUS_GAP) + 1) * BONUS_GAP, bonusArmed = false, pendingBonus: BonusQuiz | null = null, bonusTimer = 0;
+  let nextLootCheck = (Math.floor(dist / LOOT_GAP) + 1) * LOOT_GAP, lootArmed = false;
 
   // tournament: its own random streams, so the track (main stream) stays the same for every player whatever they answer
   const tour = opts.tour ?? null;
@@ -268,7 +308,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   let quizN = 0, auditN = 0, nextQuiz = QUIZ_FIRST, lastItem = 0, gate: Gate | null = null;
   let sprint = 0, think = 0, stun = 0, loto = 0, buddy = 0, streak = 0, correctN = 0, wrongN = 0, crashes = 0;
 
-  const mult = () => 1 + Math.min(MULT_MAX - 1, Math.floor(combo / 3));
+  const mult = () => tour ? 1 : 1 + Math.min(MULT_MAX - 1, Math.floor(combo / 3));
   const say = (text: string, seconds: number) => { toast = text; toastT = seconds; };
 
   /* ---------- what appears ahead ---------- */
@@ -296,7 +336,8 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       const rows = frees.map((f, i) => ({ z: ZMAX + i * gap, hz: [-1, 0, 1].filter(l => l !== f).map(l => ({ k: (random() < 0.5 ? 'forklift' : 'pallet') as HazardKind, l })) }));
       return { rows, free: frees };
     }
-    const low = () => [-1, 0, 1].map(l => ({ k: (random() < 0.5 ? 'spill' : 'hose') as HazardKind, l }));
+    const tripHazard = zone.id === 'entry' ? 'manhole' : 'hose';
+    const low = () => [-1, 0, 1].map(l => ({ k: (random() < 0.5 ? 'spill' : tripHazard) as HazardKind, l }));
     const high = () => [-1, 0, 1].map(l => ({ k: 'pipe' as HazardKind, l }));
     if (id === 'lowwall') return { rows: [{ z: ZMAX, hz: low() }], free: [null] };
     if (id === 'highwall') return { rows: [{ z: ZMAX, hz: high() }], free: [null] };
@@ -377,13 +418,18 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     }
     // a trail from the previous spawn may still be running into these hazards: clear the pickups right around them
     objs.push(...fresh);
-    for (const h of fresh) objs = objs.filter(o => !((o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus') && o.l === (h as Obstacle).l && Math.abs(o.z - (h as Obstacle).z) < 1.6));
+    for (const h of fresh) objs = objs.filter(o => !(isItem(o) && o.l === (h as Obstacle).l && Math.abs(o.z - (h as Obstacle).z) < 1.6));
     trail.forEach((c, i) => {
       if (i === powerAt && power) objs.push({ k: 'power', t: power, l: c.l, z: c.z });
       else if (i === at) objs.push({ k: 'ppe', p: ppePick, l: c.l, z: c.z });
       else if (i === bonusAt) objs.push({ k: 'bonus', l: c.l, z: c.z });
       else objs.push({ k: 'coin', l: c.l, z: c.z });
     });
+    // a loot box floats halfway between two coins in the middle of the trail, so it adds to the run and takes nothing away
+    if (lootArmed && trail.length >= 3) {
+      const a = trail[trail.length >> 1]!, b = trail[(trail.length >> 1) - 1]!;
+      if (a.l === b.l) { objs.push({ k: 'loot', l: a.l, z: (a.z + b.z) / 2 }); lootArmed = false; }
+    }
     openingPending = false;
     // a question card fills all three lanes just past the pattern: nobody misses a question
     if (quizRow) {
@@ -399,7 +445,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     lastSur = k;
     beep(660, 0.1, 'triangle');
     beep(990, 0.15, 'triangle');
-    if (k === 'officer') { bonus += OFFICER_SCORE; sur = { k, t: 0, dur: 3.4, msg: OFFICER[(random() * OFFICER.length) | 0]! }; }
+    if (k === 'officer') { earn('extra', OFFICER_SCORE); sur = { k, t: 0, dur: 3.4, msg: OFFICER[(random() * OFFICER.length) | 0]! }; }
     if (k === 'rain') {
       objs = objs.filter(o => o.z < 12);
       next = Math.max(next, 58);
@@ -418,7 +464,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     let x = boxRandom() * 100, reward: (typeof BOX_REWARDS)[number] = BOX_REWARDS[0];
     for (const r of BOX_REWARDS) { x -= r[1]; if (x < 0) { reward = r; break; } }
     const tip = TIPS[Math.floor(boxRandom() * TIPS.length)]!;
-    if (reward[0] === 'coins') { coins += 10; bonus += 10 * COIN_SCORE * mult(); }
+    if (reward[0] === 'coins') { coins += 10; earn('coin', 10 * COIN_SCORE * mult()); }
     else if (reward[0] === 'shield') shield = 8;
     else if (reward[0] === 'double') dbl = 8;
     else if (reward[0] === 'broom') magnet = POWER_SECONDS.broom;
@@ -433,20 +479,28 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     const n = audit ? auditDeck[auditN++ % auditDeck.length]! : quizDeck[quizN++ % quizDeck.length]!;
     const [prompt, choices] = TRICK[n]!;
     const order = shuffle([0, 1, 2], gateRandom);
-    // the right answer rarely sits in the lane you are already in: you have to move for it
+    // the right answer never sits in the lane you are already in: you have to move for it, and how soon you do is what it pays
     const here = lane + 1, right = order.indexOf(0), swapR = gateRandom();
-    if (right === here && swapR < 0.75) {
+    if (right === here) {
       const other = (here + 1 + (swapR < 0.375 ? 0 : 1)) % 3;
       [order[here], order[other]] = [order[other]!, order[here]!];
     }
     const z = speed * GATE_FACTOR * GATE_SECONDS;
-    gate = { prompt, options: order.map(i => choices[i]!), correct: order.indexOf(0), audit, z };
-    // nothing in the way of the gates, and nothing new until they have gone by
-    objs = objs.filter(o => o.k === 'coin' || o.k === 'ppe' || o.z < 6 || o.z > z + 8);
+    gate = { prompt, options: order.map(i => choices[i]!), correct: order.indexOf(0), audit, z, z0: z, picked: 0 };
+    // no hazard in the way of the gates (one already on top of you stays rather than vanish), and nothing new until they have gone by
+    objs = objs.filter(o => o.z > z + 8 || (o.z < 6 && !isPickup(o)));
     GATES.forEach((t, i) => objs.push({ k: 'power', t, l: i - 1, z }));
+    clearForGate();
     next = Math.max(next, z + 10);
     say(audit ? 'Spot Audit! มีคนส่งผู้ตรวจมาหาคุณ' : 'Safety Check! วิ่งเข้าประตูคำตอบที่ถูก', 2);
     beep(1400, 0.1, 'triangle'); beep(1800, 0.12, 'triangle');
+  }
+
+  /** the question is all there is: nothing to pick up before the gates or GATE_CLEAR past them (run again every step, as new rows
+   * and a Coin Rain land behind them) */
+  function clearForGate() {
+    const end = gate!.z + GATE_CLEAR;
+    objs = objs.filter(o => !isPickup(o) || o.z >= end || (o.k === 'power' && GATES.includes(o.t as GateType)));
   }
 
   /** `lane` the gate run through, or null if the gates went by untouched */
@@ -456,8 +510,11 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     for (const o of objs) if (o.k === 'power' && GATES.includes(o.t as GateType)) o.gone = true;
     if (at === g.correct) {
       correctN++;
-      if (g.audit) { say('ผ่าน Audit! ไปต่อ', 1.6); }
-      else { sprint = TOUR_SECONDS.sprint; inv = Math.max(inv, TOUR_SECONDS.sprint + 0.5); say('ถูกต้อง! Safety Sprint 🚀', 1.8); }
+      if (g.audit) { earn('extra', AUDIT_PASS_SCORE); say(`ผ่าน Audit! +${AUDIT_PASS_SCORE}`, 1.6); }
+      else {
+        const pts = gateScore(g.picked);
+        earn('extra', pts); sprint = TOUR_SECONDS.sprint; inv = Math.max(inv, TOUR_SECONDS.sprint + 0.5); say(`ถูกต้อง! +${pts} · Safety Sprint 🚀`, 1.8);
+      }
       beep(1200, 0.16, 'triangle'); beep(1600, 0.18, 'triangle');
     } else {
       wrongN++;
@@ -470,7 +527,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   /** Fire extinguisher: clears the hazards in your lane for the next few seconds of running */
   function foam() {
     const reach = speed * 3;
-    for (const o of objs) if (o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power' && o.k !== 'bonus' && Math.abs(o.l - lane) < 0.5 && o.z > -1 && o.z < reach) o.gone = true;
+    for (const o of objs) if (!isItem(o) && Math.abs(o.l - lane) < 0.5 && o.z > -1 && o.z < reach) o.gone = true;
   }
 
   /** a crash in a tournament: stumble and lose a little time, keep running */
@@ -478,7 +535,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     o.gone = true;
     crashes++;
     stun = TOUR_SECONDS.stun; inv = TOUR_SECONDS.stun + 1; flash = 0.35; combo = 0;
-    if (streak > 0) { streak = 0; dbl = 0; }
+    streak = 0;
     say(`ชน! ${HZ[o.k].th}`, 1.4);
     beep(110, 0.25, 'sawtooth', 0.08);
     emit({ type: 'saved' });
@@ -488,12 +545,12 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   function buddyStep() {
     const ahead = speed * 0.45;
     for (const o of objs) {
-      if (o.gone || o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus' || o.z < 0 || o.z > ahead || Math.abs(o.l - lane) > 0.5) continue;
+      if (o.gone || isItem(o) || o.z < 0 || o.z > ahead || Math.abs(o.l - lane) > 0.5) continue;
       const t = HZ[o.k].t;
       if (t === 'low' && py === 0 && vy === 0) { vy = JUMP_VY; slide = 0; }
       else if (t === 'high') slide = SLIDE_SECONDS;
       else if (t === 'block') {
-        const blocked = (l: number) => objs.some(b => !b.gone && b.k !== 'coin' && b.k !== 'ppe' && b.k !== 'power' && b.k !== 'bonus' && b.z > -1 && b.z < ahead * 2 && Math.abs(b.l - l) < 0.6);
+        const blocked = (l: number) => objs.some(b => !b.gone && !isItem(b) && b.z > -1 && b.z < ahead * 2 && Math.abs(b.l - l) < 0.6);
         const free = [lane - 1, lane + 1].find(l => l >= -1 && l <= 1 && !blocked(l));
         if (free != null) { leftLane = lane; leftT = 0; lane = free; }
       }
@@ -512,8 +569,8 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     else if (t === 'loto') { loto = TOUR_SECONDS.loto; say('LOTO! ตัดพลังงาน อันตรายที่เคลื่อนที่หยุดหมด', 2); }
     else if (t === 'foam') { foam(); say('ถังดับเพลิง! เคลียร์เลนข้างหน้า', 2); }
     else if (t === 'buddy') { buddy = TOUR_SECONDS.buddy; say('Buddy System! เพื่อนช่วยนำทาง', 2); }
-    else if (t === 'streak') { streak = dbl = TOUR_SECONDS.streak; say('Zero Accident x2! อย่าชนนะ', 2); }
-    else if (t === 'audit') { bonus += AUDIT_SCORE; say(`Spot Audit! ส่งผู้ตรวจไปหาคนที่นำอยู่ +${AUDIT_SCORE}`, 2); }
+    else if (t === 'streak') { streak = TOUR_SECONDS.streak; say(`Zero Accident! ไม่ชนเลย ${TOUR_SECONDS.streak} วินาที รับ +${STREAK_SCORE}`, 2); }
+    else if (t === 'audit') { earn('extra', AUDIT_SCORE); say(`Spot Audit! ส่งผู้ตรวจไปหาคนที่นำอยู่ +${AUDIT_SCORE}`, 2); }
     else if (t === 'toolbox') toolbox();
     else if (t === 'estop') { slow = POWER_SECONDS.estop; say('E-Stop! หยุดงานเพื่อความปลอดภัย · เกมช้าลง', 2); }
     else if (t === 'broom') { magnet = POWER_SECONDS.broom; say('5ส! ไม้กวาดดูดเหรียญ', 2); }
@@ -524,7 +581,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       // a zig-zag of coins for the whole ride
       const len = Math.min(110, Math.floor((speed * POWER_SECONDS.lift) / COIN_GAP));
       const path = [-1, 0, 1, 0];
-      objs = objs.filter(o => o.z < 12 || (o.k !== 'coin' && o.k !== 'ppe' && o.k !== 'power' && o.k !== 'bonus'));
+      objs = objs.filter(o => o.z < 12 || !isItem(o));
       for (let i = 0; i < len; i++) objs.push({ k: 'coin', l: path[(i >> 2) % 4]!, z: 14 + i * COIN_GAP });
       next = Math.max(next, 14 + len * COIN_GAP);
     }
@@ -544,7 +601,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   /** `index` null = gave up waiting (the server's replay can never hang on an unanswered bonus) */
   function resolveBonus(index: number | null) {
     const q = pendingBonus!;
-    if (index != null && index === q.correct) { bonus += q.reward * mult(); say(`ตอบถูก! +${q.reward} คะแนน · Bonus +${q.reward}`, 1.8); beep(1200, 0.16, 'triangle'); beep(1600, 0.18, 'triangle'); }
+    if (index != null && index === q.correct) { earn('extra', q.reward * mult()); say(`ตอบถูก! +${q.reward} คะแนน · Bonus +${q.reward}`, 1.8); beep(1200, 0.16, 'triangle'); beep(1600, 0.18, 'triangle'); }
     else if (index != null) { say('ยังไม่ถูก ไปต่อ! · Not quite, keep running', 1.4); beep(160, 0.16, 'sawtooth'); }
     else { say('หมดเวลา ไปต่อ! · Time up, keep running', 1.4); beep(160, 0.16, 'sawtooth'); }
     pendingBonus = null;
@@ -553,7 +610,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
   function nearMiss() {
     combo++; comboT = COMBO_SECONDS;
     const m = mult();
-    bonus += NEAR_SCORE * m;
+    earn('near', NEAR_SCORE * m);
     say(`NEAR MISS! x${m}`, 0.9);
     beep(1500, 0.05, 'square', 0.04);
     emit({ type: 'near' });
@@ -587,14 +644,15 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     if (tour) {
       dz *= (sprint > 0 ? SPRINT_FACTOR : stun > 0 ? STUN_FACTOR : think > 0 ? THINK_FACTOR : 1) * (gate ? GATE_FACTOR : 1);
       sprint = Math.max(0, sprint - dt); think = Math.max(0, think - dt); stun = Math.max(0, stun - dt);
-      loto = Math.max(0, loto - dt); buddy = Math.max(0, buddy - dt); streak = Math.max(0, streak - dt);
+      loto = Math.max(0, loto - dt); buddy = Math.max(0, buddy - dt);
+      if (streak > 0 && (streak -= dt) <= 0) { streak = 0; earn('extra', STREAK_SCORE); say(`Zero Accident สำเร็จ! +${STREAK_SCORE}`, 1.8); beep(1200, 0.16, 'triangle'); }
       if (gate && (gate.z -= dz) < -1) resolveGate(null);
       if (buddy > 0) buddyStep();
     }
     dist += dz;
     slow = Math.max(0, slow - dt); magnet = Math.max(0, magnet - dt); leftT += dt;
     if (comboT > 0 && (comboT -= dt) <= 0) combo = 0;
-    if (dbl > 0) { dbl -= dt; dblAcc += dz; while (dblAcc >= METRES_PER_POINT) { bonus++; dblAcc -= METRES_PER_POINT; } }
+    if (dbl > 0) { dbl -= dt; dblAcc += dz; while (dblAcc >= METRES_PER_POINT) { earn('extra', 1); dblAcc -= METRES_PER_POINT; } }
     if (sur && (sur.t += dt) > sur.dur) sur = null;
     for (const o of objs) o.z -= dz;
     moveHazards(dt);
@@ -603,6 +661,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       // at least ROW_SECONDS'-worth of running between two patterns, more when the zone is calm
       next = length + Math.max(13 + random() * 9 - Math.min(3, dist / 800), speed * 0.6 + random() * 3);
     }
+    if (gate) clearForGate();
     px += (lane - px) * Math.min(1, dt * 14);
     if (lift > 0) {
       lift = Math.max(0, lift - dt);
@@ -615,14 +674,15 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     const m = mult();
     for (const o of objs) {
       if (o.gone || Math.abs(o.z) > 0.7 || Math.abs(o.l - px) > 0.5) continue;
-      if (o.k === 'coin') { o.gone = true; coins++; bonus += COIN_SCORE * m; beep(1180, 0.04, 'triangle', 0.05); emit({ type: 'coin' }); continue; }
+      if (o.k === 'coin') { o.gone = true; coins++; earn('coin', COIN_SCORE * m); beep(1180, 0.04, 'triangle', 0.05); emit({ type: 'coin' }); continue; }
       if (o.k === 'ppe') {
-        o.gone = true; got.add(o.p); bonus += PPE_SCORE * m; beep(880, 0.07, 'triangle'); emit({ type: 'pickup' });
+        o.gone = true; got.add(o.p); earn('ppe', PPE_SCORE * m); beep(880, 0.07, 'triangle'); emit({ type: 'pickup' });
         if (got.size === 5) { got.clear(); shield = 8; say('FULL PPE! โล่กันชน 1 ครั้ง', 2); beep(1320, 0.2, 'triangle'); }
         continue;
       }
       if (o.k === 'power') { o.gone = true; takePower(o.t); continue; }
       if (o.k === 'bonus') { o.gone = true; startBonus(); continue; }
+      if (o.k === 'loot') { o.gone = true; say('ได้กล่องสุ่ม! เปิดได้ที่เมนู · Loot box!', 2.2); beep(1568, 0.18, 'triangle'); emit({ type: 'loot' }); continue; }
       if (lift > 0) continue;                                // up on the lift: nothing on the floor can touch you
       const t = HZ[o.k].t, hit = (o.k !== 'sparks' || !!o.on) && (t === 'block' || (t === 'low' && py < 0.45) || (t === 'high' && slide <= 0));
       if (!hit || inv > 0) continue;
@@ -640,7 +700,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
     }
     // a hazard that has just gone past: was it a late dodge? (a lane change, a jump or a slide just in time)
     for (const o of objs) {
-      if (o.k === 'coin' || o.k === 'ppe' || o.k === 'power' || o.k === 'bonus' || o.gone || o.chk || o.z > 0) continue;
+      if (isItem(o) || o.gone || o.chk || o.z > 0) continue;
       o.chk = true;
       if (lift > 0 || inv > 0) continue;
       const t = HZ[o.k].t;
@@ -649,9 +709,10 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
         : Math.abs(o.l - px) <= 0.5 && (t === 'low' ? py < 1.1 : slide < 0.22);
       if (near) nearMiss();
     }
-    objs = objs.filter(o => o.z > -3 && !(o.gone && (o.k === 'ppe' || o.k === 'coin' || o.k === 'power' || o.k === 'bonus')));
+    objs = objs.filter(o => o.z > -3 && !(o.gone && isItem(o)));
     if (!opts.movementOnly && dist >= nextSur) { nextSur += 1500; surprise(); }
     if (!tour && !opts.movementOnly && dist >= nextBonusCheck) { nextBonusCheck += BONUS_GAP; if (bonusRandom() < BONUS_CHANCE) bonusArmed = true; }
+    if (!tour && !opts.movementOnly && dist >= nextLootCheck) { nextLootCheck += LOOT_GAP; if (lootRandom() < LOOT_CHANCE) lootArmed = true; }
   }
 
   const isFinished = () => tour ? tick >= tour.durationTicks : !!hitKind;
@@ -672,6 +733,7 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
         if (lane === nextLane) return false;
         leftLane = lane; leftT = 0;
         lane = nextLane;
+        if (gate) gate.picked = Math.max(0, gate.z / gate.z0);
         beep(380, 0.04);
       } else if (lift > 0 && (action === 'up' || action === 'down')) {
         return false;                                         // the lift is carrying you
@@ -705,8 +767,8 @@ export function createRun(seed: number, beep: Beep = () => {}, emit: Emit = () =
       update(STEP);
     },
     view: () => ({
-      dist, lane, px, py, vy, slide, objs, got, shield, inv, revives, coins, bonus, toast, toastT, flash, sur, dbl, hitKind,
-      zone: zoneOf(dist).index, zoneN: zoneOf(dist).n, combo, mult: mult(), comboT, slow, magnet, lift, hearts, pendingBonus,
+      dist, lane, px, py, vy, slide, objs, got, shield, inv, revives, coins, bonus, earned, toast, toastT, flash, sur, dbl, hitKind,
+      zone: zoneOf(dist).index, zoneN: zoneOf(dist).n, stageZone: tourZone, combo, mult: mult(), comboT, slow, magnet, lift, hearts, pendingBonus,
       tour: tour && {
         ticksLeft: Math.max(0, tour.durationTicks - tick), gate,
         sprint, think, stun, loto, buddy, streak, correct: correctN, wrong: wrongN, crashes,
@@ -722,11 +784,15 @@ export function replayTour(seed: number, tour: TourOptions, inputs: unknown): { 
   return replayInto(game, tour.durationTicks, inputs) ? { score: game.score(), correct: game.view().tour!.correct } : null;
 }
 
-/** Re-plays a submitted run. Returns the score, or null if the replay is malformed. */
-export function replayScore(seed: number, ticks: unknown, inputs: unknown): number | null {
-  const game = createRun(seed);
-  return replayInto(game, ticks, inputs) ? game.score() : null;
+/** Re-plays a submitted run: its score, how far it got (whole metres) and how many loot boxes were picked up; null if the replay is malformed. */
+export function replayRun(seed: number, ticks: unknown, inputs: unknown): { score: number; dist: number; loot: number } | null {
+  let loot = 0;
+  const game = createRun(seed, undefined, e => { if (e.type === 'loot') loot++; });
+  return replayInto(game, ticks, inputs) ? { score: game.score(), dist: Math.floor(game.view().dist), loot } : null;
 }
+
+/** Re-plays a submitted run. Returns the score, or null if the replay is malformed. */
+export const replayScore = (seed: number, ticks: unknown, inputs: unknown): number | null => replayRun(seed, ticks, inputs)?.score ?? null;
 
 function replayInto(game: Run, ticks: unknown, inputs: unknown): boolean {
   if (!Number.isInteger(ticks) || (ticks as number) < 1 ||
