@@ -203,8 +203,6 @@ const drawWings = (fill: string, edge: string, feathers: number, root = .12, dy 
     c.restore();
   }
 };
-/** a pair of wings at the shoulders, behind the body */
-const wings = (fill: string, edge: string, feathers = 4): Part => ({ back: drawWings(fill, edge, feathers) });
 /**
  * Wings growing from the upper back. The camera sees the mascot's back, so they are nearer to it than the cape: their roots sit
  * on the cape between the shoulders and they spread out over it.
@@ -368,6 +366,13 @@ const angelBackdrop = (c: Ctx, t: number) => {
   c.restore();
 };
 
+/** the phoenix wings in an avatar: the orange glow and the wings behind the mascot's shoulders (avatar coordinates) */
+const phoenixBackdrop = (c: Ctx, t: number) => {
+  c.save(); c.translate(0, .21); c.scale(.8, .8); c.translate(0, .45);
+  aura('#ff6d00', .7, .5).back!(c, t, -.45); drawWings('#ff6d00', '#ffd600', 5)(c, t, -.45);
+  c.restore();
+};
+
 const FIRE = ['#ff6d00', '#ffab00', '#ff3d00'];
 const BLOOM = ['#ffffff', '#f8bbd0', '#b3e5fc', '#fff59d'];
 const PARTY = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb'];
@@ -403,7 +408,8 @@ export const EFFECTS: readonly Effect[] = [
   { ...fx('comet', 'ดาวหาง · Comet tail', 'epic', meteors(), trail(glowDot, ['#ffd740', '#ff6e40', '#ffab40'], 16, .065, .08, 1.25, 1, .03, -.02)), avatar: meteorBackdrop },
   // over the cape in the game; in the avatar (seen from the front) behind the mascot, with the sparkles
   { ...fx('angel', 'ปีกนางฟ้า · Angel wings', 'epic', backWings('#ffffff', '#e3f2fd'), rise(sparkle, ['#ffffff'], 4, .04)), avatar: angelBackdrop },
-  fx('phoenix', 'ปีกฟีนิกซ์ · Phoenix wings', 'legendary', aura('#ff6d00', .7, .5), wings('#ff6d00', '#ffd600', 5), feetFire(['#ff3d00', '#ffab00', '#ffd600'])),
+  // over the cape in the game like the angel wings; in the avatar behind the mascot, in the glow
+  { ...fx('phoenix', 'ปีกฟีนิกซ์ · Phoenix wings', 'legendary', aura('#ff6d00', .7, .5), backWings('#ff6d00', '#ffd600', 5), feetFire(['#ff3d00', '#ffab00', '#ffd600'])), avatar: phoenixBackdrop },
   fx('holy', 'แสงศักดิ์สิทธิ์ · Holy light', 'legendary', pillar('rgba(255,245,180,.95)'), aura('#fff59d', .6, .5), rise(sparkle, ['#ffffff', '#fff176'], 7, .05, .3)),
   fx('safetyhero', 'ฮีโร่ความปลอดภัย · Safety hero', 'legendary', aura('#00e676', .7, .5), orbit(cross, ['#2e9e47'], 4, .06, .5, .16), rise(star, ['#ffd400', '#ffffff'], 5, .04)),
 ];
