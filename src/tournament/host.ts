@@ -18,6 +18,8 @@ const DWELL_MS = 2500, ROTATE_MS = 8000;
  * delivery against the plan's messages per second, so this stays at 2 a second; the phones carry the ghosts forward in between.
  */
 const BOARD_MS = 500;
+/** the music goes into its last gear this many seconds before time is up */
+const FINAL_SECONDS = 25;
 const hostKey = (code: string) => `srHost:${code}`;
 
 /** Host login: the admin key opens a room, which then lives at /tournament?host=CODE (the token stays in this tab). */
@@ -64,7 +66,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
   $('hNew').onclick = () => { sessionStorage.removeItem(hostKey(code)); location.href = '/tournament?newhost'; };
   $('hAuto').onclick = () => setAuto(!auto);
 
-  /* ---------- lobby music: same "PPE พร้อม" song as the Safety Quiz game ---------- */
+  /* ---------- music: lobby -> race -> final seconds -> podium, synthesised in lib/music.ts ---------- */
   // Plays by itself: the click that logged the host in lets this page play sound. After a reload the browser may still
   // hold it back until the first click, which the button says.
   const music = new Music(LS.get<boolean>('srTourMute') ?? false);
@@ -73,6 +75,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
     $('hMuteText').textContent = music.muted ? 'เพลง: ปิด' : music.blocked ? 'คลิกเพื่อเปิดเพลง' : 'เพลง: เปิด';
   };
   const unlock = () => { music.unlock(); showMute(); };
+  music.onState = showMute;
   unlock();
   addEventListener('pointerdown', unlock);
   $('hMute').onclick = () => {
@@ -105,7 +108,10 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
     $('hCam').classList.toggle('on', running);
     $('hPodium').classList.toggle('on', finished);
     document.body.classList.toggle('h-podium-on', finished);
-    if (lobby) music.play(); else music.stop();
+    document.body.classList.toggle('h-lobby-on', lobby);
+    // the race itself picks its song every frame (countdown / race / final); the lobby and podium are decided here
+    music.play();
+    if (lobby) music.setMode('lobby'); else if (finished) music.setMode('win');
     if (lobby) {
       stopRace();
       $('hCount').textContent = String(r.players.length);
@@ -199,6 +205,7 @@ export function startHost(renderer: GameRenderer, code: string, hostToken: strin
       const [seenSlot, seen] = races.has(focus) ? [focus, races.get(focus)!] : races.entries().next().value!;
       const el = seen.elapsed(serverNow);
       count(el < 0 ? Math.ceil(-el * STEP) : 0);
+      if (room.phase === 'running') music.setMode(el < 0 ? 'lobby' : left <= FINAL_SECONDS ? 'final' : 'race');
       // everyone in what they wear: the runner the camera follows, and the others as ghosts
       const worn = (s: Slot) => lookOfWorn(room!.players.find(x => x.slot === s)?.look);
       renderer.setLook(worn(seenSlot));
