@@ -119,6 +119,25 @@ describe('tournament run', () => {
     expect(hazards).toEqual([]);
   });
 
+  it('leaves nothing to pick up between you and the gates', () => {
+    for (const seed of [3, 11, 42]) {
+      const run = createRun(seed, undefined, undefined, { tour: TOUR });
+      let gates = 0;
+      while (!run.finished) {
+        const v = run.view(), gate = v.tour!.gate;
+        if (gate) {
+          const loot = v.objs.filter(o => !o.gone && o.z > -1 && o.z < gate.z + 8 && (o.k === 'coin' || o.k === 'ppe' || o.k === 'bonus' || (o.k === 'power' && !GATES.includes(o.t as never))));
+          expect(loot).toEqual([]);
+          if (gate.z === gate.z0) gates++;
+          const want = gate.correct - 1;
+          if (v.lane !== want) run.input(v.lane < want ? 'right' : 'left');
+        } else think(run);
+        run.step();
+      }
+      expect(gates).toBeGreaterThanOrEqual(2);
+    }
+  });
+
   it('replays to the same score on the server', () => {
     const { run, inputs } = race(99, { audits: [1200] });
     const r = replayTour(99, TOUR, inputs);
