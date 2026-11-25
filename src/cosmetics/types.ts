@@ -41,7 +41,11 @@ export interface FrontFigure {
 }
 export interface Skin extends Base { slot: 'skin'; pal: Palette; figure?: Figure }
 /** drawn right after the head, in head coordinates: the head spans y −0.865…−0.44 and x ±0.27, its crystal reaches up to y −0.995 */
-export interface Hat extends Base { slot: 'hat'; draw(c: Ctx): void; /** the hat from the front, when it differs from the back (avatars) */ front?(c: Ctx): void }
+export interface Hat extends Base {
+  slot: 'hat'; draw(c: Ctx): void; /** the hat from the front, when it differs from the back (avatars) */ front?(c: Ctx): void;
+  /** how far above the feet it draws, when that is more than the usual 1.5 (a lamp's beam reaching the floor ahead) */
+  above?: number;
+}
 /**
  * `t` is the frame's place in its animation (0…1, wraps for the run and idle loops). Effects repeat with period 1/n for an
  * n-fold pattern, so a fast run loop still reads as a calm drift. `cy` is the height of the body's centre (negative = up).

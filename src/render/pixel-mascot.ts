@@ -46,7 +46,7 @@ const RING_BOX: Art['box'] = [-.52, -1.12, .52, .02];
  * (the feet) stays put, so the mascot stands and moves exactly where it always does.
  */
 export function flatBox(look: Look): Art['box'] {
-  const top = Math.min(look.hat ? -1.5 : -330 / 300, look.effect ? -Math.max(1.42, look.effect.above ?? 0) : 0);
+  const top = Math.min(look.hat ? -Math.max(1.5, look.hat.above ?? 0) : -330 / 300, look.effect ? -Math.max(1.42, look.effect.above ?? 0) : 0);
   return look.effect ? [-.75, top, .75, Math.max(.34, look.effect.below ?? 0)] : [-192 / 300, top, 192 / 300, 54 / 300];
 }
 
