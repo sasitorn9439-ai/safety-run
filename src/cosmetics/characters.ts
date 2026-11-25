@@ -5,6 +5,7 @@
  */
 import { rr, type Ctx } from '../render/draw.js';
 import { palette } from './skins.js';
+import { spriteSheet } from './sprite-sheet.js';
 import type { Figure, FrontFigure, Rarity, Skin } from './types.js';
 
 const TAU = Math.PI * 2;
@@ -261,4 +262,125 @@ export const CUSTOM_SKINS: readonly Skin[] = [
   s('alien', 'มนุษย์ต่างดาว · Alien', 'epic', { body: '#9ccc65', cape: '#558b2f', head: '#aed581', mitt: '#7cb342', shoe: '#33691e' }, alien),
   s('unicorn', 'ยูนิคอร์น · Unicorn', 'legendary', { body: '#fafafa', cape: '#e1bee7', head: '#ffffff', mitt: '#f8bbd0', shoe: '#ce93d8' }, unicorn),
   s('dragon', 'มังกรไฟ · Fire dragon', 'legendary', { body: '#e53935', cape: '#8e0000', head: '#ef5350', mitt: '#ffcc80', shoe: '#5d0000' }, dragon),
+];
+
+/** a gold amulet: a round or arched gold frame round a dark image (`r` its half-height) */
+export const amulet = (c: Ctx, x: number, y: number, r: number, arch = false) => {
+  c.fillStyle = '#d4a017'; c.beginPath();
+  if (arch) { c.moveTo(x - r * .7, y + r); c.lineTo(x - r * .7, y - r * .3); c.quadraticCurveTo(x, y - r * 1.4, x + r * .7, y - r * .3); c.lineTo(x + r * .7, y + r); c.closePath(); }
+  else c.arc(x, y, r, 0, TAU);
+  c.fill();
+  c.fillStyle = arch ? '#4e342e' : '#ffe082'; c.beginPath();
+  if (arch) { c.moveTo(x - r * .45, y + r * .75); c.lineTo(x - r * .45, y - r * .2); c.quadraticCurveTo(x, y - r, x + r * .45, y - r * .2); c.lineTo(x + r * .45, y + r * .75); c.closePath(); }
+  else c.arc(x, y, r * .7, 0, TAU);
+  c.fill();
+};
+const gold = '#f2c455', tan = '#c98c68';
+type Cut = 'classic' | 'coin' | 'lotus' | 'varsity' | 'toast';
+
+function hair(c: Ctx, back: boolean, cut: Cut) {
+  const crest = cut === 'coin' ? -.99 : cut === 'varsity' ? -.89 : -.93;
+  const temple = back ? -.55 : -.65;
+  c.beginPath(); c.moveTo(-.248, temple);
+  c.bezierCurveTo(-.28, -.80, -.17, crest, -.025, crest + .012);
+  c.bezierCurveTo(.16, crest - .018, .28, -.80, .248, temple);
+  c.bezierCurveTo(.16, temple - .035, .16, back ? -.48 : -.78, .035, back ? -.50 : -.765);
+  c.bezierCurveTo(-.13, back ? -.47 : -.75, -.16, temple - .08, -.248, temple);
+  c.fillStyle = '#201c1e'; c.fill(); c.save(); c.clip();
+  c.lineCap = 'round';
+  for (const x of [-.17,-.085,0,.085,.17]) {
+    c.beginPath(); c.moveTo(x, crest + .042 + x*x*2);
+    c.quadraticCurveTo(x + .085, crest + .016, x*1.23, back ? -.58 : -.79 + x*x);
+    c.strokeStyle = '#494044'; c.lineWidth = .009; c.stroke();
+  }
+  c.restore();
+}
+
+function bossSkin(id: number, name: string, cut: Cut, red: string, ink: string): Skin {
+  // Draw the ink and jewellery in the limb's own coordinates so they follow each stride.
+  function sleeve(c: Ctx, side: number, x: number, y: number, shoulderX: number, shoulderY: number) {
+    const dx = x - shoulderX, dy = y - shoulderY, length = Math.hypot(dx,dy);
+    c.save(); c.translate(shoulderX,shoulderY); c.rotate(Math.atan2(dy,dx));
+    rr(c, 0,-.039,length,.078,.035,ink);
+    c.save(); c.beginPath(); c.roundRect(0,-.039,length,.078,.035); c.clip();
+    for(let i=1;i<=4;i++) {
+      const u = length*i/5;
+      c.beginPath(); c.moveTo(u-.018,-.04);
+      c.quadraticCurveTo(u+.04,cut === 'lotus' ? .056 : -.016,u-.006,.04);
+      c.strokeStyle = '#ac806e'; c.lineWidth = .009; c.stroke();
+    }
+    c.restore();
+    rr(c,-.025,-.047,length*.4+.025,.094,.022,red);
+    rr(c,length-.045,-.042,.021,.084,.008,gold);
+    if(side<0) ell(c,length-.035,-.022,.021,.017,'#ffdf85');
+    ell(c,length+.009,0,.039,.033,tan);
+    ell(c,length+.016,-.012,.012,.014,gold);
+    ell(c,length+.016,-.012,.006,.008,'#563431');
+    c.restore();
+  }
+  const count = cut === 'coin' || cut === 'classic' ? 5 : 3;
+  return { id: 'skin-boss-'+id, slot:'skin', name, rarity:'rare',
+    pal:{...palette({body:red,cape:red,head:tan,mitt:tan,sleeve:ink,shoe:'#33282a'}),torso:red},
+    figure:{ capeless:true, egg:true, head(c){hair(c,true,cut);},
+      arm(c,side,x,y){sleeve(c,side,x,y,side*.165,-.40);},
+      back(c){
+        c.beginPath(); c.moveTo(-.15,-.449); c.quadraticCurveTo(0,-.345,.15,-.449);
+        c.lineWidth=cut==='coin'?.021:.012; c.strokeStyle=gold; c.stroke();
+        ell(c,0,-.397,.013,.009,'#ffdf90');
+        if(cut==='varsity'){c.font='bold .085px sans-serif';c.textAlign='center';c.fillStyle='#ffe3ce';c.fillText('65',0,-.285);}
+        if(cut==='lotus') for(const angle of [-.7,0,.7]) ell(c,Math.sin(angle)*.026,-.315,.015,.035,gold,angle);
+      },
+      front:{over(c){
+        hair(c,false,cut);
+        for(const side of [-1,1]){
+          ell(c,side*.038,-.544,.042,.009,'#392825',side*.23);
+          sleeve(c,side,side*.257,-.344,side*.148,-.437);
+        }
+        ell(c,0,-.466,.035,.011,'#49332d');
+        c.beginPath(); c.moveTo(-.104,-.451); c.quadraticCurveTo(0,-.374,.104,-.451);
+        c.strokeStyle='#962639'; c.lineWidth=.013; c.stroke();
+        c.beginPath(); c.moveTo(-.126,-.45); c.lineTo(-.082,-.354); c.lineTo(0,-.303);
+        c.lineTo(.082,-.354); c.lineTo(.126,-.45); c.strokeStyle=gold; c.lineWidth=cut==='coin'?.018:.011; c.stroke();
+        for(const side of [-1,1]){
+          amulet(c,side*.082,-.349,cut==='coin'?.032:.024,cut==='lotus');
+          if(count===5) amulet(c,side*.116,-.395,.018);
+        }
+        amulet(c,0,-.294,cut==='lotus'?.048:.039,true);
+        ell(c,0,-.304,.006,.008,'#ccb183'); ell(c,0,-.286,.013,.007,'#ad9168');
+        if(cut==='toast'){
+          rr(c,.204,-.424,.064,.081,.011,'#e4d3b9'); rr(c,.211,-.393,.050,.043,.006,'#b16735');
+          ell(c,.236,-.422,.032,.008,'#fff1d2');
+        }
+      }}
+    }};
+}
+
+export const BOSS_SKIN_OPTIONS: readonly Skin[] = [
+  bossSkin(1,'เสี่ยสายมู · Lucky-charm boss','classic','#db3445','#544043'),
+  bossSkin(2,'เสี่ยเหรียญทอง · Gold medallions','coin','#bd2937','#493639'),
+  bossSkin(3,'บัวทอง · Gilded lotus','lotus','#b92742','#394847'),
+  bossSkin(4,'เสื้อกีฬาแดง · Varsity red','varsity','#eb434a','#404351'),
+  bossSkin(5,'ชนแก้ว · Amber toast','toast','#cf3542','#655049'),
+];
+
+/** special skins: not in the loot boxes, won by finishing runs (Cosmetic.unlock) */
+export const SPECIAL_RUNS = 50;
+export const SPECIAL_SKINS: readonly Skin[] = [
+  (() => {
+    // drawn as pictures: the sprite sheet in the game, the portrait in the avatar
+    const s = bossSkin(1, 'เอ็ม ออนิว', 'classic', '#db3445', '#544043');
+    return {
+      ...s, id: 'skin-boss', rarity: 'legendary' as const,
+      unlock: {
+        runs: SPECIAL_RUNS,
+        how: `วิ่งให้ครบ ${SPECIAL_RUNS} รอบ`,
+        detail: 'สกินพิเศษ ไม่มีในกล่องสุ่ม ได้จากการวิ่งจนจบรอบเท่านั้น',
+      },
+      figure: {
+        ...s.figure!, fit: { shoulder: .74, slide: .3, size: 1.25 },
+        portrait: spriteSheet(new URL('../../assets/skins/boss-avatar.png', import.meta.url).href),
+        sprite: spriteSheet(new URL('../../assets/skins/boss-sprite.png', import.meta.url).href, { feet: 138 / 144.25, unit: 118 / 144.25 }),
+      },
+    };
+  })(),
 ];

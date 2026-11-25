@@ -49,6 +49,27 @@ async function startOn(id: string, seed: number) {
   return s;
 }
 
+describe('wardrobe API: runs toward special items', () => {
+  /** finishes `n` runs for `id` straight in the store (a verified replay each would take far too long) */
+  async function finished(id: string, n: number) {
+    await store.avatarOf(id);
+    for (let i = 1; i <= n; i++) {
+      const runId = await store.createRun({ id, runNo: i, name: id, tokenHash: 'h' + i, ua: 't', seed: i });
+      await store.finishRun(String(runId), { score: 100, secs: 30, dist: 100, loot: 0 });
+    }
+  }
+  it('counts finished runs, and the special skin can be worn only from the 50th', async () => {
+    await finished('2001', 49);
+    expect((await ward({ id: '2001' })).body.runs).toBe(49);
+    expect((await ward({ id: '2001', action: 'equip', slot: 'skin', item: 'skin-boss' })).status).toBe(400);
+    await finished('2002', 50);
+    const w = (await ward({ id: '2002' })).body;
+    expect(w.runs).toBe(50);
+    expect(w.owned).toContain('skin-boss');
+    expect((await ward({ id: '2002', action: 'equip', slot: 'skin', item: 'skin-boss' })).body.equipped).toEqual({ skin: 'skin-boss' });
+  });
+});
+
 describe('wardrobe API', () => {
   it("an older all-digit id still sees the chests it opened", async () => {
     await store.avatarOf('000');

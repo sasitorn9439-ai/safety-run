@@ -8,6 +8,7 @@
  */
 import { DEFAULT_LOOK } from '../cosmetics/skins.js';
 import { ringPhase } from '../cosmetics/effects.js';
+import { spriteFrame } from '../cosmetics/sprite-sheet.js';
 import type { Look } from '../cosmetics/types.js';
 import type { Ctx } from './draw.js';
 import { DEFAULT_SLIDE, type SlideId } from './flat/ids.js';
@@ -117,7 +118,21 @@ async function loadFlat(slide: SlideId): Promise<MascotSet> {
     style: 'flat', crisp: false, cfg: configFrom(counts, tags, 100), look: DEFAULT_LOOK,
     count: a => by[a].frames, scaleFor: () => 1,
     art(anim, i, scale, worn) {
-      const pose = by[anim].pose(i), look = worn ?? set.look, t = i / by[anim].frames;
+      const pose = by[anim].pose(i), look = worn ?? set.look, t = i / by[anim].frames, sheet = look.figure?.sprite, img = sheet?.img;
+      if (sheet && img) {
+        // a skin drawn as a picture: its frame from the sheet, with the effect and hat parts that sit behind and in front
+        const f = spriteFrame({ ...sheet, img }, anim, i), box = flatBox(look);
+        return {
+          box: [Math.min(box[0], f.box[0]), Math.min(box[1], f.box[1]), Math.max(box[2], f.box[2]), Math.max(box[3], f.box[3])],
+          draw(c: Ctx, u: number) {
+            const cy = -.45, fig = look.figure?.fit, fit = fig && { shoulder: anim === 'slide' ? fig.slide : fig.shoulder, size: fig.size };
+            c.save(); c.scale(u, u); look.effect?.back?.(c, t, cy, fit); c.restore();
+            c.drawImage(img, f.sx, f.sy, f.w, f.h, f.box[0] * u, f.box[1] * u, f.w / f.unit * u, f.h / f.unit * u);
+            c.save(); c.scale(u, u); look.effect?.front?.(c, t, cy, fit); c.restore();
+          },
+          scale, mips: false,
+        };
+      }
       return {
         box: flatBox(look),
         draw(c: Ctx, u: number) {

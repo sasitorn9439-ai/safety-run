@@ -11,6 +11,25 @@ import { play, think } from './bot.js';
 /** a small seeded random, so the box tests are repeatable */
 const rng = (seed: number) => () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
 
+describe('special skins', () => {
+  const special = CATALOG.filter(c => c.unlock);
+  it('the Lucky-charm boss is owned from the 50th finished run and not before, and can be worn then', () => {
+    expect(special.map(c => c.id)).toEqual(['skin-boss']);
+    expect(special[0]!.unlock!.runs).toBe(50);
+    expect(wardrobeFrom(0, [], {}, 49).owned).not.toContain('skin-boss');
+    const w = wardrobeFrom(0, [], {}, 50);
+    expect(w.owned).toContain('skin-boss');
+    expect(w.runs).toBe(50);
+    expect(equip(wardrobeFrom(0, [], {}, 49), 'skin', 'skin-boss').equipped.skin).toBeUndefined();
+    expect(equip(w, 'skin', 'skin-boss').equipped.skin).toBe('skin-boss');
+  });
+  it('loot boxes never give it', () => {
+    const r = rng(7);
+    let w = addBox(EMPTY_WARDROBE, 600);
+    for (let i = 0; i < 600; i++) { const o = openBox(w, r)!; expect(o.pull.item.unlock).toBeUndefined(); w = o.wardrobe; }
+  });
+});
+
 describe('catalog', () => {
   it('has 30 hats and colour skins and 31 effects (plus custom skins), every id unique, every rarity in every kind', () => {
     expect(new Set(CATALOG.map(c => c.id)).size).toBe(CATALOG.length);

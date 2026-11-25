@@ -12,22 +12,40 @@ export const SLOTS: readonly Slot[] = ['skin', 'hat', 'effect'];
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 export const RARITIES: readonly Rarity[] = ['common', 'rare', 'epic', 'legendary'];
 
+/**
+ * Where a skin that is not the mascot's shape has its body, so effects that grow from the body (wings) can follow it. Heights
+ * are game units above the feet; the mascot's own are what effects are drawn for, so leaving this out means "the mascot".
+ */
+export interface BodyFit {
+  /** where the shoulders are (the mascot's are about 0.42) */ shoulder: number;
+  /** how much bigger than the mascot's wings to draw them */ size: number;
+}
+
 /** every colour the mascot is painted with */
 export interface Palette {
-  body: string; sleeve: string; edge: string;
+  torso?: string; body: string; sleeve: string; edge: string;
   capeD: string; capeL: string; mitt: string; shoeD: string; shoeL: string;
   head: string; headEdge: string;
   gemL: string; gemR: string; gemHi: string; gemEdge: string;
 }
 
-interface Base { id: string; name: string; rarity: Rarity }
+/** a special item: not in the loot boxes, won by finishing `runs` verified runs */
+export interface Unlock { runs: number; /** what to tell the player (Thai) */ how: string; detail: string }
+interface Base { id: string; name: string; rarity: Rarity; unlock?: Unlock }
 /**
  * A custom skin: what turns the mascot into another character (no crystal on its head), with parts drawn with the body, so
  * they lean, squash and tuck with it.
  * `head` is in head coordinates (like a hat, drawn before the hat); `back` is in body coordinates over the cape (the camera
  * sees the mascot's back, so a tail points toward it). `t` is the frame's place in its animation.
  */
-export interface Figure { head?(c: Ctx, t: number): void; back?(c: Ctx, t: number): void; front?: FrontFigure; /** a round, egg-shaped head instead of the onigiri */ egg?: true }
+export interface Figure {
+  /** frames drawn as a picture (a sprite sheet) instead of in code, in the game; the avatar still uses `front` */
+  sprite?: import('./sprite-sheet.js').SpriteSheet;
+  /** where the sprite's body is, for wings and the like (and what to shift for a slide, when the body lies low) */
+  fit?: { shoulder: number; slide: number; size: number };
+  /** a picture used as the avatar (head and shoulders, transparent background) instead of drawing the front view in code */
+  portrait?: import('./sprite-sheet.js').SpriteSheet;
+  capeless?: true; arm?(c: Ctx, side: number, x: number, y: number): void; head?(c: Ctx, t: number): void; back?(c: Ctx, t: number): void; front?: FrontFigure; /** a round, egg-shaped head instead of the onigiri */ egg?: true }
 /** a custom skin's head seen from the front (avatars only; the game shows the back) */
 export interface FrontFigure {
   /** behind the head (spikes, ears, a mane) */
@@ -54,7 +72,7 @@ export interface Hat extends Base {
  * n-fold pattern, so a fast run loop still reads as a calm drift. `cy` is the height of the body's centre (negative = up).
  */
 export interface Effect extends Base {
-  slot: 'effect'; back?(c: Ctx, t: number, cy: number): void; front?(c: Ctx, t: number, cy: number): void;
+  slot: 'effect'; back?(c: Ctx, t: number, cy: number, fit?: BodyFit): void; front?(c: Ctx, t: number, cy: number, fit?: BodyFit): void;
   /** how far below the feet it draws, when that is more than the usual 0.34 (a trail that reaches toward the camera) */
   below?: number;
   /** how far above the feet it draws, when that is more than the usual 1.42 (a beam of light pouring down from the sky) */
@@ -69,7 +87,7 @@ export interface Effect extends Base {
    * How it looks in an avatar, when that differs from the game: drawn behind the mascot's head and shoulders in place of the
    * rest, `t` 0…1 over the avatar's loop. Coordinates: the avatar circle has radius 0.48 around (0, 0), in body units.
    */
-  avatar?(c: Ctx, t: number): void;
+  avatar?(c: Ctx, t: number, portrait?: boolean): void;
 }
 export type Cosmetic = Skin | Hat | Effect;
 

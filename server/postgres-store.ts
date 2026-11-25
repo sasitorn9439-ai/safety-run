@@ -193,10 +193,11 @@ export function createPostgresStore(url: string): Store {
     async wardrobe(id) {
       // sequential on purpose: one pooled connection, no pipelining
       const [e] = await sql`select (select coalesce(sum(loot), 0) from safety_run_runs where emp_id = ${id} and score is not null)
-        + (select coalesce(sum(n), 0) from safety_run_box_grants where emp_id = ${id}) as earned`;
+        + (select coalesce(sum(n), 0) from safety_run_box_grants where emp_id = ${id}) as earned,
+        (select count(*) from safety_run_runs where emp_id = ${id} and score is not null) as runs`;
       const opened = await sql`select item, dupe from safety_run_cosmetics where emp_id = ${id} order by box_no`;
       const [p] = await sql`select equipped from safety_run_players where emp_id = ${id}`;
-      return { earned: Number(e!.earned), opened: opened.map(r => ({ item: r.item as string, dupe: !!r.dupe })), equipped: (p?.equipped ?? {}) as Record<string, string> };
+      return { earned: Number(e!.earned), runs: Number(e!.runs), opened: opened.map(r => ({ item: r.item as string, dupe: !!r.dupe })), equipped: (p?.equipped ?? {}) as Record<string, string> };
     },
 
     async addCosmetic(id, boxNo, item, dupe) {
