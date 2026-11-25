@@ -63,6 +63,7 @@ function speedLines(c: Ctx, a: number) {
 /** `t`: where this frame sits in its animation (0…1), which drives the look's effect */
 export function drawPuppet(c: Ctx, p: Pose2D, look: Look = DEFAULT_LOOK, t = 0) {
   const pal = look.pal, cy = -(.45 * p.sy + p.dy);
+  look.hat?.behind?.(c, cy);
   look.effect?.back?.(c, t, cy);
   for (const d of p.fx?.dust ?? []) if (!d.front) puff(c, d);
   if (p.fx?.lines) speedLines(c, p.fx.lines);
@@ -94,7 +95,7 @@ export function drawPuppet(c: Ctx, p: Pose2D, look: Look = DEFAULT_LOOK, t = 0) 
   const keep = p.headKeep ?? 0;                      // slides squash the body but keep the head round
   if (keep) c.scale((1 + (p.sx - 1) * (1 - keep)) / p.sx, (1 + (p.sy - 1) * (1 - keep)) / p.sy);
   c.translate(0, .47);
-  drawMascotHead(c, pal, !look.figure);
+  drawMascotHead(c, pal, !look.figure, !!look.figure?.egg);
   look.figure?.head?.(c, t);
   look.hat?.draw(c);
   c.restore();

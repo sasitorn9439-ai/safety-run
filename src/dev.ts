@@ -4,7 +4,7 @@ import { ZONES } from '../shared/zones.js';
 import { CATALOG, lookOfWorn } from './cosmetics/wardrobe.js';
 import { SLOTS, type Slot } from './cosmetics/types.js';
 import { AV_N, avName } from '../shared/avatar.js';
-import { avatarURL } from './lib/avatar.js';
+import { avImg } from './lib/avatar.js';
 import { createRenderer, type SceneState } from './render/index.js';
 import './dev.css';
 
@@ -112,7 +112,7 @@ export async function startDev() {
       const worn: Partial<Record<Slot, string>> = {};
       for (const s of SLOTS) if (avSlot(s).value) worn[s] = avSlot(s).value;
       const n = Math.max(0, avN.valueAsNumber || 0);
-      document.querySelector<HTMLElement>('#dev-av')!.innerHTML = [160, 72, 36, 22].map(px => `<img src="${avatarURL(n, px * 2, worn)}" width="${px}" height="${px}" alt="">`).join('');
+      document.querySelector<HTMLElement>('#dev-av')!.innerHTML = [160, 72, 36, 22].map(px => avImg(n, px, worn)).join('');
       document.querySelector<HTMLOutputElement>('#dev-av-name')!.value = avName(n);
       renderer.setLook(lookOfWorn(worn));
     };

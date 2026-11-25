@@ -146,8 +146,26 @@ const dragon: Figure = {
   },
 };
 
+/** a monk: shaved head with a soft shine, and the robe's fold draped over one shoulder and across the back */
+const monk: Figure = {
+  egg: true,
+  head(c) { ell(c, -.08, -.74, .07, .035, 'rgba(255,255,255,.35)', -.5); },
+  back(c) {
+    c.fillStyle = '#a5512c'; c.beginPath();
+    c.moveTo(-.17, -.49); c.lineTo(-.05, -.49); c.lineTo(.17, -.3); c.lineTo(.17, -.2); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.12)'; c.lineWidth = .012;
+    for (const d of [.05, .1]) { c.beginPath(); c.moveTo(-.15 + d, -.49); c.lineTo(.17, -.3 + d * .6); c.stroke(); }
+  },
+};
+
 /** each custom skin from the front, for avatars (src/cosmetics/front.ts draws the face between `skin` and `over`) */
 const FRONT: Record<string, FrontFigure> = {
+  monk: {
+    over(c) {
+      ell(c, -.09, -.76, .07, .035, 'rgba(255,255,255,.4)', -.5);                // the shine on the shaved head
+      tri(c, [[-.19, -.43], [-.08, -.43], [.19, -.27], [.19, -.19]], '#a5512c');  // the robe's fold across the chest
+    },
+  },
   'dino': {
     behind(c) { for (const [x, y, r] of [[-.15, -.8, .055], [0, -.87, .065], [.15, -.8, .055]] as const) tri(c, [[x - r, y + r], [x, y - r * 1.4], [x + r, y + r]], '#ffb300'); },
     over(c) { for (const s of [-1, 1]) ell(c, s * .045, -.545, .012, .008, '#3d7d2c'); },
@@ -232,6 +250,7 @@ const s = (id: string, name: string, rarity: Rarity, colors: Parameters<typeof p
   ({ id: 'skin-' + id, slot: 'skin', name, rarity, pal: palette(colors), figure: { ...figure, front: FRONT[id] } });
 
 export const CUSTOM_SKINS: readonly Skin[] = [
+  s('monk', 'พระ · Monk', 'common', { body: '#cf6739', cape: '#cf6739', sleeve: '#cf6739', head: '#f2cba8', mitt: '#f2cba8', shoe: '#8d5524' }, monk),
   s('dino', 'ไดโนเสาร์ · Dino', 'legendary', { body: '#8fd16a', cape: '#4f9a3a', head: '#a5dc84', gem: '#ffca28' }, dino),
   s('robot', 'หุ่นยนต์ · Robot', 'legendary', { body: '#b0bec5', cape: '#607d8b', head: '#cfd8dc', mitt: '#455a64', shoe: '#455a64', gem: '#29b6f6' }, robot),
   s('ninja', 'นินจา · Ninja', 'epic', { body: '#2b2f3a', cape: '#1b1e25', head: '#3a3f4c', gem: '#e53935' }, ninja),

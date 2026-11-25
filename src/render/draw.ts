@@ -307,8 +307,11 @@ export const HAZARD_BOX: Record<HazardKind, [number, number, number, number]> = 
  * The head, seen from behind. The red crystal grows out of the crown: its base is hidden by the head, so what shows is a
  * two-tone red wedge rising above the head (as on the official sticker sheet, assets/mascot-reference/), not a diamond laid over it.
  */
-/** `gem` false leaves off the crystal on top: a custom skin is a different character, not the mascot in another colour */
-export function drawMascotHead(c: Ctx, pal: Palette = DEFAULT_PALETTE, gem = true) {
+/**
+ * `gem` false leaves off the crystal on top: a custom skin is a different character, not the mascot in another colour. `egg`
+ * draws a round, egg-shaped head (a custom skin's Figure.egg) in place of the onigiri.
+ */
+export function drawMascotHead(c: Ctx, pal: Palette = DEFAULT_PALETTE, gem = true, egg = false) {
   // crystal first: the head is drawn over its base
   c.lineJoin = 'round';
   const poly = (pts: number[][], fill: string) => { c.fillStyle = fill; c.beginPath(); c.moveTo(pts[0]![0]!, pts[0]![1]!); for (const p of pts.slice(1)) c.lineTo(p[0]!, p[1]!); c.closePath(); c.fill(); };
@@ -321,12 +324,24 @@ export function drawMascotHead(c: Ctx, pal: Palette = DEFAULT_PALETTE, gem = tru
     c.beginPath(); c.moveTo(-.15, -.825); c.lineTo(0, -.995); c.lineTo(.15, -.825); c.stroke();
   }
 
-  // a rounded triangle (an onigiri): the apex is smooth because the crystal's base sits right behind it
   c.fillStyle = pal.head; c.strokeStyle = pal.headEdge; c.lineWidth = .013; c.beginPath();
-  c.moveTo(0, -.865); c.bezierCurveTo(.08, -.86, .24, -.74, .26, -.575);
-  c.quadraticCurveTo(.28, -.46, 0, -.44);
-  c.quadraticCurveTo(-.28, -.46, -.26, -.575);
-  c.bezierCurveTo(-.24, -.74, -.08, -.86, 0, -.865); c.closePath(); c.fill(); c.stroke();
+  if (egg) eggPath(c);
+  else {
+    // a rounded triangle (an onigiri): the apex is smooth because the crystal's base sits right behind it
+    c.moveTo(0, -.865); c.bezierCurveTo(.08, -.86, .24, -.74, .26, -.575);
+    c.quadraticCurveTo(.28, -.46, 0, -.44);
+    c.quadraticCurveTo(-.28, -.46, -.26, -.575);
+    c.bezierCurveTo(-.24, -.74, -.08, -.86, 0, -.865); c.closePath();
+  }
+  c.fill(); c.stroke();
+}
+
+/** an egg-shaped head in the same box as the onigiri (y −0.865…−0.44, x ±0.26): narrower at the crown, fullest low down */
+export function eggPath(c: Ctx) {
+  c.moveTo(0, -.865);
+  c.bezierCurveTo(.17, -.865, .26, -.72, .26, -.6); c.bezierCurveTo(.26, -.5, .15, -.44, 0, -.44);
+  c.bezierCurveTo(-.15, -.44, -.26, -.5, -.26, -.6); c.bezierCurveTo(-.26, -.72, -.17, -.865, 0, -.865);
+  c.closePath();
 }
 
 /** One frame of the run cycle. `ph` is the stride phase in radians; the cycle loops every 2π. */

@@ -27,7 +27,7 @@ interface Base { id: string; name: string; rarity: Rarity }
  * `head` is in head coordinates (like a hat, drawn before the hat); `back` is in body coordinates over the cape (the camera
  * sees the mascot's back, so a tail points toward it). `t` is the frame's place in its animation.
  */
-export interface Figure { head?(c: Ctx, t: number): void; back?(c: Ctx, t: number): void; front?: FrontFigure }
+export interface Figure { head?(c: Ctx, t: number): void; back?(c: Ctx, t: number): void; front?: FrontFigure; /** a round, egg-shaped head instead of the onigiri */ egg?: true }
 /** a custom skin's head seen from the front (avatars only; the game shows the back) */
 export interface FrontFigure {
   /** behind the head (spikes, ears, a mane) */
@@ -41,7 +41,14 @@ export interface FrontFigure {
 }
 export interface Skin extends Base { slot: 'skin'; pal: Palette; figure?: Figure }
 /** drawn right after the head, in head coordinates: the head spans y −0.865…−0.44 and x ±0.27, its crystal reaches up to y −0.995 */
-export interface Hat extends Base { slot: 'hat'; draw(c: Ctx): void; /** the hat from the front, when it differs from the back (avatars) */ front?(c: Ctx): void }
+export interface Hat extends Base {
+  slot: 'hat'; draw(c: Ctx): void; /** the hat from the front, when it differs from the back (avatars) */ front?(c: Ctx): void;
+  /**
+   * Drawn behind the whole mascot in body coordinates (feet at the origin), before anything else: light the hat casts down to
+   * the floor. `cy` is the height of the body's centre.
+   */
+  behind?(c: Ctx, cy: number): void;
+}
 /**
  * `t` is the frame's place in its animation (0…1, wraps for the run and idle loops). Effects repeat with period 1/n for an
  * n-fold pattern, so a fast run loop still reads as a calm drift. `cy` is the height of the body's centre (negative = up).
@@ -52,6 +59,17 @@ export interface Effect extends Base {
   below?: number;
   /** how far above the feet it draws, when that is more than the usual 1.42 (a beam of light pouring down from the sky) */
   above?: number;
+  /**
+   * Rings round the body that sweep up and down it on their own, slower clock (RING_MS in effects.ts), not the animation's:
+   * `back` and `front` leave them out, and whoever draws the mascot draws these with `t` from ringPhase. They sit at the body's
+   * height `cy` like the rest.
+   */
+  ring?: { back(c: Ctx, t: number, cy: number): void; front(c: Ctx, t: number, cy: number): void };
+  /**
+   * How it looks in an avatar, when that differs from the game: drawn behind the mascot's head and shoulders in place of the
+   * rest, `t` 0…1 over the avatar's loop. Coordinates: the avatar circle has radius 0.48 around (0, 0), in body units.
+   */
+  avatar?(c: Ctx, t: number): void;
 }
 export type Cosmetic = Skin | Hat | Effect;
 

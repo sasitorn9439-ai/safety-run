@@ -1,5 +1,5 @@
 /**
- * Thirty effects, composed from a few motions (rise, fall, orbit, trail behind) and shapes, plus glows and wings.
+ * Thirty-one effects, composed from a few motions (rise, fall, orbit, trail behind) and shapes, plus glows and wings.
  * A motion places n particles evenly along one path and slides them one gap per animation loop, so the loop seams never show
  * and a quick run loop still looks like a slow drift. Everything stays within ±0.7 sideways and between y −1.35 and 0.3, except
  * trails (which say how far `below` they reach) and the sky beam (which says how far `above`).
@@ -79,7 +79,7 @@ const cross: Shape = (c, x, y, r, col) => { dot(c, x, y, r * 1.1, '#ffffff', 0);
 
 /* ---------- motions ---------- */
 type Draw = (c: Ctx, t: number, cy: number) => void;
-interface Part { back?: Draw; front?: Draw; /** lowest y it reaches, when below the usual frame */ below?: number; /** how high it reaches, when above the usual frame */ above?: number }
+interface Part { back?: Draw; front?: Draw; /** lowest y it reaches, when below the usual frame */ below?: number; /** how high it reaches, when above the usual frame */ above?: number; /** a ring at height cy (Effect.ring) */ ring?: true }
 const fade = (u: number) => Math.sin(Math.PI * u);
 /** each particle's colour comes from its place on the path, so the colours travel with it */
 const pick = (colors: readonly string[], u: number, n: number) => colors[Math.floor(u * n + .001) % colors.length]!;
@@ -121,15 +121,16 @@ const emerge = (u: number) => Math.min(1, u / .25) ** 2;
  * Left behind as it runs: from the feet down the screen toward the camera, fading. Nearer the camera than the mascot, so drawn
  * in front of it. `len` is how far down it goes.
  */
-const trail = (shape: Shape, colors: readonly string[], n = 5, r = .05, wide = .2, len = .28, spin = 1): Part => ({
+const trail = (shape: Shape, colors: readonly string[], n = 5, r = .05, wide = .2, len = .28, spin = 1, fadeIn = len * .25, start = TRAIL_START): Part => ({
   front(c, t) {
     for (let k = 0; k < n; k++) {
       const u = ((k + t) / n) % 1, x = Math.sin(u * TAU * 2 + k) * wide * u;
-      c.save(); c.globalAlpha *= emerge(u) * (1 - u) * .85; shape(c, x, TRAIL_START + u * len, r * (1 - u * .4), pick(colors, u, n), u * TAU * spin); c.restore();
+      // fades in over its first `fadeIn` of distance (a quarter of the trail unless told), so it comes out from under the feet
+      c.save(); c.globalAlpha *= Math.min(1, u * len / fadeIn) ** 2 * (1 - u) * .85; shape(c, x, start + u * len, r * (1 - u * .4), pick(colors, u, n), u * TAU * spin); c.restore();
     }
   },
   // the lowest point: the last particle is fading out there, at 60% of its size
-  below: TRAIL_START + len + r * .6 + .02,
+  below: start + len + r * .6 + .02,
 });
 /**
  * A flower blooms under each step, alternating left and right foot, then drifts down toward the camera and fades. In front of
@@ -190,21 +191,24 @@ const mist = (rgb: string, n = 4): Part => {
     },
   };
 };
-/** a pair of wings at the shoulders, flapping gently */
-const wings = (fill: string, edge: string, feathers = 4): Part => ({
-  back(c, t, cy) {
-    const flap = .12 * Math.sin(t * TAU);
-    for (const s of [-1, 1]) {
-      c.save(); c.translate(s * .12, cy - .08); c.rotate(s * (-.25 + flap)); c.scale(s, 1);
-      for (let i = 0; i < feathers; i++) {
-        const len = .5 - i * .08, y = i * .07;
-        c.fillStyle = i % 2 ? edge : fill; c.beginPath(); c.moveTo(0, y);
-        c.quadraticCurveTo(len * .6, y - .22 + i * .02, len, y - .12 + i * .05); c.quadraticCurveTo(len * .6, y + .04, 0, y + .07); c.closePath(); c.fill();
-      }
-      c.restore();
+/** a pair of wings flapping gently, their roots `root` out to each side at height `dy` from the body's centre, raised `tilt` */
+const drawWings = (fill: string, edge: string, feathers: number, root = .12, dy = -.08, tilt = -.25, size = 1): Draw => (c, t, cy) => {
+  const flap = .12 * Math.sin(t * TAU);
+  for (const s of [-1, 1]) {
+    c.save(); c.translate(s * root, cy + dy); c.rotate(s * (tilt + flap)); c.scale(s * size, size);
+    for (let i = 0; i < feathers; i++) {
+      const len = .5 - i * .08, y = i * .07;
+      c.fillStyle = i % 2 ? edge : fill; c.beginPath(); c.moveTo(0, y);
+      c.quadraticCurveTo(len * .6, y - .22 + i * .02, len, y - .12 + i * .05); c.quadraticCurveTo(len * .6, y + .04, 0, y + .07); c.closePath(); c.fill();
     }
-  },
-});
+    c.restore();
+  }
+};
+/**
+ * Wings growing from the upper back. The camera sees the mascot's back, so they are nearer to it than the cape: their roots sit
+ * on the cape between the shoulders and they spread out over it.
+ */
+const backWings = (fill: string, edge: string, feathers = 4): Part => ({ front: drawWings(fill, edge, feathers, .07, .07, -.05, .85) });
 /** where the sky beam starts, high above the head (the mascot is about 1.1 tall) */
 const BEAM_TOP = -3.1;
 /**
@@ -247,40 +251,198 @@ const skyBeam = (rgb: string, n = 6): Part => ({
   // the pool's lower edge stays inside the usual 0.34; the beam's faded top is the highest it draws
   above: -BEAM_TOP + .02,
 });
-/** rainbow bands streaming back from the feet toward the camera: in front of the mascot, starting below its feet, fading in */
+/** rainbow bands streaming from the feet toward the camera, down past the bottom of the screen, in front of the mascot */
+const RAINBOW_LEN = 1.25;
 const rainbow: Part = {
   front(c, t) {
-    const cols = ['#ff5252', '#ffab40', '#ffee58', '#69f0ae', '#40c4ff', '#b388ff'];
+    const cols = ['#ff5252', '#ffab40', '#ffee58', '#69f0ae', '#40c4ff', '#b388ff'], n = 20;
     cols.forEach((col, i) => {
       const base = c.globalAlpha;
-      c.save(); c.strokeStyle = col; c.lineWidth = .028; c.lineCap = 'round';
-      for (let k = 1; k <= 8; k++) {                                     // segment by segment, each as clear as its distance allows
-        const at = (q: number) => [(i - 2.5) * .03 + Math.sin(q * TAU + t * TAU) * .04 * q, TRAIL_START + q * .26] as const;
-        const [x0, y0] = at((k - 1) / 8), [x1, y1] = at(k / 8);
-        c.globalAlpha = base * .7 * emerge(k / 8); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+      c.save(); c.strokeStyle = col; c.lineWidth = .042; c.lineCap = 'round';
+      for (let k = 1; k <= n; k++) {                                     // segment by segment, each as clear as its distance allows
+        const at = (q: number) => [(i - 2.5) * .042 + Math.sin(q * TAU * 1.2 + t * TAU) * .07 * q, q * RAINBOW_LEN] as const;
+        const [x0, y0] = at((k - 1) / n), [x1, y1] = at(k / n), q = k / n;
+        c.globalAlpha = base * .75 * Math.min(1, q / .06) * (1 - q * .35); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
       }
       c.restore();
     });
   },
-  below: TRAIL_START + .26 + .03,
+  // long enough to run off the bottom of the screen on any phone
+  below: RAINBOW_LEN + .05,
 };
-/** a tilted ring circling the body (both halves, so it passes in front and behind) */
-const hoop = (color: string, rx = .46, ry = .12): Part => {
+/** the rainbow in an avatar: wide bands running the full height of the circle behind the mascot, rippling downward */
+const rainbowBackdrop = (c: Ctx, t: number) => {
+  const cols = ['#ff5252', '#ffab40', '#ffee58', '#69f0ae', '#40c4ff', '#b388ff'], w = .075, n = 24;
+  cols.forEach((col, i) => {
+    c.save(); c.strokeStyle = col; c.lineWidth = w + .004; c.globalAlpha *= .9; c.beginPath();
+    for (let k = 0; k <= n; k++) {
+      const y = -.5 + k / n, x = (i - 2.5) * w + Math.sin((y * 1.5 - t) * TAU) * .04;
+      if (k) c.lineTo(x, y); else c.moveTo(x, y);
+    }
+    c.stroke(); c.restore();
+  });
+};
+/**
+ * A tilted ring circling the body (both halves, so it passes in front and behind), sweeping from the top of the head down to
+ * the ankles and back up once a loop. `lag` delays it (a fraction of the loop), so two rings can trail one another.
+ */
+const hoop = (color: string, rx = .46, ry = .12, lag = 0): Part => {
   const half = (front: boolean): Draw => (c, t, cy) => {
+    const y = cy - .5 + .8 * (.5 - .5 * Math.cos((t - lag) * TAU));
     c.save(); c.strokeStyle = color; c.lineWidth = .03; c.globalAlpha *= .85; c.beginPath();
-    c.ellipse(0, cy + .05 * Math.sin(t * TAU), rx, ry, 0, front ? 0 : Math.PI, front ? Math.PI : TAU); c.stroke(); c.restore();
+    c.ellipse(0, y, rx, ry, 0, front ? 0 : Math.PI, front ? Math.PI : TAU); c.stroke(); c.restore();
   };
-  return { back: half(false), front: half(true) };
+  return { back: half(false), front: half(true), ring: true };
 };
 
-const fx = (id: string, name: string, rarity: Rarity, ...parts: Part[]): Effect => ({
-  id: 'fx-' + id, slot: 'effect', name, rarity,
-  back: (c, t, cy) => { for (const p of parts) p.back?.(c, t, cy); },
-  front: (c, t, cy) => { for (const p of parts) p.front?.(c, t, cy); },
-  ...(parts.some(p => p.below) ? { below: Math.max(...parts.map(p => p.below ?? 0)) } : {}),
-  ...(parts.some(p => p.above) ? { above: Math.max(...parts.map(p => p.above ?? 0)) } : {}),
+/** an effect from its parts; rings go in `ring`, on their own clock (see Effect.ring) */
+const fx = (id: string, name: string, rarity: Rarity, ...all: Part[]): Effect => {
+  const parts = all.filter(p => !p.ring), rings = all.filter(p => p.ring);
+  return {
+    id: 'fx-' + id, slot: 'effect', name, rarity,
+    back: (c, t, cy) => { for (const p of parts) p.back?.(c, t, cy); },
+    front: (c, t, cy) => { for (const p of parts) p.front?.(c, t, cy); },
+    ...(parts.some(p => p.below) ? { below: Math.max(...parts.map(p => p.below ?? 0)) } : {}),
+    ...(parts.some(p => p.above) ? { above: Math.max(...parts.map(p => p.above ?? 0)) } : {}),
+    ...(rings.length && { ring: {
+      back: (c: Ctx, t: number, cy: number) => { for (const p of rings) p.back?.(c, t, cy); },
+      front: (c: Ctx, t: number, cy: number) => { for (const p of rings) p.front?.(c, t, cy); },
+    } }),
+  };
+};
+/** how long a ring takes to sweep down the body and back up (Effect.ring) */
+export const RING_MS = 1800;
+/** where a ring is in its sweep at time `now` (ms), 0…1 */
+export const ringPhase = (now: number) => (now % RING_MS) / RING_MS;
+
+/**
+ * Things raining down (or, `up`, floating up) behind the mascot in an avatar (Effect.avatar), each `[x, size, passes per loop,
+ * phase]`, drifting `sway` side to side and spinning. Each passes a whole number of times per loop, so the loop never shows a
+ * seam. Rising things fade in and out (`fade`) like flames.
+ */
+const RAIN = [
+  [-.38, .065, 1, .0], [.33, .075, 2, .35], [-.24, .055, 2, .7], [.22, .06, 1, .55], [-.31, .05, 2, .15],
+  [.4, .055, 1, .8], [-.42, .06, 2, .45], [.28, .05, 2, .9], [.08, .07, 1, .2], [-.08, .06, 1, .65],
+] as const;
+interface RainOpts { size?: number; sway?: number; up?: boolean; fade?: boolean }
+const rain = (shape: Shape, colors: readonly string[], { size = 1, sway = 0, up = false, fade: fades = false }: RainOpts = {}) => (c: Ctx, t: number) => {
+  RAIN.forEach(([x, r, passes, phase], k) => {
+    const v = t * passes + phase, u = v % 1, rr = r * size, y = -.58 - rr + (up ? 1 - u : u) * (1.16 + 2 * rr);
+    c.save(); if (fades) c.globalAlpha *= fade(u);
+    shape(c, x + Math.sin(v * TAU) * sway, y, rr * (fades ? .6 + .4 * fade(u) : 1), colors[k % colors.length]!, up ? 0 : v * TAU * 2);
+    c.restore();
+  });
+};
+
+/** yellow at the heart of the fire, red at its edge: u 0 → 1 */
+const fireAt = (u: number) => u < .33 ? '#ffd600' : u < .66 ? '#ff9100' : '#ff3d00';
+/** a flicker for flame k at time t, 0.75…1 */
+const flicker = (t: number, k: number) => .875 + .125 * Math.sin((t * 4 + k * .37) * TAU);
+
+/** fire tracks: two lines of flame stream back from the shoes along the ground, as if the floor caught fire */
+const fireTracks = (n = 8, len = .62): Part => ({
+  front(c, t) {
+    for (const side of [-1, 1]) for (let k = 0; k < n; k++) {
+      const u = ((k + t) / n) % 1, y = TRAIL_START + u * len, x = side * (.1 + u * .05) + Math.sin((u * 3 + k) * TAU) * .01;
+      c.save(); c.globalAlpha *= Math.min(1, u / .12) * (1 - u * .7);
+      flame(c, x, y, .13 * (1 - u * .45) * flicker(t, k + side), fireAt(u), 0);
+      c.restore();
+    }
+  },
+  below: TRAIL_START + len + .1,
 });
 
+/**
+ * Rays of gold light fanning out from `cy`, turning slowly (12-fold, so one ray's step a loop never shows a seam). In the game
+ * they are drawn over the mascot, so they melt away toward the middle (`clear`, a fraction of R) and leave the mascot clear;
+ * `alpha` is their strength where they are brightest.
+ */
+const raysDraw = (c: Ctx, t: number, cy: number, R: number, alpha: number, clear = 0, rays = 12) => {
+  c.save(); c.translate(0, cy); c.rotate(t * TAU / rays);
+  for (let k = 0; k < rays; k++) {
+    const a = k / rays * TAU, g = c.createLinearGradient(0, 0, Math.cos(a) * R, Math.sin(a) * R);
+    if (clear) { g.addColorStop(0, 'rgba(255,224,102,0)'); g.addColorStop(clear * .55, 'rgba(255,224,102,0)'); g.addColorStop(clear, `rgba(255,224,102,${alpha})`); }
+    else g.addColorStop(0, `rgba(255,224,102,${alpha})`);
+    g.addColorStop(1, 'rgba(255,224,102,0)');
+    c.fillStyle = g; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, R, a - .09, a + .09); c.closePath(); c.fill();
+  }
+  c.restore();
+};
+// shorter rays when a crouch or slide lowers the body, so they never reach past the bottom of the frame (y 0.32)
+const sunburst: Part = { front: (c, t, cy) => raysDraw(c, t, cy, Math.min(.68, .31 - cy), .55, .6) };
+/** the golden aura in an avatar: the glow and the rays behind the mascot, filling the circle */
+const sunburstBackdrop = (c: Ctx, t: number) => {
+  const g = c.createRadialGradient(0, 0, .02, 0, 0, .48);
+  g.addColorStop(0, 'rgba(255,213,79,.8)'); g.addColorStop(1, 'rgba(255,213,79,0)');
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, .48, 0, TAU); c.fill();
+  raysDraw(c, t, 0, .55, .8);
+};
+
+/** meteors: small comets streak diagonally down past the mascot, behind it */
+const meteors = (n = 4): Part => ({
+  back(c, t) {
+    for (let k = 0; k < n; k++) {
+      const u = ((k + t) / n) % 1, sx = .45 - (k % 2) * .2, x = sx - u * .95, y = -1.1 + u * 1.45 + (k % 3) * .06;
+      const g = c.createLinearGradient(x, y, x + .24, y - .28);
+      g.addColorStop(0, 'rgba(255,215,64,.9)'); g.addColorStop(1, 'rgba(255,110,64,0)');
+      c.save(); c.globalAlpha *= fade(u); c.strokeStyle = g; c.lineWidth = .03; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + .24, y - .28); c.stroke();
+      glowDot(c, x, y, .03, '#fff59d', 0); c.restore();
+    }
+  },
+});
+
+/** the comet tail in an avatar: only the meteors, streaking across the circle behind the mascot */
+const meteorBackdrop = (c: Ctx, t: number) => { c.save(); c.scale(.9, .9); c.translate(.02, .45); meteors().back!(c, t, -.45); c.restore(); };
+
+/** the angel wings in an avatar: the wings behind the mascot's shoulders, sparkles rising round it (avatar coordinates, see Effect.avatar) */
+const angelBackdrop = (c: Ctx, t: number) => {
+  c.save(); c.translate(0, .21); c.scale(.8, .8); c.translate(0, .45);
+  drawWings('#ffffff', '#e3f2fd', 4)(c, t, -.45); rise(sparkle, ['#ffffff'], 4, .04).front!(c, t, -.45);
+  c.restore();
+};
+
+/** the phoenix wings in an avatar: the orange glow and the wings behind the mascot's shoulders (avatar coordinates) */
+const phoenixBackdrop = (c: Ctx, t: number) => {
+  c.save(); c.translate(0, .21); c.scale(.8, .8); c.translate(0, .45);
+  aura('#ff6d00', .7, .5).back!(c, t, -.45); drawWings('#ff6d00', '#ffd600', 5)(c, t, -.45);
+  c.restore();
+};
+
+/** a cartoon fly: a dark body with a glint, two pale wings that buzz (`rot` drives the beat) and tiny red eyes */
+const fly: Shape = (c, x, y, r, _col, rot) => {
+  const beat = .55 + .45 * Math.abs(Math.sin(rot * 6));
+  c.save(); c.translate(x, y);
+  c.fillStyle = 'rgba(225,240,255,.8)'; c.strokeStyle = 'rgba(90,110,130,.6)'; c.lineWidth = r * .1;
+  for (const s of [-1, 1]) { c.beginPath(); c.ellipse(s * r * .55, -r * .35, r * .55, r * .3 * beat, s * -.5, 0, TAU); c.fill(); c.stroke(); }
+  c.fillStyle = '#26292e'; c.beginPath(); c.ellipse(0, 0, r * .42, r * .55, 0, 0, TAU); c.fill();
+  c.fillStyle = '#c62828'; for (const s of [-1, 1]) { c.beginPath(); c.arc(s * r * .2, -r * .45, r * .14, 0, TAU); c.fill(); }
+  c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.arc(-r * .12, -r * .1, r * .1, 0, TAU); c.fill();
+  c.restore();
+};
+/** a fly's wandering path: a loop round (cx, cy) with wobbles, `k` picks which fly so they never move in step */
+const buzz = (t: number, k: number, rx: number, ry: number) => {
+  const a = t * TAU * (k % 2 ? 1 : -1) + k * 1.7;
+  return [Math.cos(a) * rx + Math.sin(a * 3 + k) * rx * .25, Math.sin(a * 2) * ry + Math.cos(a * 5 + k) * ry * .3] as const;
+};
+
+/** stink: wavy green stink lines rise off the body and three flies circle in the smell */
+const stink = (): Part => ({
+  back(c, t, cy) {
+    c.save(); c.strokeStyle = 'rgba(124,179,66,.75)'; c.lineWidth = .025; c.lineCap = 'round';
+    for (let k = 0; k < 3; k++) {
+      const u = ((k + t) / 3) % 1, x0 = (k - 1) * .2;
+      c.globalAlpha = fade(u) * .9; c.beginPath();
+      for (let i = 0; i <= 10; i++) { const q = i / 10, y = cy - .1 - u * .5 - q * .3, x = x0 + Math.sin((q * 2 + u * 2) * TAU) * .05; if (i) c.lineTo(x, y); else c.moveTo(x, y); }
+      c.stroke();
+    }
+    c.restore();
+  },
+  front(c, t, cy) { for (let k = 0; k < 3; k++) { const [x, y] = buzz(t, k + 2, .36, .2); fly(c, x, cy - .55 + y, .065, '', t * TAU + k); } },
+});
+
+const FIRE = ['#ff6d00', '#ffab00', '#ff3d00'];
+const BLOOM = ['#ffffff', '#f8bbd0', '#b3e5fc', '#fff59d'];
 const PARTY = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb'];
 export const EFFECTS: readonly Effect[] = [
   fx('sparkle', 'ประกายวิบวับ · Sparkles', 'common', rise(sparkle, ['#ffffff', '#fff59d'], 6, .05)),
@@ -290,27 +452,33 @@ export const EFFECTS: readonly Effect[] = [
   fx('leaves', 'ใบไม้ปลิว · Leaves', 'common', fall(leaf, ['#66bb6a', '#9ccc65', '#ffb74d'], 5, .05)),
   fx('snow', 'หิมะ · Snowfall', 'common', fall(snowflake, ['#ffffff', '#e1f5fe'], 6, .045)),
   fx('confetti', 'กระดาษสี · Confetti', 'common', fall(confetti, PARTY, 8, .035)),
-  fx('coins', 'เหรียญทอง · Coin trail', 'common', trail(coin, ['#ffd400'], 3, COIN_R, .14, .5, 2)),
+  { ...fx('coins', 'เหรียญทอง · Coin trail', 'common', trail(coin, ['#ffd400'], 3, COIN_R, .14, .5, 2)), avatar: rain(coin, ['#ffd400']) },
   fx('fireflies', 'หิ่งห้อย · Fireflies', 'common', orbit(glowDot, ['#f4ff81', '#ffe57f'], 6, .025, .5, .2)),
-  fx('petals', 'ดอกไม้บานตามรอยเท้า · Blooming steps', 'common', bloom(['#ffffff', '#f8bbd0', '#b3e5fc', '#fff59d'])),   // id kept from 'Petals'
+  { ...fx('petals', 'ดอกไม้บานตามรอยเท้า · Blooming steps', 'common', bloom(BLOOM)), avatar: rain(flower, BLOOM, { size: 1.5, sway: .05 }) },   // id kept from 'Petals'
   fx('stars', 'ดาวหมุน · Star ring', 'common', orbit(star, ['#ffd400'], 5, .05)),
   fx('clouds', 'ปุยเมฆ · Cloud steps', 'common', trail(puff, ['#ffffff', '#eceff1'], 4, .07, .1)),
-  fx('flamefeet', 'เท้าไฟ · Fire feet', 'rare', feetFire(['#ff6d00', '#ffab00', '#ff3d00'])),
+  // flames on the shoes and two tracks of flame left burning on the ground behind (toward the camera)
+  { ...fx('flamefeet', 'เท้าไฟ · Fire feet', 'rare', feetFire(FIRE), fireTracks(5)), avatar: rain(flame, FIRE, { size: 1.3, sway: .04, up: true, fade: true }) },
   fx('lightning', 'สายฟ้า · Lightning', 'rare', orbit(bolt, ['#ffea00', '#ffffff'], 4, .07, .46, .16)),
   fx('frost', 'เกล็ดน้ำแข็ง · Frost', 'rare', aura('#b3e5fc', .6, .45), orbit(snowflake, ['#e1f5fe', '#81d4fa'], 5, .05)),
-  fx('rainbow', 'สายรุ้ง · Rainbow trail', 'rare', rainbow),
+  { ...fx('rainbow', 'สายรุ้ง · Rainbow trail', 'rare', rainbow), avatar: rainbowBackdrop },
   fx('smoke', 'หมอกนินจา · Ninja mist', 'rare', mist('214, 220, 228')),       // id kept from 'Ninja smoke' so players who own it keep it
   fx('pixels', 'พิกเซล · Pixels', 'rare', rise(square, ['#00e676', '#00b0ff', '#ff4081', '#ffea00'], 8, .03, .45)),
-  fx('hoop', 'วงแหวนพลัง · Power ring', 'rare', hoop('#40c4ff'), hoop('#b388ff', .38, .1)),
+  fx('hoop', 'วงแหวนพลัง · Power ring', 'rare', hoop('#40c4ff'), hoop('#b388ff', .38, .1, .06)),
   fx('butterflies', 'ผีเสื้อ · Butterflies', 'rare', orbit(butterfly, ['#ff80ab', '#80d8ff', '#ffd180'], 3, .07, .5, .22, -.1)),
   fx('toxic', 'ฟองพิษ · Toxic bubbles', 'rare', aura('#76ff03', .55, .35), rise(ring, ['#76ff03', '#c6ff00'], 6, .04)),
-  fx('goldaura', 'ออร่าทองคำ · Golden aura', 'epic', aura('#ffd54f', .7, .7), rise(sparkle, ['#fff59d', '#ffffff'], 5, .045)),
+  // a glow behind the mascot and rays of gold light turning over it
+  { ...fx('goldaura', 'ออร่าทองคำ · Golden aura', 'epic', aura('#ffd54f', .7, .5), sunburst), avatar: sunburstBackdrop },
   fx('shadow', 'ออร่าเงามืด · Shadow aura', 'epic', aura('#4a148c', .7, .75), rise(puff, ['#311b92', '#4a148c', '#1a1a2e'], 6, .06, .35)),
   fx('electric', 'ไฟฟ้าแรงสูง · High voltage', 'epic', aura('#18ffff', .62, .5), orbit(bolt, ['#18ffff', '#ffffff'], 6, .06, .44, .18)),
   fx('galaxy', 'กาแล็กซี · Galaxy', 'epic', aura('#7c4dff', .7, .55), orbit(star, ['#ffffff', '#e1bee7'], 6, .035, .5, .14), orbit(dot, ['#80d8ff', '#ff80ab'], 4, .018, .36, .2, -.15)),
-  fx('comet', 'ดาวหาง · Comet tail', 'epic', trail(glowDot, ['#ffd740', '#ff6e40', '#ffab40'], 7, .05, .06), feetFire(['#ff6e40', '#ffd740'])),
-  fx('angel', 'ปีกนางฟ้า · Angel wings', 'epic', wings('#ffffff', '#e3f2fd'), rise(sparkle, ['#ffffff'], 4, .04)),
-  fx('phoenix', 'ปีกฟีนิกซ์ · Phoenix wings', 'legendary', aura('#ff6d00', .7, .5), wings('#ff6d00', '#ffd600', 5), feetFire(['#ff3d00', '#ffab00', '#ffd600'])),
+  // meteors streak past behind, and a tail of fireballs leaves the shoes and runs to the bottom of the screen
+  { ...fx('comet', 'ดาวหาง · Comet tail', 'epic', meteors(), trail(glowDot, ['#ffd740', '#ff6e40', '#ffab40'], 16, .065, .08, 1.25, 1, .03, -.02)), avatar: meteorBackdrop },
+  // over the cape in the game; in the avatar (seen from the front) behind the mascot, with the sparkles
+  { ...fx('angel', 'ปีกนางฟ้า · Angel wings', 'epic', backWings('#ffffff', '#e3f2fd'), rise(sparkle, ['#ffffff'], 4, .04)), avatar: angelBackdrop },
+  // over the cape in the game like the angel wings; in the avatar behind the mascot, in the glow
+  { ...fx('phoenix', 'ปีกฟีนิกซ์ · Phoenix wings', 'legendary', aura('#ff6d00', .7, .5), backWings('#ff6d00', '#ffd600', 5), feetFire(['#ff3d00', '#ffab00', '#ffd600'])), avatar: phoenixBackdrop },
   fx('holy', 'แสงศักดิ์สิทธิ์ · Holy light', 'legendary', skyBeam('255, 245, 180'), aura('#fff59d', .6, .5), rise(sparkle, ['#ffffff', '#fff176'], 7, .05, .3)),
+  fx('flies', 'กลิ่นตุๆ · Stinky flies', 'common', stink()),
   fx('safetyhero', 'ฮีโร่ความปลอดภัย · Safety hero', 'legendary', aura('#00e676', .7, .5), orbit(cross, ['#2e9e47'], 4, .06, .5, .16), rise(star, ['#ffd400', '#ffffff'], 5, .04)),
 ];

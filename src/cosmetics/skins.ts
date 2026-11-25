@@ -15,11 +15,12 @@ const hex = (v: number[]) => '#' + v.map(x => Math.round(Math.max(0, Math.min(25
 /** k > 0 toward white, k < 0 toward black */
 export const tone = (c: string, k: number) => hex(rgb(c).map(x => k >= 0 ? x + (255 - x) * k : x * (1 + k)));
 
-interface Colors { body: string; cape: string; mitt?: string; shoe?: string; gem?: string; head?: string }
+/** `sleeve` (arms, legs and the avatar's torso) is a lighter shade of the body unless given */
+interface Colors { body: string; cape: string; mitt?: string; shoe?: string; gem?: string; head?: string; sleeve?: string }
 /** a full palette from a few colours: shading, sleeves and the crystal's faces are derived */
-export function palette({ body, cape, mitt = cape, shoe = cape, gem = cape, head = tone(body, .45) }: Colors): Palette {
+export function palette({ body, cape, mitt = cape, shoe = cape, gem = cape, head = tone(body, .45), sleeve = tone(body, .3) }: Colors): Palette {
   return {
-    body, sleeve: tone(body, .3), edge: tone(body, -.16),
+    body, sleeve, edge: tone(body, -.16),
     capeD: tone(cape, -.25), capeL: cape, mitt, shoeD: tone(shoe, -.25), shoeL: shoe,
     head, headEdge: tone(head, -.22),
     gemL: gem, gemR: tone(gem, -.18), gemHi: tone(gem, .25), gemEdge: tone(gem, -.32),

@@ -7,6 +7,7 @@
  * Each set says how many frames it has and which ranges are takeoff/rise/…/recover (FrameConfig), so the frame picker is generic.
  */
 import { DEFAULT_LOOK } from '../cosmetics/skins.js';
+import { ringPhase } from '../cosmetics/effects.js';
 import type { Look } from '../cosmetics/types.js';
 import type { Ctx } from './draw.js';
 import { DEFAULT_SLIDE, type SlideId } from './flat/ids.js';
@@ -25,7 +26,19 @@ export interface MascotSet {
   art(anim: PixelAnim, i: number, scale: number, look?: Look): Art;
   /** what the flat mascot wears (the other sets ignore it); change it through the renderer's setLook so the frames are redrawn */
   look: Look;
+  /**
+   * Frame `i` of RING_FRAMES of the rings `look` wears (Effect.ring), the half behind the mascot or the half in front, anchored at
+   * the feet like the mascot frames. Null when it wears none (and always for the sets other than flat).
+   */
+  ring(look: Look, i: number, front: boolean, scale: number): Art | null;
 }
+
+/** frames of a ring's sweep (Effect.ring); the renderer picks one by time, RING_MS a loop */
+export const RING_FRAMES = 24;
+/** which ring frame to show at time `now` (ms) */
+export const ringFrame = (now: number) => Math.floor(ringPhase(now) * RING_FRAMES) % RING_FRAMES;
+/** the ring frames' box around the feet, for a standing body (cy −0.45): wide enough for the ring, from above the head to the ankles */
+const RING_BOX: Art['box'] = [-.52, -1.12, .52, .02];
 
 /**
  * The flat frames' cell, in game units around the feet: the 384 px cell they were designed in (300 px per unit, feet at 192, 330),
@@ -70,7 +83,7 @@ async function loadVector(style: 'smooth' | 'pixel'): Promise<MascotSet> {
   const counts = Object.fromEntries(ANIMS.map(a => [a, vec.animations[a].length])) as Record<PixelAnim, number>;
   return {
     style, crisp: style === 'pixel', cfg: configFrom(counts, tags, 166), look: DEFAULT_LOOK,
-    count: a => vec.animations[a].length,
+    count: a => vec.animations[a].length, ring: () => null,
     // pixel art: a whole number of texture pixels per art pixel (no seams, no uneven pixels); smooth: simply 1:1
     scaleFor: base => { if (style === 'smooth') return 1; const k = Math.max(1, Math.round(base / vec.unit)); return vec.unit * k / base; },
     art(anim, i, scale) {
@@ -114,6 +127,12 @@ async function loadFlat(slide: SlideId): Promise<MascotSet> {
         },
         scale, mips: false,
       };
+    },
+    ring(look, i, front, scale) {
+      const ring = look.effect?.ring;
+      if (!ring) return null;
+      const draw = front ? ring.front : ring.back, t = i / RING_FRAMES;
+      return { box: RING_BOX, draw(c: Ctx, u: number) { c.save(); c.scale(u, u); draw(c, t, -.45); c.restore(); }, scale, mips: false };
     },
   };
   return set;

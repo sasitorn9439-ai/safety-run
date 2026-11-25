@@ -21,6 +21,7 @@ const star = (c: Ctx, x: number, y: number, r: number, color: string) => {
   c.closePath(); c.fill();
 };
 const HALF = [Math.PI, Math.PI * 2] as const;
+const TAU_H = Math.PI * 2;
 
 /** a safety helmet: dome, ridge and a short brim all round */
 function hardHat(c: Ctx, shell: string, shade: string) {
@@ -180,13 +181,29 @@ export const HATS: readonly Hat[] = [
     for (const sx of [-1, 1]) { line(c, [[sx * .05, -.84], [sx * .12, -1.0], [sx * .2, -1.12]], '#7cb342', .025); ell(c, sx * .2, -1.13, .05, .05, '#c6ff00'); ell(c, sx * .19, -1.145, .015, .015, '#ffffff'); }
     rr(c, -.18, -.86, .36, .05, .025, '#7cb342');
   }),
-  h('miner', 'หมวกเหมืองทองคำ · Golden miner', 'legendary', c => {
+  { ...h('miner', 'หมวกเหมืองทองคำ · Golden miner', 'legendary', c => {
+    // from behind: the elastic strap round the back of the helmet and the battery pack clipped to it (the lamp's light falls
+    // on the floor round the mascot, drawn behind it: see `behind`)
+    hardHat(c, '#ffd700', '#c9a000');
+    rr(c, -.25, -.8, .5, .045, .02, '#3a3f48');
+    rr(c, -.07, -.83, .14, .1, .025, '#3a3f48'); rr(c, -.045, -.81, .09, .02, .01, '#ffd700');
+    star(c, -.18, -.68, .035, '#ffffff');
+  }, c => {
+    // from the front (avatars): the lamp and its beam
     hardHat(c, '#ffd700', '#c9a000');
     rr(c, -.08, -.92, .16, .12, .04, '#3a3f48');
     ell(c, 0, -.86, .05, .05, '#fffde7');
     c.fillStyle = 'rgba(255,250,200,.35)'; c.beginPath(); c.moveTo(-.04, -.88); c.lineTo(-.22, -1.28); c.lineTo(.22, -1.28); c.lineTo(.04, -.88); c.closePath(); c.fill();
     star(c, -.18, -.68, .035, '#ffffff');
-  }),
+  }), behind: (c, cy) => {
+    // the lamp's light pours down from the helmet to the floor and pools round the feet; the body hides the middle of it
+    const top = cy - .25, beam = c.createLinearGradient(0, top, 0, .02);   // starts behind the shoulders, so a crouch never shows it above the head
+    beam.addColorStop(0, 'rgba(255,250,200,.15)'); beam.addColorStop(1, 'rgba(255,250,200,.5)');
+    c.fillStyle = beam; c.beginPath(); c.moveTo(-.16, top); c.lineTo(-.46, .02); c.lineTo(.46, .02); c.lineTo(.16, top); c.closePath(); c.fill();
+    const pool = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+    pool.addColorStop(0, 'rgba(255,250,200,.75)'); pool.addColorStop(1, 'rgba(255,250,200,0)');
+    c.save(); c.translate(0, .02); c.scale(.55, .12); c.fillStyle = pool; c.beginPath(); c.arc(0, 0, 1, 0, TAU_H); c.fill(); c.restore();
+  } },
   h('phoenix', 'หงอนฟีนิกซ์ · Phoenix crest', 'legendary', c => {
     for (const [a, len, col] of [[-.5, .32, '#ff3d00'], [-.25, .4, '#ff9100'], [0, .46, '#ffd600'], [.25, .4, '#ff9100'], [.5, .32, '#ff3d00']] as const) {
       c.save(); c.translate(0, -.82); c.rotate(a);

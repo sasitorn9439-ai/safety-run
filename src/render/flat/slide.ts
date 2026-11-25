@@ -59,6 +59,7 @@ export function drawSideSlide(c: Ctx, p: SlidePose, look: Look = DEFAULT_LOOK, t
   const BODY = pal.body, RED_D = pal.capeD, RED_L = pal.capeL;
   const leg = (a: Pt, b: Pt, w: number, bend?: Pt) => limb(c, a, b, w, pal.edge, pal.sleeve, bend);
   const foot = (at: Pt, angle: number) => shoe(c, at, angle, pal.shoeD, pal.shoeL);
+  look.hat?.behind?.(c, cy);
   look.effect?.back?.(c, t, cy);
   c.save(); c.translate(-.1, 0);                      // centre the whole pose: the dust and cape trail far more to the right than the leg reaches to the left
   const { hip, lean } = p;
@@ -112,7 +113,7 @@ export function drawSideSlide(c: Ctx, p: SlidePose, look: Look = DEFAULT_LOOK, t
 
   // head: big, tipped forward a little so it leads the slide
   const hc = add(S, rot(lean * .65, 0, -.22));
-  c.save(); c.translate(hc.x, hc.y); c.rotate(lean * .3 - p.headTilt); c.translate(0, .69); drawMascotHead(c, pal, !look.figure); look.figure?.head?.(c, t); look.hat?.draw(c); c.restore();
+  c.save(); c.translate(hc.x, hc.y); c.rotate(lean * .3 - p.headTilt); c.translate(0, .69); drawMascotHead(c, pal, !look.figure, !!look.figure?.egg); look.figure?.head?.(c, t); look.hat?.draw(c); c.restore();
 
   // front arm, up for balance
   const hf = add(S, p.hand);
