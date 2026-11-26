@@ -39,12 +39,12 @@ interface Base { id: string; name: string; rarity: Rarity; unlock?: Unlock }
  * sees the mascot's back, so a tail points toward it). `t` is the frame's place in its animation.
  */
 export interface Figure {
-  /** frames drawn as a picture (a sprite sheet) instead of in code, in the game; the avatar still uses `front` */
-  sprite?: import('./sprite-sheet.js').SpriteSheet;
+  /** custom vector frames in the game's flat renderer */
+  vector?: import('./vector-skin.js').VectorSkin;
   /** where the sprite's body is, for wings and the like (and what to shift for a slide, when the body lies low) */
   fit?: { shoulder: number; slide: number; size: number };
   /** a picture used as the avatar (head and shoulders, transparent background) instead of drawing the front view in code */
-  portrait?: import('./sprite-sheet.js').SpriteSheet;
+  portrait?: import('./portrait.js').Portrait;
   capeless?: true; arm?(c: Ctx, side: number, x: number, y: number): void; head?(c: Ctx, t: number): void; back?(c: Ctx, t: number): void; front?: FrontFigure; /** a round, egg-shaped head instead of the onigiri */ egg?: true }
 /** a custom skin's head seen from the front (avatars only; the game shows the back) */
 export interface FrontFigure {
