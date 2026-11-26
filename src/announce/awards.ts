@@ -1,12 +1,13 @@
 /**
- * The award slides, rank 7 first and rank 1 last. Each one is a single slide with one click inside it:
+ * The award slides: the Top 7 (7th first, 1st last) and the two "super fan" prizes for the most plays. Each is a single slide with
+ * one click inside it:
  *   on arrival  the prize drops in and the winner's seat is a pulsing "?"
  *   click       a short drum roll (faces flick past, slowing down), then the winner lands with confetti
- * Rank 1 gets a longer roll with a 3-2-1 and a bigger finish.
+ * The Top 7's 1st place gets a longer roll with a 3-2-1 and a bigger finish.
  */
 import { avName, avatarArt, setAvatarImg } from '../lib/avatar.js';
 import { th } from '../i18n/th.js';
-import { n0, type Winner } from './calc.js';
+import { n0, type Fan, type Winner } from './calc.js';
 import type { Scene } from './deck.js';
 import { PRIZE_ART, prizeKind, type PrizeKind } from './art.js';
 import { narrate } from './narrator.js';
@@ -19,28 +20,70 @@ export function prizeText(rank: number): { name: string; tag: string } {
   return { name: th.prize3Item, tag: th.prize3 };
 }
 
+/** what the super fans win is not settled yet: a gift box stands in for it */
+export const FAN_PRIZE = 'ของขวัญสุดพิเศษ';
+
+/** everything one award slide needs, whoever it is for */
+export interface AwardSpec {
+  /** the slide's id: also the key of its narration (`<id>.enter`, `<id>.reveal`) */
+  id: string;
+  /** the big pink numeral behind the prize */
+  ghost: string;
+  /** the footer line */
+  chrome: string;
+  /** the pill above the prize name */
+  tag: string;
+  prize: string;
+  kind: PrizeKind;
+  who: { id: string; avatar: number | null; look: Record<string, string> };
+  /** the number counted up under the winner, and its unit */
+  value: number;
+  unit: string;
+  /** a different avatar order for each slide's drum roll */
+  seed: number;
+  /** drum roll length, ms */
+  rollMs: number;
+  /** a 3-2-1 before the reveal, and the right half turning pink: the one big finish */
+  first: boolean;
+  /** extra confetti and a bigger chord */
+  big: boolean;
+}
+
+export function awardOfWinner(w: Winner): AwardSpec {
+  const text = prizeText(w.rank);
+  return {
+    id: `s-award-${w.rank}`, ghost: String(w.rank), chrome: `Top 7 · อันดับ ${w.rank}`, tag: text.tag, prize: text.name, kind: prizeKind(w.rank),
+    who: w, value: w.score, unit: 'คะแนน', seed: w.rank,
+    rollMs: w.rank === 1 ? 5200 : w.rank <= 3 ? 3400 : 2300, first: w.rank === 1, big: w.rank <= 3,
+  };
+}
+
+export function awardOfFan(f: Fan): AwardSpec {
+  return {
+    id: `s-fan-${f.rank}`, ghost: String(f.rank), chrome: `แฟนพันธุ์แท้ · คนที่ ${f.rank}`, tag: `แฟนพันธุ์แท้ คนที่ ${f.rank}`, prize: FAN_PRIZE, kind: 'gift',
+    who: f, value: f.plays, unit: 'ครั้ง', seed: 20 + f.rank, rollMs: 2800, first: false, big: f.rank === 1,
+  };
+}
+
 const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 /** the prize name with its brand or key word set in the serif accent: "HUAWEI Band 11 …", "บัตรเติมน้ำมัน …" */
 function accent(name: string, kind: PrizeKind): string {
-  const key = kind === 'watch' ? /^(HUAWEI Band 11)/ : kind === 'fuel' ? /(บัตรเติมน้ำมัน)/ : /(BEZ)/;
+  const key = kind === 'watch' ? /^(HUAWEI Band 11)/ : kind === 'fuel' ? /(บัตรเติมน้ำมัน)/ : kind === 'umbrella' ? /(BEZ)/ : /(ของขวัญ)/;
   return esc(name).replace(key, '<em>$1</em>');
 }
 
-/** how long the drum roll lasts, and the sound of it: more at the top of the board */
-const rollMs = (rank: number) => rank === 1 ? 5200 : rank <= 3 ? 3400 : 2300;
-
-export function buildAward(w: Winner, pool: { avatar: number | null }[]): Scene {
-  const kind = prizeKind(w.rank), text = prizeText(w.rank);
+/** adds the slide before `before` in the page and returns its scene */
+export function buildAward(a: AwardSpec, pool: { avatar: number | null }[], before: HTMLElement): Scene {
   const el = document.createElement('section');
-  el.className = 'slide award' + (w.rank === 1 ? ' first' : '');
-  el.id = `s-award-${w.rank}`;
-  el.dataset.chrome = `Top 7 · อันดับ ${w.rank}`;
+  el.className = 'slide award' + (a.first ? ' first' : '');
+  el.id = a.id;
+  el.dataset.chrome = a.chrome;
   el.innerHTML = `
     <div class="half half-l">
-      <div class="ghost reveal" style="--i:0" aria-hidden="true">${w.rank}</div>
-      <div class="prize-art">${PRIZE_ART[kind]}</div>
-      <div class="prize-name reveal" style="--i:5"><span class="pill">${esc(text.tag)}</span><h3>${accent(text.name, kind)}</h3></div>
+      <div class="ghost reveal" style="--i:0" aria-hidden="true">${esc(a.ghost)}</div>
+      <div class="prize-art">${PRIZE_ART[a.kind]}</div>
+      <div class="prize-name reveal" style="--i:5"><span class="pill">${esc(a.tag)}</span><h3>${accent(a.prize, a.kind)}</h3></div>
     </div>
     <div class="half half-r">
       <div class="lab reveal" style="--i:1">ผู้ได้รับรางวัล</div>
@@ -52,11 +95,11 @@ export function buildAward(w: Winner, pool: { avatar: number | null }[]): Scene 
       </div>
       <div class="who">
         <div class="av-name"></div>
-        <div class="row"><span class="idp">รหัสพนักงาน <b>${esc(w.id)}</b></span><span class="score"><span class="sc">0</span><small>คะแนน</small></span></div>
+        <div class="row"><span class="idp">รหัสพนักงาน <b>${esc(a.who.id)}</b></span><span class="score"><span class="sc">0</span><small>${esc(a.unit)}</small></span></div>
       </div>
       <div class="hint reveal" style="--i:7">คลิกเพื่อเปิดเผยผู้ได้รับรางวัล ▸</div>
     </div>`;
-  document.getElementById('deckStage')!.insertBefore(el, document.getElementById('s-end'));
+  before.parentElement!.insertBefore(el, before);
 
   const face = el.querySelector('.face img') as HTMLImageElement;
   const count = el.querySelector('.count') as HTMLElement, countB = count.querySelector('b')!;
@@ -67,9 +110,9 @@ export function buildAward(w: Winner, pool: { avatar: number | null }[]): Scene 
   const settle = () => {
     el.classList.remove('drum'); el.classList.add('rev');
     count.classList.remove('on');
-    setAvatarImg(face, avatarArt(w.avatar, 640, w.look));
-    nameEl.textContent = avName(w.avatar);
-    scoreEl.textContent = n0(w.score);
+    setAvatarImg(face, avatarArt(a.who.avatar, 640, a.who.look));
+    nameEl.textContent = avName(a.who.avatar);
+    scoreEl.textContent = n0(a.value);
   };
 
   return {
@@ -88,10 +131,10 @@ export function buildAward(w: Winner, pool: { avatar: number | null }[]): Scene 
       const r = run = new Run();
       el.classList.add('drum');
       // a pool of other faces to flick through, never the winner's own (that one lands last)
-      const others = pool.filter(p => p.avatar !== w.avatar);
-      const picks = Array.from({ length: 40 }, (_, i) => others.length ? others[(i * 7 + w.rank * 3) % others.length]!.avatar : i * 5 + w.rank);
-      const D = rollMs(w.rank), withCount = w.rank === 1;
-      const spinMs = withCount ? D - 3000 : D;
+      const others = pool.filter(p => p.avatar !== a.who.avatar);
+      const picks = Array.from({ length: 40 }, (_, i) => others.length ? others[(i * 7 + a.seed * 3) % others.length]!.avatar : i * 5 + a.seed);
+      const withCount = a.first;
+      const spinMs = withCount ? a.rollMs - 3000 : a.rollMs;
       const n = Math.max(8, Math.round(spinMs / 150));
       const t0 = performance.now();
       face.removeAttribute('src');
@@ -122,16 +165,15 @@ export function buildAward(w: Winner, pool: { avatar: number | null }[]): Scene 
       }
       if (r.stopped) return;
       settle();
-      flash(); sfxReveal(w.rank <= 3);
+      flash(); sfxReveal(a.big);
       narrate(`${el.id}.reveal`, 900);
       // the winner lands: confetti from the seat, more of it nearer the top
-      const big = w.rank <= 3;
-      burst(1440, 440, big ? 220 : 130, big ? 1.25 : 1, w.rank !== 1);
-      if (big) setTimeout(() => burst(1440, 440, 120, 1.4, w.rank !== 1), 260);
-      if (w.rank === 1) { setTimeout(() => burst(480, 420, 160, 1.2, false), 500); setTimeout(() => burst(960, 300, 200, 1.5, false), 900); }
-      // the score counts up
-      await r.tween(1300, t => { scoreEl.textContent = n0(w.score * t); }, easeOut);
-      scoreEl.textContent = n0(w.score);
+      burst(1440, 440, a.big ? 220 : 130, a.big ? 1.25 : 1, !a.first);
+      if (a.big) setTimeout(() => burst(1440, 440, 120, 1.4, !a.first), 260);
+      if (a.first) { setTimeout(() => burst(480, 420, 160, 1.2, false), 500); setTimeout(() => burst(960, 300, 200, 1.5, false), 900); }
+      // the number counts up
+      await r.tween(1300, t => { scoreEl.textContent = n0(a.value * t); }, easeOut);
+      scoreEl.textContent = n0(a.value);
     },
     leave() { run?.stop(); run = null; },
     skip() { run?.skip(); },

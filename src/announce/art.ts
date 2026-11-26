@@ -1,71 +1,44 @@
 /**
- * Flat tri-tone illustrations for the announcement deck: the three prizes and Thailand's outline. Every colour is one of the
- * deck's three (blush pink, golden butter, deep burgundy), so they sit in the Editorial Tri-Tone system without a fourth hue.
+ * Art for the announcement deck: the prize pictures and Thailand's outline. The prizes are the real products (photos with the
+ * background removed, in ./prizes); what the super fans win is not settled, so a flat gift box in the deck's three colours stands
+ * in. Every drawn colour is one of the three (blush pink, golden butter, deep burgundy).
  */
+import cardUrl from './prizes/card.png';
+import umbrellaUrl from './prizes/umbrella.png';
+import watchUrl from './prizes/watch.png';
+
 export const PINK = '#F2B6C6', BUTTER = '#F2D86A', BURGUNDY = '#7A1F35';
 
-/** Rank → which prize. 1st the smartwatch, 2nd to 5th a fuel card, 6th and 7th an umbrella (README: Prizes). */
-export type PrizeKind = 'watch' | 'fuel' | 'umbrella';
+/** Rank → which prize. 1st the smartwatch, 2nd to 5th a fuel card, 6th and 7th an umbrella (README: Prizes). A gift box is for the super fans. */
+export type PrizeKind = 'watch' | 'fuel' | 'umbrella' | 'gift';
 export const prizeKind = (rank: number): PrizeKind => rank === 1 ? 'watch' : rank <= 5 ? 'fuel' : 'umbrella';
 
-const svg = (inner: string) => `<svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">${inner}</svg>`;
+/** a product photo in a pink-ringed disc; the wide card gets more of the width */
+const photo = (url: string, wide = false) => `<div class="disc"></div><div class="photo p-float${wide ? ' wide' : ''}"><img src="${url}" alt=""></div>`;
 
-/** HUAWEI Band 11: a slim band, the case between two straps, a pink screen showing the time and three activity rings */
-const WATCH = svg(`
+/** a gift box: lid, ribbon and bow, for a prize that is not decided yet */
+const GIFT = `<svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
   <g class="p-float">
-    <path d="M236 30h128l14 168H222z" fill="${BURGUNDY}"/>
-    <path d="M222 402h156l-14 168H236z" fill="${BURGUNDY}"/>
-    <g fill="${BUTTER}"><circle cx="300" cy="462" r="9"/><circle cx="300" cy="496" r="9"/><circle cx="300" cy="530" r="9"/></g>
-    <rect x="262" y="58" width="76" height="14" rx="7" fill="${PINK}"/>
-    <rect x="176" y="166" width="248" height="268" rx="78" fill="${BURGUNDY}"/>
-    <rect x="176" y="166" width="248" height="268" rx="78" fill="none" stroke="${BUTTER}" stroke-width="5"/>
-    <rect x="198" y="188" width="204" height="224" rx="58" fill="${PINK}"/>
-    <rect x="424" y="262" width="16" height="56" rx="8" fill="${PINK}"/>
-    <rect x="424" y="334" width="16" height="30" rx="8" fill="${BUTTER}"/>
-    <text x="300" y="290" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-weight="700" font-size="76" letter-spacing="-3" fill="${BURGUNDY}">10:09</text>
-    <g fill="none" stroke-linecap="round" stroke-width="12">
-      <circle cx="248" cy="352" r="22" stroke="${BURGUNDY}" opacity=".18"/><path d="M248 330a22 22 0 1 1-22 22" stroke="${BURGUNDY}"/>
-      <circle cx="300" cy="352" r="22" stroke="${BURGUNDY}" opacity=".18"/><path d="M300 330a22 22 0 0 1 20 31" stroke="${BURGUNDY}"/>
-      <circle cx="352" cy="352" r="22" stroke="${BURGUNDY}" opacity=".18"/><path d="M352 330a22 22 0 1 1-18 36" stroke="${BURGUNDY}"/>
-    </g>
-  </g>`);
+    <rect x="132" y="290" width="336" height="246" rx="14" fill="${BURGUNDY}"/>
+    <rect x="104" y="226" width="392" height="86" rx="14" fill="${BURGUNDY}" stroke="${BUTTER}" stroke-width="6"/>
+    <rect x="268" y="226" width="64" height="310" fill="${PINK}"/>
+    <path d="M300 226C216 120 140 150 184 214c26 34 84 18 116 12z" fill="${PINK}" stroke="${BURGUNDY}" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M300 226c84-106 160-76 116-12-26 34-84 18-116 12z" fill="${PINK}" stroke="${BURGUNDY}" stroke-width="6" stroke-linejoin="round"/>
+    <circle cx="300" cy="224" r="28" fill="${BUTTER}" stroke="${BURGUNDY}" stroke-width="6"/>
+    <g fill="${BURGUNDY}"><path d="M96 120l10 26 26 10-26 10-10 26-10-26-26-10 26-10z"/><path d="M510 96l8 20 20 8-20 8-8 20-8-20-20-8 20-8z"/><path d="M528 384l7 17 17 7-17 7-7 17-7-17-17-7 17-7z"/></g>
+  </g>
+</svg>`;
 
-/** a fuel card (the 500 baht top-up card): two cards fanned, the front one with a pump, a chip and the amount */
-const FUEL = svg(`
-  <g class="p-float">
-    <g transform="rotate(10 300 300)"><rect x="96" y="150" width="408" height="258" rx="34" fill="${PINK}" stroke="${BURGUNDY}" stroke-width="8"/>
-      <rect x="96" y="208" width="408" height="46" fill="${BURGUNDY}" opacity=".9"/></g>
-    <g transform="rotate(-9 300 330)">
-      <rect x="84" y="190" width="432" height="278" rx="36" fill="${BURGUNDY}"/>
-      <rect x="116" y="228" width="68" height="52" rx="12" fill="${BUTTER}"/>
-      <path d="M116 254h68M150 228v52" stroke="${BURGUNDY}" stroke-width="4" fill="none"/>
-      <g transform="translate(396 222)" fill="none" stroke="${PINK}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="0" y="0" width="52" height="78" rx="8"/><path d="M12 22h28"/><path d="M52 18l16 14v34a8 8 0 0 0 16 0V34l-16-18"/>
-      </g>
-      <text x="116" y="396" font-family="Bricolage Grotesque, sans-serif" font-weight="700" font-size="104" letter-spacing="-4" fill="${BUTTER}">500</text>
-      <text x="340" y="396" font-family="Instrument Serif, serif" font-style="italic" font-size="72" fill="${PINK}">baht</text>
-      <rect x="116" y="424" width="268" height="10" rx="5" fill="${PINK}" opacity=".5"/>
-    </g>
-  </g>`);
-
-/** BEZ automatic umbrella: an open canopy in alternating panels, the J handle, a few drops */
-const UMBRELLA = svg(`
-  <g class="p-float">
-    <g fill="${BURGUNDY}" opacity=".55"><rect x="70" y="120" width="8" height="34" rx="4" transform="rotate(18 74 137)"/><rect x="524" y="150" width="8" height="34" rx="4" transform="rotate(18 528 167)"/><rect x="480" y="74" width="8" height="30" rx="4" transform="rotate(18 484 89)"/><rect x="110" y="48" width="8" height="30" rx="4" transform="rotate(18 114 63)"/></g>
-    <rect x="293" y="62" width="14" height="48" rx="7" fill="${BURGUNDY}"/>
-    <path d="M300 100C176 100 82 190 70 318c34-30 66-30 96 0 22-30 52-30 84 0 20-30 50-30 76 0 28-30 58-30 80 0 30-30 64-30 100 0C514 190 424 100 300 100z" fill="${PINK}" stroke="${BURGUNDY}" stroke-width="8" stroke-linejoin="round"/>
-    <path d="M300 100C250 150 230 230 250 318c0 0-40 0-84 0C150 240 200 140 300 100z" fill="${BURGUNDY}"/>
-    <path d="M300 100c50 50 70 130 50 218c0 0 40 0 84 0C450 240 400 140 300 100z" fill="${BURGUNDY}"/>
-    <path d="M300 100c-26 60-34 140-24 218M300 100c26 60 34 140 24 218" stroke="${BURGUNDY}" stroke-width="6" fill="none"/>
-    <path d="M300 318v200a46 46 0 0 1-92 0" fill="none" stroke="${BURGUNDY}" stroke-width="20" stroke-linecap="round"/>
-    <circle cx="300" cy="404" r="12" fill="${BUTTER}" stroke="${BURGUNDY}" stroke-width="6"/>
-  </g>`);
-
-export const PRIZE_ART: Record<PrizeKind, string> = { watch: WATCH, fuel: FUEL, umbrella: UMBRELLA };
+export const PRIZE_ART: Record<PrizeKind, string> = {
+  watch: photo(watchUrl), fuel: photo(cardUrl, true), umbrella: photo(umbrellaUrl), gift: GIFT,
+};
 
 /* ---------- Thailand ---------- */
 
-/** Thailand's border and coast, [lon, lat], clockwise from Mae Sai. Simplified for a poster: it only has to read as Thailand. */
+/**
+ * Thailand's border and coast, [lon, lat], clockwise from Mae Sai. Simplified for a poster: it only has to read as Thailand. The narrow
+ * strip of the south (Prachuap to Chumphon) is drawn about twice as wide as it is, so the route has room to run down the middle of it.
+ */
 const OUTLINE: [number, number][] = [
   [99.88, 20.43], [100.09, 20.35], [100.20, 20.30], [100.42, 20.25], [100.55, 19.95], [100.50, 19.60], [100.85, 19.50],
   [101.10, 19.55], [101.25, 19.35], [101.10, 19.05], [101.15, 18.55], [101.05, 18.10], [101.15, 17.85], [101.45, 17.80],
@@ -73,21 +46,21 @@ const OUTLINE: [number, number][] = [
   [104.45, 17.65], [104.78, 17.35], [104.85, 17.00], [104.70, 16.60], [105.05, 16.10], [105.30, 15.75], [105.50, 15.25],
   [105.60, 14.60], [105.10, 14.35], [104.50, 14.40], [103.85, 14.35], [103.30, 14.35], [102.80, 14.20], [102.55, 14.10],
   [102.45, 13.60], [102.35, 13.20], [102.30, 12.70], [102.60, 12.15], [102.80, 11.85], [102.92, 11.65],
-  [102.60, 12.05], [102.20, 12.30], [101.90, 12.55], [101.40, 12.65], [101.00, 12.75], [100.90, 13.25], [100.60, 13.45],
-  [100.45, 13.50], [100.25, 13.40], [100.05, 13.30], [100.10, 12.90], [100.00, 12.60], [99.95, 12.20], [99.80, 11.80],
-  [99.60, 11.30], [99.45, 10.80], [99.25, 10.30], [99.20, 9.75], [99.35, 9.25], [99.60, 8.95], [99.95, 8.70],
-  [100.10, 8.30], [100.30, 7.95], [100.55, 7.40], [100.40, 7.15], [100.70, 7.00], [101.00, 6.95], [101.30, 6.85],
-  [101.70, 6.75], [101.95, 6.55], [102.10, 6.25], [101.80, 6.15], [101.55, 5.95], [101.20, 5.70], [101.00, 5.62],
-  [100.85, 5.80], [100.80, 6.30], [100.55, 6.45], [100.35, 6.50], [100.15, 6.45], [100.05, 6.60], [99.85, 6.85],
-  [99.65, 7.15], [99.50, 7.45], [99.25, 7.70], [99.10, 8.10], [98.85, 8.20], [98.55, 8.15], [98.30, 8.20], [98.25, 8.60],
-  [98.40, 9.10], [98.50, 9.60], [98.65, 10.00], [98.75, 10.45], [98.90, 10.90], [99.05, 11.40], [99.30, 11.75],
-  [99.45, 12.20], [99.20, 12.55], [99.15, 13.05], [98.85, 13.50], [98.55, 14.00], [98.20, 14.60], [98.15, 15.10],
+  [102.60, 12.05], [102.20, 12.30], [101.90, 12.55], [101.40, 12.65], [101.00, 12.75], [100.95, 13.05], [100.60, 13.10],
+  [100.40, 13.05], [100.20, 13.00], [100.00, 12.95], [100.05, 12.75], [100.00, 12.60], [99.95, 12.20], [99.85, 11.80],
+  [99.70, 11.30], [99.55, 10.80], [99.40, 10.30], [99.30, 9.75], [99.40, 9.25], [99.60, 8.95], [99.95, 8.70],
+  [100.10, 8.30], [100.30, 7.95], [100.60, 7.40], [100.65, 7.15], [100.85, 7.00], [101.15, 6.95], [101.40, 6.85],
+  [101.70, 6.75], [101.95, 6.55], [102.10, 6.25], [101.80, 6.15], [101.75, 5.95], [101.40, 5.70], [101.00, 5.62],
+  [100.60, 5.80], [100.45, 6.25], [100.30, 6.40], [100.10, 6.45], [99.95, 6.45], [99.75, 6.60], [99.55, 6.85],
+  [99.45, 7.15], [99.50, 7.45], [99.25, 7.70], [99.10, 8.10], [98.85, 8.20], [98.55, 8.15], [98.30, 8.20], [98.25, 8.60],
+  [98.40, 9.10], [98.45, 9.60], [98.45, 10.00], [98.55, 10.45], [98.65, 10.90], [98.70, 11.40], [98.90, 11.75],
+  [99.05, 12.20], [98.95, 12.55], [99.00, 13.05], [98.85, 13.50], [98.55, 14.00], [98.20, 14.60], [98.15, 15.10],
   [98.50, 15.25], [98.60, 15.80], [98.45, 16.40], [98.60, 16.90], [98.25, 17.35], [97.95, 17.75], [97.75, 18.25],
   [97.45, 18.55], [97.35, 19.00], [97.65, 19.40], [97.85, 19.80], [98.10, 19.85], [98.35, 19.65], [98.80, 19.85],
   [99.05, 20.10], [99.45, 20.15],
 ];
 
-/** the run, south to north, through a few cities on the way: [name, lon, lat] */
+/** the run, south to north, through cities on the way: [name, lon, lat]. The road does not follow these exactly; see routeX. */
 export const ROUTE_STOPS: [string, number, number][] = [
   ['เบตง', 101.07, 5.77], ['หาดใหญ่', 100.47, 7.0], ['สุราษฎร์ธานี', 99.2, 9.0], ['ชุมพร', 99.1, 10.4], ['ประจวบฯ', 99.55, 11.8],
   ['กรุงเทพฯ', 100.5, 13.75], ['นครสวรรค์', 100.12, 15.7], ['พิษณุโลก', 100.26, 16.8], ['ลำปาง', 99.5, 18.3],
@@ -118,6 +91,109 @@ function smooth(pts: [number, number][], rounds: number, closed: boolean): [numb
 }
 const d = (pts: [number, number][], close: boolean) => 'M' + pts.map(([x, y]) => x.toFixed(1) + ' ' + y.toFixed(1)).join('L') + (close ? 'Z' : '');
 
-export const THAILAND_PATH = d(smooth(OUTLINE.map(([lo, la]) => project(lo, la)), 2, true), true);
-export const ROUTE_POINTS = ROUTE_STOPS.map(([, lo, la]) => project(lo, la));
-export const ROUTE_PATH = d(smooth(ROUTE_POINTS, 3, false), false);
+const OUTLINE_PX = OUTLINE.map(([lo, la]) => project(lo, la));
+/** the coast as it is drawn (softened), for checking the route against */
+export const OUTLINE_SOFT = smooth(OUTLINE_PX, 2, true);
+export const THAILAND_PATH = d(OUTLINE_SOFT, true);
+
+/*
+ * The route. A solid line that touches the coast disappears into the butter behind the map, so the line stays well inside the shape:
+ * it follows the cities' longitudes as far as it can, and where the land is narrow it is pushed to the middle. The two ends sit a
+ * little inside the real tips (Betong and Mae Sai are on the very edge of the map).
+ */
+/** px kept between the route and the coast, before the coast is softened; the test asks for ROUTE_CLEARANCE after */
+const ROUTE_MARGIN = 30;
+export const ROUTE_CLEARANCE = 22;
+const START_LAT = 6.2, END_LAT = 19.9, LAT_STEP = 0.2;
+
+/** the x ranges (px) that are land along the row `y` of the map, from the softened outline (even-odd) */
+function landAt(y: number): [number, number][] {
+  const xs: number[] = [];
+  for (let i = 0; i < OUTLINE_SOFT.length; i++) {
+    const a = OUTLINE_SOFT[i]!, b = OUTLINE_SOFT[(i + 1) % OUTLINE_SOFT.length]!;
+    if ((a[1] <= y) !== (b[1] <= y)) xs.push(a[0] + (y - a[1]) * (b[0] - a[0]) / (b[1] - a[1]));
+  }
+  xs.sort((m, n) => m - n);
+  const out: [number, number][] = [];
+  for (let i = 0; i + 1 < xs.length; i += 2) out.push([xs[i]!, xs[i + 1]!]);
+  return out;
+}
+
+/** longitude the cities suggest at a latitude (straight between neighbouring stops) */
+function suggestedLon(lat: number): number {
+  for (let i = 1; i < ROUTE_STOPS.length; i++) {
+    const [, lo0, la0] = ROUTE_STOPS[i - 1]!, [, lo1, la1] = ROUTE_STOPS[i]!;
+    if (lat <= la1) return lo0 + (lo1 - lo0) * Math.max(0, Math.min(1, (lat - la0) / (la1 - la0)));
+  }
+  return ROUTE_STOPS[ROUTE_STOPS.length - 1]![1];
+}
+
+/** distance from a point to the coast as drawn */
+function toCoast(x: number, y: number): number {
+  let best = Infinity;
+  for (let i = 0; i < OUTLINE_SOFT.length; i++) {
+    const a = OUTLINE_SOFT[i]!, b = OUTLINE_SOFT[(i + 1) % OUTLINE_SOFT.length]!;
+    const dx = b[0] - a[0], dy = b[1] - a[1], len2 = dx * dx + dy * dy;
+    const t = len2 ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / len2)) : 0;
+    best = Math.min(best, Math.hypot(x - (a[0] + t * dx), y - (a[1] + t * dy)));
+  }
+  return best;
+}
+
+/** the x positions (px) in the row `y` that are at least ROUTE_MARGIN from the coast, as one corridor [lo, hi], the one nearest `want`; null if no x is */
+function corridor(y: number, want: number): [number, number] | null {
+  const spans = landAt(y);
+  const span = spans.find(([a, b]) => want >= a && want <= b) ?? spans.reduce((best, sp) => Math.min(Math.abs(sp[0] - want), Math.abs(sp[1] - want)) < Math.min(Math.abs(best[0] - want), Math.abs(best[1] - want)) ? sp : best, spans[0]!);
+  const runs: [number, number][] = [];
+  let from: number | null = null, prev = 0;
+  for (let x = Math.ceil(span[0]); x <= span[1]; x += 2) {
+    if (toCoast(x, y) >= ROUTE_MARGIN) { from ??= x; prev = x; } else if (from !== null) { runs.push([from, prev]); from = null; }
+  }
+  if (from !== null) runs.push([from, prev]);
+  if (!runs.length) return null;
+  const gap = (r: [number, number]) => want < r[0] ? r[0] - want : want > r[1] ? want - r[1] : 0;
+  return runs.reduce((best, r) => gap(r) < gap(best) ? r : best, runs[0]!);
+}
+
+/** the x (px) of the point in the row that is farthest from the coast: for rows where the land is too narrow for any corridor */
+function farthest(y: number): number {
+  let best = 0, bestD = -1;
+  for (const [a, b] of landAt(y)) for (let x = Math.ceil(a); x <= b; x += 2) { const dist = toCoast(x, y); if (dist > bestD) { bestD = dist; best = x; } }
+  return best;
+}
+
+const clampLat = (lat: number) => Math.max(START_LAT, Math.min(END_LAT, lat));
+const ROUTE_LATS: number[] = [];
+for (let lat = START_LAT; lat < END_LAT + LAT_STEP / 2; lat += LAT_STEP) ROUTE_LATS.push(Math.min(lat, END_LAT));
+/*
+ * One x per row: the cities' longitude pulled into the row's corridor, then relaxed so the line runs smoothly (each x moves toward the
+ * average of its neighbours, but never out of its corridor).
+ */
+const ROUTE_XS = (() => {
+  const rows = ROUTE_LATS.map(lat => {
+    const [sx, y] = project(suggestedLon(lat), lat);
+    const c = corridor(y, sx);
+    return c ? { lo: c[0], hi: c[1], x: Math.max(c[0], Math.min(c[1], sx)) } : (x => ({ lo: x, hi: x, x }))(farthest(y));
+  });
+  for (let it = 0; it < 80; it++) {
+    for (let i = 1; i < rows.length - 1; i++) {
+      const r = rows[i]!;
+      r.x = Math.max(r.lo, Math.min(r.hi, (rows[i - 1]!.x + 2 * r.x + rows[i + 1]!.x) / 4));
+    }
+  }
+  return rows.map(r => r.x);
+})();
+
+/** where the route runs at a latitude (between the rows it was worked out for) */
+export function routeAt(lat: number): [number, number] {
+  const l = clampLat(lat), i = Math.min(ROUTE_LATS.length - 2, Math.max(0, Math.floor((l - START_LAT) / LAT_STEP)));
+  const t = (l - ROUTE_LATS[i]!) / (ROUTE_LATS[i + 1]! - ROUTE_LATS[i]!);
+  return [ROUTE_XS[i]! * (1 - t) + ROUTE_XS[i + 1]! * t, project(0, l)[1]];
+}
+
+const ROUTE_RAW: [number, number][] = ROUTE_LATS.map((lat, i) => [ROUTE_XS[i]!, project(0, lat)[1]]);
+/** the route as drawn, softened */
+export const ROUTE_SOFT = smooth(ROUTE_RAW, 3, false);
+export const ROUTE_PATH = d(ROUTE_SOFT, false);
+/** each named stop, on the route */
+export const ROUTE_POINTS = ROUTE_STOPS.map(([, , la]) => routeAt(la));

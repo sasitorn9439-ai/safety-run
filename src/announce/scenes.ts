@@ -1,10 +1,9 @@
 /** The fun-fact slides before the awards: each one a Scene (see deck.ts) with its own graphic and a count-up that plays on entry. */
 import { avatarArt } from '../lib/avatar.js';
-import { MOON_KM, EARTH_KM, THAILAND_KM, dayHours, n0, n1, nSmart, type Facts } from './calc.js';
+import { MOON_KM, THAILAND_KM, dayHours, n0, n1, nSmart, type Facts } from './calc.js';
 import type { Scene } from './deck.js';
 import { MAP_H, MAP_W, ROUTE_PATH, ROUTE_POINTS, ROUTE_STOPS, THAILAND_PATH } from './art.js';
 import { Run, easeInOut, easeOut, fit, reduced } from './fx.js';
-import { SPIN_TO_BANGKOK, drawGlobe } from './globe.js';
 
 const $ = <T extends HTMLElement | SVGElement = HTMLElement>(id: string) => document.getElementById(id) as unknown as T;
 const SVGNS = 'http://www.w3.org/2000/svg';
@@ -129,38 +128,7 @@ export function thaiScene(f: Facts): Scene {
   });
 }
 
-/* ---------- 4 · round the world ---------- */
-export function globeScene(f: Facts): Scene {
-  const cv = $<HTMLCanvasElement>('globe'), n = $('earthN'), u = $('earthU'), sub = $('earthSub'), head = $('globeHead');
-  const laps = f.earthLaps;
-  if (laps < 1) {
-    head.innerHTML = 'ยังไม่ครบรอบ <em>โลก</em> แต่ไปได้';
-    sub.textContent = `ของเส้นรอบวงโลก เหลืออีก ${n0(EARTH_KM - f.km)} กม. ถึงจะครบรอบ`;
-  } else {
-    head.innerHTML = 'วิ่งรอบ <em>โลก</em> ได้';
-    sub.textContent = `ครบ ${Math.floor(laps)} รอบเต็ม แล้วยังเหลืออีก ${n0((laps - Math.floor(laps)) * EARTH_KM)} กม.`;
-  }
-  return scene($('s-globe'), (run, instant) => {
-    let p = 0;
-    const t0 = performance.now();
-    const spin0 = SPIN_TO_BANGKOK - .9;
-    const frame = () => {
-      if (run.stopped) return;
-      const t = (performance.now() - t0) / 1000;
-      drawGlobe(cv, spin0 + (reduced() ? 0 : t * .32), p);
-      requestAnimationFrame(frame);
-    };
-    const show = (v: number) => { p = v; const s = lapsShown(v, laps); n.textContent = s.n; u.textContent = s.unit; fit(n, 780, 330); };
-    show(0); frame();
-    void (async () => {
-      await run.wait(instant ? 0 : 1100);
-      const ms = laps <= 1 ? 4200 * Math.max(.5, laps) : Math.min(10000, 4200 + (laps - 1) * 700);
-      await run.tween(instant ? 0 : ms, t => show(laps * t), easeInOut);
-    })();
-  });
-}
-
-/* ---------- 5 · the Moon (only when the total gets there) ---------- */
+/* ---------- the Moon (only when the total gets there) ---------- */
 export function moonScene(f: Facts): Scene {
   const n = $('moonN'), dot = $<SVGGElement>('moonRunner');
   const trips = f.moonTrips;

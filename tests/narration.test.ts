@@ -19,6 +19,17 @@ describe('announce narration', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it('has the two super fans before the Top 7, each with an enter and a reveal that says how many runs', () => {
+    const f = facts();
+    const lines = narrationFor(f), ids = lines.map(l => l.id);
+    expect(ids.indexOf('s-fan-2.enter')).toBeLessThan(ids.indexOf('s-fan-1.enter'));
+    expect(ids.indexOf('s-fan-1.reveal')).toBeLessThan(ids.indexOf('s-intro.enter'));
+    const fan = f.fans[0]!;
+    expect(text(lines, 's-fan-1.reveal')).toContain(fan.id.split('').join(' '));
+    expect(text(lines, 's-fan-1.reveal')).toContain(`${fan.plays} ครั้ง`);
+    expect(text(lines, 's-fan-2.enter')).toContain('แฟนพันธุ์แท้');      // the first one shown explains the prize
+  });
+
   it('says the real numbers, and the winner\'s id digit by digit', () => {
     const f = facts();
     const lines = narrationFor(f);
@@ -32,7 +43,8 @@ describe('announce narration', () => {
 
   it('switches the wording when the totals fall short of a lap, and adds the Moon only when it is reached', () => {
     const small = narrationFor(factsOf(demoPlayers(0.01)));
-    expect(text(small, 's-globe.enter')).toContain('เปอร์เซ็นต์');
+    expect(text(small, 's-thai.enter')).toContain('เปอร์เซ็นต์');
+    expect(small.some(l => l.id === 's-globe.enter')).toBe(false);   // there is no round-the-world slide any more
     expect(small.some(l => l.id === 's-moon.enter')).toBe(false);
     const huge = narrationFor(facts(60));
     expect(huge.some(l => l.id === 's-moon.enter')).toBe(true);
@@ -59,7 +71,7 @@ describe('announce narration', () => {
   it('marks the lines that never depend on the results, so they can be made before the data is final', () => {
     const lines = narrationFor(facts());
     const fixed = lines.filter(l => !l.data).map(l => l.id).sort();
-    expect(fixed).toEqual(['s-award-1.enter', 's-award-2.enter', 's-award-3.enter', 's-award-4.enter', 's-award-5.enter', 's-award-6.enter', 's-award-7.enter', 's-cover.enter', 's-end.enter']);
+    expect(fixed).toEqual(['s-award-1.enter', 's-award-2.enter', 's-award-3.enter', 's-award-4.enter', 's-award-5.enter', 's-award-6.enter', 's-award-7.enter', 's-cover.enter', 's-end.enter', 's-fan-1.enter', 's-fan-2.enter']);
     // and they really do not change with the data
     const other = narrationFor(facts(7), { cutoff: '2026-11-27T01:00:00Z' });
     for (const l of lines.filter(l => !l.data)) expect(other.find(o => o.id === l.id)!.text).toBe(l.text);
