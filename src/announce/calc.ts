@@ -9,25 +9,21 @@ export const DEV_ID = '000';
 /** how many places win a prize */
 export const WINNERS = 7;
 
-/** a place in the world the total distance is measured against */
-export const EARTH_KM = 40_075;
+/** how far the runners would get if their metres were laid end to end: the Moon, one way */
 export const MOON_KM = 384_400;
 
-const rad = (d: number) => d * Math.PI / 180;
-/** great-circle distance in km between two lat/lon points */
-export function haversineKm(a: [number, number], b: [number, number]): number {
-  const [la1, lo1] = a, [la2, lo2] = b;
-  const h = Math.sin(rad(la2 - la1) / 2) ** 2 + Math.cos(rad(la1)) * Math.cos(rad(la2)) * Math.sin(rad(lo2 - lo1) / 2) ** 2;
-  return 2 * 6371 * Math.asin(Math.sqrt(h));
-}
+/**
+ * The length of Thailand from Betong (Yala, the southernmost district) to Mae Sai (Chiang Rai, the northernmost) BY ROAD, km.
+ * An estimate: Bangkok–Mae Sai is about 830 km by road and Betong–Bangkok about 1,200–1,300 km. Check it on a map and edit it here.
+ */
+export const THAILAND_KM = 2100;
 
-/** Thailand's two ends: Betong (Yala, the southernmost district) and Mae Sai (Chiang Rai, the northernmost), as [lat, lon] */
-export const BETONG: [number, number] = [5.7747, 101.0733];
-export const MAE_SAI: [number, number] = [20.4339, 99.8761];
-/** straight-line length of Thailand from Betong to Mae Sai, km */
-export const THAILAND_KM = Math.round(haversineKm(BETONG, MAE_SAI));
+/** the two prizes for the most plays: a super fan */
+export const FANS = 2;
 
 export interface Winner { rank: number; id: string; avatar: number | null; look: Record<string, string>; score: number; plays: number }
+/** a super fan: `plays` is how many runs they finished (before the cutoff) */
+export interface Fan { rank: number; id: string; avatar: number | null; look: Record<string, string>; plays: number }
 
 export interface Facts {
   /** players who finished at least one run (the developer left out) */
@@ -37,13 +33,13 @@ export interface Facts {
   secs: number;
   hours: number;
   days: number;
-  /** laps of Thailand (Betong → Mae Sai) */
+  /** laps of Thailand (Betong → Mae Sai, by road) */
   thaiLaps: number;
-  /** laps of the Earth; below 1 it is how far round the planet the runners got */
-  earthLaps: number;
   /** trips to the Moon, as a number of one-way trips (below 1: how far along) */
   moonTrips: number;
   winners: Winner[];
+  /** the players with the most finished runs */
+  fans: Fan[];
 }
 
 /** Players without the developer. */
@@ -61,6 +57,18 @@ export function winnersOf(rows: readonly AdminAnnounce[], places = WINNERS): Win
     .map((r, i) => ({ rank: i + 1, id: r.id, avatar: r.avatar, look: r.look ?? {}, score: r.best!, plays: r.plays }));
 }
 
+/**
+ * The super fans: the most finished runs. Hidden players are left out like everywhere else; ties go to the higher best score, then the
+ * lower id, so the order never depends on who the server listed first. A fan can also be on the Top 7: both prizes are theirs.
+ */
+export function fansOf(rows: readonly AdminAnnounce[], places = FANS): Fan[] {
+  return people(rows)
+    .filter(r => !r.hidden && r.plays > 0)
+    .sort((a, b) => b.plays - a.plays || (b.best ?? 0) - (a.best ?? 0) || a.id.localeCompare(b.id))
+    .slice(0, places)
+    .map((r, i) => ({ rank: i + 1, id: r.id, avatar: r.avatar, look: r.look ?? {}, plays: r.plays }));
+}
+
 export function factsOf(rows: readonly AdminAnnounce[]): Facts {
   const ps = people(rows);
   // hidden players still ran: their metres and minutes count, only their score is off the board
@@ -69,8 +77,8 @@ export function factsOf(rows: readonly AdminAnnounce[]): Facts {
   return {
     players: ps.length, plays: ps.reduce((n, r) => n + r.plays, 0),
     km, secs, hours: secs / 3600, days: secs / 86400,
-    thaiLaps: km / THAILAND_KM, earthLaps: km / EARTH_KM, moonTrips: km / MOON_KM,
-    winners: winnersOf(rows),
+    thaiLaps: km / THAILAND_KM, moonTrips: km / MOON_KM,
+    winners: winnersOf(rows), fans: fansOf(rows),
   };
 }
 

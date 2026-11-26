@@ -49,22 +49,14 @@
     <div class="panel-r bg-butter"></div>
     <h2 class="h2 reveal" style="--i:1">วิ่งต่อกันจาก <em>เบตง</em> ไป <em>แม่สาย</em><br>เชียงรายได้</h2>
     <div class="stat stat-md reveal" style="--i:2"><span class="stat-n" id="thaiN">0</span><em class="stat-u">รอบ</em></div>
-    <p class="note reveal" style="--i:3">ประเทศไทยยาวราว <b id="thaiKm">0</b> กม. จากเบตง (ยะลา) ถึงแม่สาย (เชียงราย) <span style="white-space:nowrap">วัดเป็นเส้นตรง</span><br><span id="thaiSub"></span></p>
+    <p class="note reveal" style="--i:3">ระยะทางตามถนนจากเบตง (ยะลา) ถึงแม่สาย (เชียงราย) <span style="white-space:nowrap">ประมาณ <b id="thaiKm">0</b> กม.</span><br><span id="thaiSub"></span></p>
     <svg class="map reveal" style="--i:2" id="thaiMap" viewBox="0 0 620 1000" aria-hidden="true">
       <path id="thaiShape" fill="#7A1F35"/>
-      <path id="routeBase" fill="none" stroke="#F2B6C6" stroke-width="5" stroke-dasharray="2 14" stroke-linecap="round" opacity=".8"/>
-      <path id="routeTrail" fill="none" stroke="#F2D86A" stroke-width="10" stroke-linecap="round"/>
+      <path id="routeBase" fill="none" stroke="#F2B6C6" stroke-width="4" stroke-dasharray="1 12" stroke-linecap="round" opacity=".8"/>
+      <path id="routeTrail" fill="none" stroke="#F2D86A" stroke-width="8" stroke-linecap="round"/>
       <g id="thaiStops"></g>
-      <g id="thaiRunner"><circle r="30" fill="none" stroke="#F2B6C6" stroke-width="4" opacity=".6"/><circle r="17" fill="#F2D86A" stroke="#7A1F35" stroke-width="5"/></g>
+      <g id="thaiRunner"><circle r="13" fill="#F2D86A" stroke="#7A1F35" stroke-width="4"/></g>
     </svg>
-  </section>
-
-  <!-- === 4 · GLOBE ============================================================ -->
-  <section class="slide bg-pink" id="s-globe" data-chrome="รอบโลก">
-    <h2 class="h2 reveal" style="--i:1" id="globeHead">วิ่งรอบ <em>โลก</em> ได้</h2>
-    <div class="stat stat-md reveal" style="--i:2"><span class="stat-n" id="earthN">0</span><em class="stat-u" id="earthU">รอบ</em></div>
-    <p class="note reveal" style="--i:3">เส้นรอบวงโลกที่เส้นศูนย์สูตรยาว <b>40,075</b> กม.<br><span id="earthSub"></span></p>
-    <canvas class="globe reveal" style="--i:2" id="globe" width="1600" height="1600"></canvas>
   </section>
 
   <!-- === 5 · MOON (kept only when the total reaches it) ======================= -->
@@ -106,6 +98,7 @@
   <section class="slide bg-butter" id="s-end" data-chrome="Colophon">
     <h2 class="h2 end-h reveal" style="--i:1">ขอบคุณที่ <em>วิ่งไปด้วยกัน</em><br>ปลอดภัยไว้ก่อนเสมอ</h2>
     <ol class="recap" id="recap"></ol>
+    <div class="fans-recap" id="recapFans" hidden><div class="lab reveal" style="--i:2">แฟนพันธุ์แท้ · เล่นมากที่สุด</div><ol></ol></div>
     <p class="note end-note reveal" style="--i:9">Safety Run · EHS Day 2026 · MCAM</p>
   </section>
 

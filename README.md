@@ -130,10 +130,15 @@ A 16:9 slide deck (Editorial Tri-Tone: pink / butter / burgundy) for announcing 
 Employee id `000` (the developer) is left out of every total and every prize. Only runs finished before `ANNOUNCE_CUTOFF` in `server/handlers.ts`
 (27 Nov 2026, 08:00 Thailand time) count; the admin request can pass `before` (ISO time) to rehearse with another cut.
 
-Slides: cover, total distance, "Betong → Mae Sai laps of Thailand", laps of the Earth (a spinning globe; a Moon slide appears only if the total reaches it),
-total play time in hours and days, then one slide per place, 7th to 1st. On an award slide the first click shows the prize and the second runs a drum roll and
-reveals the winner (a click during the roll skips to the reveal). Keys: Space / click / → next, ← back, F full screen, M mute. `?slide=N&step=K` jumps.
-Winners follow the leaderboard rules (best verified score, earlier wins ties, hidden players excluded). Logic is in `src/announce/calc.ts`.
+Slides: cover, total distance, laps of Thailand from Betong to Mae Sai by road (`THAILAND_KM` in `calc.ts` is an estimate: check it on a map; a Moon slide
+appears only if the total reaches it), total play time in hours and days, the two **super fans** (the most finished runs; a gift box stands in for their prize
+until it is decided), then the Top 7, 7th to 1st, and a closing list of everyone. On an award slide the first click shows the prize and the second runs a drum
+roll and reveals the winner (a click during the roll skips to the reveal). Keys: Space / click / → next, ← back, F full screen, M mute. `?slide=N&step=K` jumps.
+Winners follow the leaderboard rules (best verified score, earlier wins ties, hidden players excluded). Super fans: most finished runs, ties to the higher best
+score then the lower id, hidden players excluded; a fan can also be on the Top 7. Logic is in `src/announce/calc.ts`.
+
+The prize pictures are photos with the background removed (`src/announce/prizes/`, made by `tools/announce-prizes/cutout.py`). The route on the map is kept
+away from the coast so the line cannot blend into the background (`tests/announce-map.test.ts` checks it; the narrow south of the map is drawn wider than it is).
 
 ### Narration
 

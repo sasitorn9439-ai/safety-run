@@ -14,7 +14,7 @@
 import { avName } from '../../shared/avatar.js';
 import { th } from '../i18n/th.js';
 import { OVERRIDES } from './narration-overrides.js';
-import { EARTH_KM, MOON_KM, THAILAND_KM, dayHours, wantsMoon, type Facts } from './calc.js';
+import { MOON_KM, THAILAND_KM, dayHours, wantsMoon, type Facts } from './calc.js';
 
 /** `data`: the text depends on the results (totals, winners). Lines without it can be made before the data is final. */
 export interface Line { id: string; slide: string; when: 'enter' | 'reveal'; text: string; data: boolean }
@@ -73,6 +73,18 @@ function awardEnter(rank: number, prize: string, p: P): string {
   }
 }
 
+/** the super fan prizes (the most plays): the first one shown explains them */
+function fanEnter(rank: number, firstShown: boolean, p: P): string {
+  const intro = firstShown ? `[excited] ก่อนถึง Top 7 ขอประกาศรางวัลพิเศษ แฟนพันธุ์แท้ ${p.end}!\nมอบให้คนที่เล่น Safety Run จำนวนครั้งมากที่สุด\n[chuckles] นิ้วคงเมื่อยกันน่าดู\n` : '[excited] ';
+  return rank === 1
+    ? `${intro}และแฟนพันธุ์แท้ คนที่ 1 ${p.end}! ผู้ที่เล่นมากที่สุดในงานนี้ จะได้ของขวัญสุดพิเศษไปเลย!\n[whispers] ใครกันนะ ที่ขยันที่สุด...`
+    : `${intro}แฟนพันธุ์แท้ คนที่ ${rank} ${p.end}! ของขวัญสุดพิเศษรออยู่!\n[curious] ใครจะเป็นคนต่อไป${p.q}... ลุ้นกัน`;
+}
+
+function fanReveal(rank: number, who: { avatar: string; id: string; plays: number }, p: P): string {
+  return `[excited] ขอแสดงความยินดี ${p.end}!\nแฟนพันธุ์แท้ คนที่ ${rank} คือ ผู้ใช้อวาตาร์ ${who.avatar}!\nรหัสพนักงาน ${digits(who.id)}\nเล่นไปทั้งหมด ${who.plays} ครั้ง!\n${rank === 1 ? 'ขอเสียงปรบมือให้แฟนพันธุ์แท้ตัวจริง' : 'ขอเสียงปรบมือ'}${p.soft}!`;
+}
+
 /** what is said once the winner is on screen */
 function awardReveal(rank: number, who: { avatar: string; id: string; score: number }, p: P): string {
   const facts = `อันดับที่ ${rank} คือ ผู้ใช้อวาตาร์ ${who.avatar}!\nรหัสพนักงาน ${digits(who.id)}\nด้วยคะแนน ${int(who.score)} คะแนน!`;
@@ -108,38 +120,22 @@ export function narrationFor(f: Facts, opts: NarrationOptions = {}): Line[] {
     add('s-thai', [
       '[curious] ถ้าเอาระยะทางนี้มาต่อกัน...',
       'วิ่งจากเบตง จังหวัดยะลา ใต้สุดของประเทศไทย',
-      `ไปจนถึงแม่สาย จังหวัดเชียงราย เหนือสุดของประเทศ ซึ่งยาวประมาณ ${int(THAILAND_KM)} กิโลเมตร`,
+      `ไปจนถึงแม่สาย จังหวัดเชียงราย เหนือสุดของประเทศ ซึ่งตามถนนแล้วยาวประมาณ ${int(THAILAND_KM)} กิโลเมตร`,
       `[excited] จะวิ่งได้ ${dec(f.thaiLaps)} รอบเลย ${p.end}!`,
       f.thaiLaps >= 2 ? `ถ้านับเป็นไปกลับ ก็ราว ${dec(f.thaiLaps / 2)} เที่ยวเลยทีเดียว! [chuckles] แถมไม่ต้องเจอรถติดด้วย` : '',
     ].filter(Boolean).join('\n'));
   } else {
     add('s-thai', [
       '[curious] ถ้าเอาระยะทางนี้มาต่อกัน...',
-      'วิ่งจากเบตง ใต้สุดของประเทศ ขึ้นเหนือไปทางแม่สาย จังหวัดเชียงราย',
+      'วิ่งจากเบตง ใต้สุดของประเทศ ขึ้นเหนือไปทางแม่สาย จังหวัดเชียงราย ซึ่งตามถนนยาวประมาณ ' + int(THAILAND_KM) + ' กิโลเมตร',
       `ไปได้ ${int(f.thaiLaps * 100)} เปอร์เซ็นต์ของความยาวประเทศ ${p.end}!`,
       `เหลืออีก ${int(THAILAND_KM - f.km)} กิโลเมตร จะถึงแม่สาย [chuckles] อย่างน้อยก็ไม่ต้องเจอรถติด`,
     ].join('\n'));
   }
 
-  if (f.earthLaps >= 1) {
-    add('s-globe', [
-      '[curious] แล้วถ้าวิ่งรอบโลกล่ะ...',
-      `เส้นรอบวงโลกที่เส้นศูนย์สูตร ยาวประมาณ ${int(EARTH_KM)} กิโลเมตร`,
-      `[excited] ระยะรวมของพวกเรา วิ่งรอบโลกได้ ${dec(f.earthLaps)} รอบเลย ${p.end}!`,
-      `ครบรอบโลกแล้ว และยังเหลืออีก ${int(f.km - Math.floor(f.earthLaps) * EARTH_KM)} กิโลเมตร!`,
-    ].join('\n'));
-  } else {
-    add('s-globe', [
-      '[curious] แล้วถ้าวิ่งรอบโลกล่ะ...',
-      `เส้นรอบวงโลกยาวประมาณ ${int(EARTH_KM)} กิโลเมตร`,
-      `ตอนนี้พวกเราวิ่งไปได้ ${int(f.earthLaps * 100)} เปอร์เซ็นต์ของหนึ่งรอบโลก ${p.end}!`,
-      `เหลืออีก ${int(EARTH_KM - f.km)} กิโลเมตร จะครบรอบ`,
-    ].join('\n'));
-  }
-
   if (wantsMoon(f)) {
     add('s-moon', [
-      '[curious] ไกลกว่านั้นอีก...',
+      '[curious] ถ้าไกลกว่านั้นอีก...',
       `ระยะจากโลกไปดวงจันทร์ ประมาณ ${int(MOON_KM)} กิโลเมตร`,
       `[excited] พวกเราวิ่งไปดวงจันทร์ได้ ${dec(f.moonTrips)} เที่ยวเลย ${p.end}!`,
     ].join('\n'));
@@ -153,6 +149,13 @@ export function narrationFor(f: Facts, opts: NarrationOptions = {}): Line[] {
     'ถ้าเปิดเกมวิ่งต่อเนื่อง ไม่หลับไม่นอนเลย ก็ต้องใช้เวลาขนาดนี้เลยทีเดียว',
     `[mischievously] หวังว่าทุกคนเล่นกันตอนพักเที่ยงนะ${p.end} ไม่ใช่ในเวลางาน [laughs]`,
   ].join('\n'));
+
+  // the super fans come before the Top 7, the lower place first
+  [...f.fans].reverse().forEach((fan, i) => {
+    const slide = `s-fan-${fan.rank}`;
+    add(slide, fanEnter(fan.rank, i === 0, p), 'enter', false);
+    add(slide, fanReveal(fan.rank, { avatar: spokenAvatar(fan.avatar), id: fan.id, plays: fan.plays }, p), 'reveal');
+  });
 
   add('s-intro', [
     `[excited] เอาล่ะ${p.end}! ถึงเวลาที่ทุกคนรอคอยแล้ว! เตรียมใจ เตรียมมือ เตรียมปรบมือให้พร้อม!`,
@@ -174,11 +177,11 @@ export function narrationFor(f: Facts, opts: NarrationOptions = {}): Line[] {
 
   add('s-end', [
     `[excited] ขอบคุณทุกคนที่ร่วมวิ่งไปด้วยกัน${p.soft}!`,
-    `ขอแสดงความยินดีกับผู้ได้รับรางวัลทั้ง ${f.winners.length} ท่าน`,
+    'ขอแสดงความยินดีกับผู้ได้รับรางวัลทุกท่าน',
     'และอย่าลืมว่า ปลอดภัยไว้ก่อน ทุกครั้งที่ทำงาน',
     `[chuckles] ขากลับบ้าน ไม่ต้องวิ่งนะ${p.end} เดินอย่างปลอดภัย`,
     `แล้วพบกันใหม่${p.end}!`,
-  ].join('\n'), 'enter', false);   // says how many winners there are, which is 7 unless fewer than 7 people have played
+  ].join('\n'), 'enter', false);
 
   return lines;
 }

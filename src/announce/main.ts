@@ -7,13 +7,13 @@ import './announce.css';
 import { api, type AdminAnnounce } from '../lib/api.js';
 import { avImg } from '../lib/avatar.js';
 import { factsOf, people, wantsMoon, type Facts, n0 } from './calc.js';
-import { buildAward } from './awards.js';
+import { awardOfFan, awardOfWinner, buildAward } from './awards.js';
 import { Deck, type Scene } from './deck.js';
 import { demoPlayers } from './demo.js';
 import { narrationFor } from './narration.js';
 import { hasNarration, loadNarration, narrationStatus, setNarrationStatus } from './narrator.js';
 import { prepareVoice, thaiTime, voiceSetup } from './voice-gate.js';
-import { coverScene, distScene, globeScene, introScene, moonScene, thaiScene, timeScene } from './scenes.js';
+import { coverScene, distScene, introScene, moonScene, thaiScene, timeScene } from './scenes.js';
 
 const $ = (id: string) => document.getElementById(id)!;
 const KEY = 'safety-run-admin-key';
@@ -22,16 +22,23 @@ const q = new URLSearchParams(location.search);
 async function start(rows: AdminAnnounce[], before?: string, key = '') {
   const f: Facts = factsOf(rows);
   const faces = people(rows).filter(r => !r.hidden);
-  const scenes: Scene[] = [coverScene(), distScene(f, faces), thaiScene(f), globeScene(f)];
+  const scenes: Scene[] = [coverScene(), distScene(f, faces), thaiScene(f)];
   const moon = $('s-moon');
   if (wantsMoon(f)) scenes.push(moonScene(f)); else moon.remove();
-  scenes.push(timeScene(f), introScene(f));
+  scenes.push(timeScene(f));
+  // the two super fans (most plays) come before the Top 7, the lower place first; the Top 7 follow their interlude, 7th first
+  const intro = $('s-intro');
+  [...f.fans].reverse().forEach(fan => scenes.push(buildAward(awardOfFan(fan), faces, intro)));
+  scenes.push(introScene(f));
   // the server counts only runs finished before this moment; say so on the interlude
   if (before) $('introCut').textContent = 'นับข้อมูลถึง ' + thaiTime(before);
-  [...f.winners].reverse().forEach(w => scenes.push(buildAward(w, faces)));
   const end = $('s-end');
+  [...f.winners].reverse().forEach(w => scenes.push(buildAward(awardOfWinner(w), faces, end)));
   const list = $('recap');
   list.innerHTML = f.winners.map((w, i) => `<li class="reveal" style="--i:${i + 2}"><span class="rk">${w.rank}</span>${avImg(w.avatar, 84, w.look)}<span class="nm">${w.id}<small>รหัสพนักงาน</small></span><span class="sc">${n0(w.score)}</span></li>`).join('');
+  const fanBox = $('recapFans');
+  fanBox.hidden = !f.fans.length;
+  fanBox.querySelector('ol')!.innerHTML = f.fans.map((w, i) => `<li class="reveal" style="--i:${i + 3}"><span class="rk">${w.rank}</span>${avImg(w.avatar, 64, w.look)}<span class="nm">${w.id}<small>รหัสพนักงาน</small></span><span class="sc">${n0(w.plays)} <small>ครั้ง</small></span></li>`).join('');
   scenes.push({ el: end, steps: 0, enter() {}, step() {}, leave() {} });
 
   $('gate').hidden = true;

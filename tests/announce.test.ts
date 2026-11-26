@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ANNOUNCE_CUTOFF, admin, finish, start } from '../server/handlers.js';
 import { STEP, createRun } from '../shared/sim.js';
 import { createMemoryStore } from '../server/memory-store.js';
-import { DEV_ID, EARTH_KM, THAILAND_KM, dayHours, factsOf, wantsMoon, winnersOf } from '../src/announce/calc.js';
+import { DEV_ID, MOON_KM, THAILAND_KM, dayHours, fansOf, factsOf, wantsMoon, winnersOf } from '../src/announce/calc.js';
 import type { AdminAnnounce } from '../src/lib/api.js';
 
 const row = (id: string, best: number | null, extra: Partial<AdminAnnounce> = {}): AdminAnnounce => ({
@@ -10,9 +10,9 @@ const row = (id: string, best: number | null, extra: Partial<AdminAnnounce> = {}
 });
 
 describe('announce facts', () => {
-  it('measures Thailand end to end, Betong to Mae Sai', () => {
-    expect(THAILAND_KM).toBeGreaterThan(1500);
-    expect(THAILAND_KM).toBeLessThan(1800);
+  it('measures Thailand end to end, Betong to Mae Sai, by road (an estimate to check): longer than the straight line of about 1,630 km', () => {
+    expect(THAILAND_KM).toBeGreaterThan(1700);
+    expect(THAILAND_KM).toBeLessThan(2600);
   });
 
   it('leaves the developer out of totals and prizes', () => {
@@ -49,7 +49,35 @@ describe('announce facts', () => {
     expect(dayHours(2 * 86400 + 5 * 3600 + 59)).toEqual({ d: 2, h: 5 });
     expect(wantsMoon({ km: 384_399 })).toBe(false);
     expect(wantsMoon({ km: 384_400 })).toBe(true);
-    expect(EARTH_KM).toBe(40_075);
+    expect(MOON_KM).toBe(384_400);
+  });
+});
+
+describe('super fans', () => {
+  it('are the players with the most finished runs, two of them, never the developer or a hidden player', () => {
+    const rows = [
+      row(DEV_ID, 100, { plays: 500 }), row('1001', 100, { plays: 30 }), row('1002', 200, { plays: 41 }), row('1003', 300, { plays: 52, hidden: true }),
+      row('1004', 400, { plays: 12 }), row('1005', 50, { plays: 41 }),
+    ];
+    expect(fansOf(rows).map(f => [f.rank, f.id, f.plays])).toEqual([[1, '1002', 41], [2, '1005', 41]]);
+  });
+
+  it('break ties by the higher best score, then the lower id, whatever order the server listed them in', () => {
+    const rows = [row('1009', 10, { plays: 5 }), row('1002', 10, { plays: 5 }), row('1005', 90, { plays: 5 })];
+    expect(fansOf(rows).map(f => f.id)).toEqual(['1005', '1002']);
+    expect(fansOf([...rows].reverse()).map(f => f.id)).toEqual(['1005', '1002']);
+  });
+
+  it('can also be on the Top 7: both prizes are theirs', () => {
+    const rows = [row('1001', 900, { plays: 60 }), row('1002', 100, { plays: 3 })];
+    const f = factsOf(rows);
+    expect(f.winners[0]!.id).toBe('1001');
+    expect(f.fans[0]!.id).toBe('1001');
+  });
+
+  it('are fewer when fewer than two people have played', () => {
+    expect(fansOf([row('1001', 5, { plays: 1 })])).toHaveLength(1);
+    expect(fansOf([])).toEqual([]);
   });
 });
 
