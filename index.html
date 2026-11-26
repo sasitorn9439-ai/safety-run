@@ -17,7 +17,7 @@
 <div class="hud" id="hud">
 <div class="hud-bar">
 <img id="hudAv" class="av hud-av" alt="" width="40" height="40">
-<div class="hud-score"><small>คะแนน</small><strong id="hudScore">0</strong></div>
+<div class="hud-score"><small data-i18n="hudScore">คะแนน</small><strong id="hudScore">0</strong></div>
 <span class="hud-x2" id="hudX2"></span>
 <div class="hud-ppe" id="hudPpe"></div>
 </div>
@@ -28,104 +28,104 @@
 <div class="toast" id="toast"></div>
 <div class="banner" id="banner"><b id="bnMsg"></b><span id="bnSub"></span></div>
 <div class="officer" id="officer">
-<div class="bubble"><small>Safety Officer ทักทาย</small><p id="ofMsg"></p><em id="ofPts"></em></div>
+<div class="bubble"><small data-i18n="officerHi">Safety Officer ทักทาย</small><p id="ofMsg"></p><em id="ofPts"></em></div>
 <div class="of" aria-hidden="true"></div>
 </div>
 </div>
 <div class="count" id="count" aria-hidden="true"></div>
 <div class="tut" id="tut"><small id="tutHead"></small><strong id="tutTh"></strong><span id="tutEn"></span></div>
-<div class="tut-ok" id="tutOk">ผ่านแล้ว</div>
+<div class="tut-ok" id="tutOk" data-i18n="tutOk">ผ่านแล้ว</div>
 <div class="tut-arrow" id="tutArrow"><svg viewBox="-30 -20 60 40" aria-hidden="true"><path d="M-18 -5 L5 -5 L5 -14 L18 0 L5 14 L5 5 L-18 5 Z" fill="#ffd400" stroke="#111" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
-<button id="skipTut" type="button">ข้ามการสอน · Skip</button>
-<button id="pauseBtn" type="button" aria-label="หยุดชั่วคราว · Pause"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="3" width="4.5" height="14" rx="1.2"/><rect x="11.5" y="3" width="4.5" height="14" rx="1.2"/></svg></button>
+<button id="skipTut" type="button" data-i18n="skipTut">ข้ามการสอน</button>
+<button id="pauseBtn" type="button" aria-label="หยุดชั่วคราว" data-i18n-aria="pauseAria"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="3" width="4.5" height="14" rx="1.2"/><rect x="11.5" y="3" width="4.5" height="14" rx="1.2"/></svg></button>
 
 <div class="ov on" id="menu"><div class="card scroll">
 <header class="menu-hero">
-<div><p class="event">EHS Day 2026 · MCAM</p><h1>SAFETY RUN</h1></div>
+<div><div class="hero-top"><p class="event">EHS Day 2026 · MCAM</p><div class="lang-switch" id="langSwitch" role="radiogroup" aria-label="ภาษา · Language" data-lang="th"><button type="button" role="radio" data-lang="th" lang="th" aria-checked="true" aria-label="ภาษาไทย">ไทย</button><button type="button" role="radio" data-lang="en" lang="en" aria-checked="false" aria-label="English">EN</button></div></div><h1>SAFETY RUN</h1></div>
 <img src="/assets/mascot-2d/menu-runner.png" alt="" width="112" height="112">
 </header>
-<p class="sub">หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><strong>เล่นได้หลายรอบ นับคะแนนสูงสุด</strong><br>กรอกรหัสพนักงานเพื่อรับไอคอนบนตารางอันดับ</p>
-<button class="btn alt prize-btn" id="prizeBtn" type="button" aria-haspopup="dialog">🏆 ดูของรางวัล Top 7 · Prizes</button>
-<button class="btn alt ward-btn" id="wardBtn" type="button" aria-haspopup="dialog"><canvas class="ward-ico chest-art" aria-hidden="true"></canvas>กล่องสุ่ม &amp; ตู้เสื้อผ้า · Wardrobe <span class="ward-badge" id="wardBadge" hidden></span></button>
+<p class="sub" data-i18n-html="menuSub">หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><strong>เล่นได้หลายรอบ นับคะแนนสูงสุด</strong><br>กรอกรหัสพนักงานเพื่อรับไอคอนบนตารางอันดับ</p>
+<button class="btn alt prize-btn" id="prizeBtn" type="button" aria-haspopup="dialog" data-i18n="prizeBtn">🏆 ดูของรางวัล Top 7</button>
+<button class="btn alt ward-btn" id="wardBtn" type="button" aria-haspopup="dialog"><canvas class="ward-ico chest-art" aria-hidden="true"></canvas><span data-i18n="wardBtn">กล่องสุ่ม &amp; ตู้เสื้อผ้า</span> <span class="ward-badge" id="wardBadge" hidden></span></button>
 <form id="login" autocomplete="off">
-<div class="field"><label for="empId">รหัสพนักงาน · Employee ID</label>
+<div class="field"><label for="empId" data-i18n="empId">รหัสพนักงาน</label>
 <div class="id-row"><input id="empId" maxlength="4" required inputmode="numeric" pattern="[0-9]*" enterkeyhint="go" autocomplete="off">
-<button class="lock" id="lockBtn" type="button" data-state="open" aria-pressed="false" aria-label="ล็อคอิน · Log in"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="shackle" d="M8 11V7.5a4 4 0 0 1 8 0V11"/><rect class="body" x="4.5" y="10.5" width="15" height="11" rx="2.5"/><circle class="hole" cx="12" cy="16" r="1.6"/></svg></button></div></div>
+<button class="lock" id="lockBtn" type="button" data-state="open" aria-pressed="false" aria-label="ล็อคอิน"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="shackle" d="M8 11V7.5a4 4 0 0 1 8 0V11"/><rect class="body" x="4.5" y="10.5" width="15" height="11" rx="2.5"/><circle class="hole" cx="12" cy="16" r="1.6"/></svg></button></div></div>
 <p class="msg" id="loginMsg"></p>
-<button class="btn" id="startBtn" type="submit">เริ่มวิ่ง · Start</button>
+<button class="btn" id="startBtn" type="submit" data-i18n="start">เริ่มวิ่ง</button>
 </form>
-<div class="row2"><button class="btn alt" id="boardBtn" type="button">ดูอันดับ<br><span class="en">Leaderboard</span></button>
-<button class="btn alt" id="howBtn" type="button" aria-haspopup="dialog">วิธีเล่น<br><span class="en">How to play</span></button></div>
-<p class="small">เล่นพอดี ๆ อย่าลืมพักสายตา<br>กดหยุดพัก แล้วกลับมาเล่นต่อได้ ❤️</p>
-<button class="news-link" id="newsBtn" type="button" aria-haspopup="dialog">เวอร์ชัน 0.0.2 · มีอะไรใหม่</button>
+<div class="row2"><button class="btn alt" id="boardBtn" type="button" data-i18n="boardBtn">ดูอันดับ</button>
+<button class="btn alt" id="howBtn" type="button" aria-haspopup="dialog" data-i18n="howBtn">วิธีเล่น</button></div>
+<p class="small" data-i18n-html="menuSmall">เล่นพอดี ๆ อย่าลืมพักสายตา<br>กดหยุดพัก แล้วกลับมาเล่นต่อได้ ❤️</p>
+<button class="news-link" id="newsBtn" type="button" aria-haspopup="dialog" data-i18n="newsBtn">เวอร์ชัน 0.0.2 · มีอะไรใหม่</button>
 </div></div>
 
 <div class="ov how" id="howOv" role="dialog" aria-modal="true" aria-labelledby="howTitle"><div class="card scroll">
-<h2 id="howTitle">วิธีเล่น · How to play</h2>
+<h2 id="howTitle" data-i18n="howTitle">วิธีเล่น</h2>
 <ul>
-<li><b>← →</b><span>ปัดซ้าย/ขวา เปลี่ยนเลน หลบโฟล์คลิฟท์และกองวัสดุ<br><span class="en">Swipe to change lanes</span></span></li>
-<li><b>↑</b><span>ปัดขึ้น กระโดดข้ามพื้นเปียก สายไฟพาดทาง<br><span class="en">Swipe up to jump</span></span></li>
-<li><b>↓</b><span>ปัดลง สไลด์ลอดนั่งร้านที่อยู่ต่ำ<br><span class="en">Swipe down to slide</span></span></li>
-<li><b>?</b><span>ชนแล้วตอบคำถามความปลอดภัยให้ถูก ได้วิ่งต่อ 1 ครั้งต่อรอบ (คำถามไม่ซ้ำ)<br><span class="en">Crash? Answer correctly to continue, once per run</span></span></li>
-<li><b>!</b><span>ทุก 1,500 เมตร มีเซอร์ไพรส์ เช่น Safety Officer โผล่มาทัก ฝนเหรียญ หรือคะแนน x2<br><span class="en">Surprise every 1,500 m</span></span></li>
-<li><b>●</b><span>เก็บเหรียญเพิ่มคะแนน แถวเหรียญจะมี PPE แทรกอยู่ทีละชิ้น<br><span class="en">Grab coins; PPE items turn up one at a time among them</span></span></li>
-<li><b>PPE</b><span>เก็บครบ 5 ชนิด ได้โล่ Full PPE กันชน 1 ครั้ง<br><span class="en">Collect all 5 PPE for a shield</span></span></li>
-<li><b>x3</b><span>หลบเฉียดฉิว (เปลี่ยนเลน กระโดด หรือสไลด์ในจังหวะสุดท้าย) ต่อคอมโบ Near Miss คะแนนเหรียญและ PPE คูณสูงสุด x4<br><span class="en">Late dodges build a Near Miss combo: up to x4 on coins and PPE</span></span></li>
-<li><b>★</b><span>ไอเทม Safety ในแถวเหรียญ: E-Stop ทำให้เกมช้าลง · ไม้กวาด 5ส ดูดเหรียญ · รถกระเช้าลอยข้ามอันตราย · ชุดปฐมพยาบาลกันชนเพิ่ม 1 ครั้ง · กล่อง Toolbox Talk ได้ของรางวัลพร้อมเกร็ดความรู้<br><span class="en">Power-ups: E-Stop, 5S broom, man-lift, first-aid kit, Toolbox Talk box</span></span></li>
-<li><b>Z</b><span>วิ่งผ่านหลายพื้นที่ของโรงงาน แต่ละที่มีอันตรายและเรื่อง Safety ต่างกัน เช่น ไอสารเคมีที่ลอยข้ามเลน ของที่ตกใส่เลนที่คุณยืนอยู่ (ออกจากเลนเมื่อเครื่องหมายแดงนิ่ง) และประกายไฟที่ติดดับเป็นจังหวะ<br><span class="en">Moving hazards: drifting fumes, a load that locks onto your lane, a switching electrical arc</span></span></li>
+<li><b>← →</b><span data-i18n="how1">ปัดซ้าย/ขวา เปลี่ยนเลน หลบโฟล์คลิฟท์และกองวัสดุ</span></li>
+<li><b>↑</b><span data-i18n="how2">ปัดขึ้น กระโดดข้ามพื้นเปียก สายไฟพาดทาง</span></li>
+<li><b>↓</b><span data-i18n="how3">ปัดลง สไลด์ลอดนั่งร้านที่อยู่ต่ำ</span></li>
+<li><b>?</b><span data-i18n="how4">ชนแล้วตอบคำถามความปลอดภัยให้ถูก ได้วิ่งต่อ 1 ครั้งต่อรอบ (คำถามไม่ซ้ำ)</span></li>
+<li><b>!</b><span data-i18n="how5">ทุก 1,500 เมตร มีเซอร์ไพรส์ เช่น Safety Officer โผล่มาทัก ฝนเหรียญ หรือคะแนน x2</span></li>
+<li><b>●</b><span data-i18n="how6">เก็บเหรียญเพิ่มคะแนน แถวเหรียญจะมี PPE แทรกอยู่ทีละชิ้น</span></li>
+<li><b>PPE</b><span data-i18n="how7">เก็บครบ 5 ชนิด ได้โล่ Full PPE กันชน 1 ครั้ง</span></li>
+<li><b>x3</b><span data-i18n="how8">หลบเฉียดฉิว (เปลี่ยนเลน กระโดด หรือสไลด์ในจังหวะสุดท้าย) ต่อคอมโบ Near Miss คะแนนเหรียญและ PPE คูณสูงสุด x4</span></li>
+<li><b>★</b><span data-i18n="how9">ไอเทม Safety ในแถวเหรียญ: E-Stop ทำให้เกมช้าลง · ไม้กวาด 5ส ดูดเหรียญ · รถกระเช้าลอยข้ามอันตราย · ชุดปฐมพยาบาลกันชนเพิ่ม 1 ครั้ง · กล่อง Toolbox Talk ได้ของรางวัลพร้อมเกร็ดความรู้</span></li>
+<li><b>Z</b><span data-i18n="how10">วิ่งผ่านหลายพื้นที่ของโรงงาน แต่ละที่มีอันตรายและเรื่อง Safety ต่างกัน เช่น ไอสารเคมีที่ลอยข้ามเลน ของที่ตกใส่เลนที่คุณยืนอยู่ (ออกจากเลนเมื่อเครื่องหมายแดงนิ่ง) และประกายไฟที่ติดดับเป็นจังหวะ</span></li>
 </ul>
-<p class="small">กดเริ่มแล้วนับเป็น 1 ครั้งทันที ห้ามปิดหน้าจอระหว่างเล่น · กดปุ่ม ‖ เพื่อหยุดชั่วคราว · คอมพิวเตอร์ใช้ปุ่มลูกศร หยุดด้วย P หรือ Esc</p>
-<button class="btn" id="howClose" type="button">เข้าใจแล้ว · Got it</button>
+<p class="small" data-i18n="howFoot">กดเริ่มแล้วนับเป็น 1 ครั้งทันที ห้ามปิดหน้าจอระหว่างเล่น · กดปุ่ม ‖ เพื่อหยุดชั่วคราว · คอมพิวเตอร์ใช้ปุ่มลูกศร หยุดด้วย P หรือ Esc</p>
+<button class="btn" id="howClose" type="button" data-i18n="gotIt">เข้าใจแล้ว</button>
 </div></div>
 
 <div class="ov how" id="prizeOv" role="dialog" aria-modal="true" aria-labelledby="prizeTitle"><div class="card scroll">
-<h2 id="prizeTitle">ของรางวัล · Prizes</h2>
+<h2 id="prizeTitle" data-i18n="prizeTitle">ของรางวัล</h2>
 <div class="prizes">
-<div class="prize p1"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="16" y="2" width="12" height="40" rx="5" fill="#1b1d21"/><rect x="11" y="11" width="22" height="22" rx="6" fill="#2b2f36" stroke="#ffd400" stroke-width="1.5"/><rect x="14" y="14" width="16" height="16" rx="4" fill="#0e1a24"/><path d="M17 23h3l2-4 2 7 2-3h2" fill="none" stroke="#5ad1ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>อันดับ 1 · 1st prize</b><span>HUAWEI Band 11 Series (Polym Black)</span></div></div>
-<div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="3" y="9" width="38" height="26" rx="4" fill="#2e9e47"/><g fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="13" y="14" width="11" height="16" rx="1.5"/><path d="M13 20h11"/><path d="M24 19h3a2 2 0 0 1 2 2v5a2 2 0 0 0 4 0v-8l-3-3"/></g></svg><div><b>อันดับ 2 ถึง 5 · 2nd to 5th prize</b><span>บัตรเติมน้ำมัน มูลค่า 500 บาท</span></div></div>
-<div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M5 22a17 15 0 0 1 34 0z" fill="#ff7a1a"/><path d="M5 22c3-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 5.5-2 8.5 0" fill="none" stroke="#c45c10" stroke-width="1.5"/><path d="M22 7v26a4 4 0 0 1-8 0" fill="none" stroke="#cfd6de" stroke-width="2.2" stroke-linecap="round"/></svg><div><b>อันดับ 6 และ 7 · 6th &amp; 7th prize</b><span>BEZ ร่มพับอัตโนมัติ</span></div></div>
+<div class="prize p1"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="16" y="2" width="12" height="40" rx="5" fill="#1b1d21"/><rect x="11" y="11" width="22" height="22" rx="6" fill="#2b2f36" stroke="#ffd400" stroke-width="1.5"/><rect x="14" y="14" width="16" height="16" rx="4" fill="#0e1a24"/><path d="M17 23h3l2-4 2 7 2-3h2" fill="none" stroke="#5ad1ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b data-i18n="prize1">อันดับ 1</b><span data-i18n="prize1Item">HUAWEI Band 11 Series (Polym Black)</span></div></div>
+<div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="3" y="9" width="38" height="26" rx="4" fill="#2e9e47"/><g fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="13" y="14" width="11" height="16" rx="1.5"/><path d="M13 20h11"/><path d="M24 19h3a2 2 0 0 1 2 2v5a2 2 0 0 0 4 0v-8l-3-3"/></g></svg><div><b data-i18n="prize2">อันดับ 2 ถึง 5</b><span data-i18n="prize2Item">บัตรเติมน้ำมัน มูลค่า 500 บาท</span></div></div>
+<div class="prize"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M5 22a17 15 0 0 1 34 0z" fill="#ff7a1a"/><path d="M5 22c3-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 6-2 8.5 0 2.5-2 5.5-2 8.5 0" fill="none" stroke="#c45c10" stroke-width="1.5"/><path d="M22 7v26a4 4 0 0 1-8 0" fill="none" stroke="#cfd6de" stroke-width="2.2" stroke-linecap="round"/></svg><div><b data-i18n="prize3">อันดับ 6 และ 7</b><span data-i18n="prize3Item">BEZ ร่มพับอัตโนมัติ</span></div></div>
 </div>
-<p class="small">นับคะแนนสูงสุดของแต่ละคน รักษาอันดับไว้จนประกาศผล</p>
-<button class="btn" id="prizeClose" type="button">ปิด · Close</button>
+<p class="small" data-i18n="prizeNote">นับคะแนนสูงสุดของแต่ละคน รักษาอันดับไว้จนประกาศผล</p>
+<button class="btn" id="prizeClose" type="button" data-i18n="close">ปิด</button>
 </div></div>
 
 <div class="ov how" id="newsOv" data-version="0.0.2" role="dialog" aria-modal="true" aria-labelledby="newsTitle"><div class="card scroll">
-<h2 id="newsTitle">มีอะไรใหม่ · What's new</h2>
-<p class="news-ver">เวอร์ชัน 0.0.2</p>
+<h2 id="newsTitle" data-i18n="newsTitle">มีอะไรใหม่</h2>
+<p class="news-ver" data-i18n="ver002">เวอร์ชัน 0.0.2</p>
 <ul>
-<li><b><canvas class="news-ico chest-art" aria-hidden="true"></canvas></b><span>หีบสมบัติ! หาได้ในแถวเหรียญ เปิดได้สกิน หมวก เอฟเฟกต์ <mark class="news-hi">ผู้เล่นเก่ารับฟรี 10 หีบ</mark><br><span class="en">Find treasure chests on your runs. <mark class="news-hi">Old players get 10 free chests.</mark></span></span></li>
-<li><b><svg class="news-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5a2 2 0 1 1 2 2c-.9 0-2 .6-2 1.8v.7m0 0L3.6 15.4A1.5 1.5 0 0 0 4.5 18h15a1.5 1.5 0 0 0 .9-2.6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></b><span>ตู้เสื้อผ้า แต่งตัวละคร ลองใส่ได้ก่อนปลดล็อก<br><span class="en">Dress up your mascot in the Wardrobe.</span></span></li>
+<li><b><canvas class="news-ico chest-art" aria-hidden="true"></canvas></b><span data-i18n-html="news1">หีบสมบัติ! หาได้ในแถวเหรียญ เปิดได้สกิน หมวก เอฟเฟกต์ <mark class="news-hi">ผู้เล่นเก่ารับฟรี 10 หีบ</mark></span></li>
+<li><b><svg class="news-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5a2 2 0 1 1 2 2c-.9 0-2 .6-2 1.8v.7m0 0L3.6 15.4A1.5 1.5 0 0 0 4.5 18h15a1.5 1.5 0 0 0 .9-2.6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></b><span data-i18n="news2">ตู้เสื้อผ้า แต่งตัวละคร ลองใส่ได้ก่อนปลดล็อก</span></li>
 </ul>
-<p class="news-ver news-old">เวอร์ชัน 0.0.1</p>
+<p class="news-ver news-old" data-i18n="ver001">เวอร์ชัน 0.0.1</p>
 <ul>
-<li><b>🏆</b><span>ขยายรางวัลถึง Top 7 อันดับ 2 ถึง 5 ได้บัตรเติมน้ำมัน 500 บาท อันดับ 6 และ 7 ได้ร่มพับอัตโนมัติ<br><span class="en">Prizes now go to the top 7.</span></span></li>
-<li><b>⏱</b><span>ปลดลิมิตเวลาแล้ว เล่นได้เกิน 30 นาที วิ่งต่อได้จนกว่าจะชน<br><span class="en">No more 30-minute limit. Keep running until you crash.</span></span></li>
+<li><b>🏆</b><span data-i18n="news3">ขยายรางวัลถึง Top 7 อันดับ 2 ถึง 5 ได้บัตรเติมน้ำมัน 500 บาท อันดับ 6 และ 7 ได้ร่มพับอัตโนมัติ</span></li>
+<li><b>⏱</b><span data-i18n="news4">ปลดลิมิตเวลาแล้ว เล่นได้เกิน 30 นาที วิ่งต่อได้จนกว่าจะชน</span></li>
 </ul>
-<button class="btn" id="newsClose" type="button">รับทราบ · Got it</button>
+<button class="btn" id="newsClose" type="button" data-i18n="newsOk">รับทราบ</button>
 </div></div>
 
 <div class="ov how" id="wardOv" role="dialog" aria-modal="true" aria-labelledby="wardTitle"><div class="card scroll">
-<h2 id="wardTitle">ตู้เสื้อผ้า · Wardrobe</h2>
+<h2 id="wardTitle" data-i18n="wardTitle">ตู้เสื้อผ้า</h2>
 <div class="ward-top">
-<canvas id="wardPreview" aria-label="ตัวละครกับชุดที่ใส่อยู่"></canvas>
+<canvas id="wardPreview" aria-label="ตัวละครกับชุดที่ใส่อยู่" data-i18n-aria="wardPreview"></canvas>
 <div class="ward-box">
 <canvas class="ward-gift chest-art" aria-hidden="true"></canvas>
-<p><b id="wardBoxes">0</b> กล่องสุ่ม · loot boxes</p>
+<p><b id="wardBoxes">0</b> <span data-i18n="wardBoxes">กล่องสุ่ม</span></p>
 <div class="row2"><button class="btn" id="wardOpen" type="button">เปิด 1</button><button class="btn alt" id="wardOpenMany" type="button">เปิด 10</button></div>
 <div class="ward-meter" id="wardMeter" role="img"></div>
 <p class="small" id="wardCount"></p>
 </div>
 </div>
-<p class="small ward-how">กล่องสุ่มหายากมาก วิ่งให้ไกลแล้วมองหาหีบสมบัติในแถวเหรียญ ได้ของซ้ำครบ 5 ชิ้น รับกล่องฟรี 1 กล่อง · Rare treasure chests hide in coin trails on long runs</p>
-<div class="ward-tabs" id="wardTabs" role="tablist"><button type="button" role="tab" data-slot="skin">สกิน</button><button type="button" role="tab" data-slot="hat">หมวก</button><button type="button" role="tab" data-slot="effect">เอฟเฟกต์</button></div>
+<p class="small ward-how" data-i18n="wardHow">กล่องสุ่มหายากมาก วิ่งให้ไกลแล้วมองหาหีบสมบัติในแถวเหรียญ ได้ของซ้ำครบ 5 ชิ้น รับกล่องฟรี 1 กล่อง</p>
+<div class="ward-tabs" id="wardTabs" role="tablist"><button type="button" role="tab" data-slot="skin" data-i18n="tabSkin">สกิน</button><button type="button" role="tab" data-slot="hat" data-i18n="tabHat">หมวก</button><button type="button" role="tab" data-slot="effect" data-i18n="tabEffect">เอฟเฟกต์</button></div>
 <div class="ward-info" id="wardInfo"></div>
 <div class="ward-grid" id="wardGrid"></div>
-<div class="ward-foot"><button class="btn alt" id="wardClose" type="button">ปิด · Close</button></div>
+<div class="ward-foot"><button class="btn alt" id="wardClose" type="button" data-i18n="close">ปิด</button></div>
 </div></div>
 
-<div class="ov ward-stage" id="wardStage" role="dialog" aria-modal="true" aria-label="เปิดกล่องสุ่ม · Open loot box">
+<div class="ov ward-stage" id="wardStage" role="dialog" aria-modal="true" aria-label="เปิดกล่องสุ่ม" data-i18n-aria="openBox">
 <div class="ward-flash" id="wardFlash" aria-hidden="true"></div>
-<button class="ward-stage-x" id="wardStageClose" type="button" aria-label="ปิด · Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg></button>
+<button class="ward-stage-x" id="wardStageClose" type="button" aria-label="ปิด" data-i18n-aria="close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg></button>
 <button class="ward-bigbox" id="wardBigBox" type="button" aria-describedby="wardHint"><canvas id="wardBoxArt"></canvas><span class="ward-x" id="wardBoxX"></span></button>
 <canvas class="ward-dust" id="wardDust" aria-hidden="true"></canvas>
 <p class="ward-hint" id="wardHint" role="status"></p>
@@ -135,8 +135,8 @@
 <p class="ward-pick" id="wardPick"></p>
 <div class="ward-meter" id="wardResultMeter" role="img" hidden></div>
 <div class="ward-actions">
-<button class="btn" id="wardWear" type="button">ใส่ · Wear</button>
-<button class="btn alt" id="wardKeep" type="button">ปิด · Close</button>
+<button class="btn" id="wardWear" type="button" data-i18n="wear">ใส่</button>
+<button class="btn alt" id="wardKeep" type="button" data-i18n="close">ปิด</button>
 <button class="btn alt" id="wardMore1" type="button">เปิดต่อ 1</button>
 <button class="btn alt" id="wardMoreMany" type="button">เปิดต่อ 10</button>
 </div>
@@ -144,28 +144,28 @@
 </div>
 
 <div class="ov" id="over"><div class="card">
-<p class="hit">เกิดอุบัติเหตุ · Accident</p>
+<p class="hit" data-i18n="accident">เกิดอุบัติเหตุ</p>
 <h2 id="hTitle"></h2>
 <div class="en" id="hTitleEn"></div>
 <div class="lesson"><p id="hTip"></p><p class="en" id="hTipEn"></p></div>
-<div class="stats"><div id="sScoreBox"><strong id="sScore">0</strong><span>คะแนน · Score</span></div><div><strong id="sDist">0</strong><span>ระยะทาง (ม.) · Distance</span></div></div>
+<div class="stats"><div id="sScoreBox"><strong id="sScore">0</strong><span data-i18n="score">คะแนน</span></div><div><strong id="sDist">0</strong><span data-i18n="distance">ระยะทาง (ม.)</span></div></div>
 <div class="tally" id="sTally">
-<div class="tally-row" id="sCoinRow"><span class="tally-pile"><img id="sCoinImg" alt="เหรียญ · Coins" width="24" height="24"><b id="sCoins">0</b></span><em id="sCoinPts">+0</em></div>
+<div class="tally-row" id="sCoinRow"><span class="tally-pile"><img id="sCoinImg" alt="เหรียญ" data-i18n-alt="coins" width="24" height="24"><b id="sCoins">0</b></span><em id="sCoinPts">+0</em></div>
 <div class="tally-row" id="sPpeRow"><span>PPE</span><em id="sPpePts">+0</em></div>
 <div class="tally-row" id="sNearRow"><span>Near miss</span><em id="sNearPts">+0</em></div>
-<div class="tally-row" id="sExtraRow"><span>โบนัสพิเศษ · Extra</span><em id="sExtraPts">+0</em></div>
-<div class="tally-row tally-loot" id="sLootRow"><span class="tally-pile"><canvas class="tally-chest chest-art" aria-hidden="true"></canvas>กล่องสุ่ม · Loot box</span><em id="sLoot">×0</em></div>
+<div class="tally-row" id="sExtraRow"><span data-i18n="extra">โบนัสพิเศษ</span><em id="sExtraPts">+0</em></div>
+<div class="tally-row tally-loot" id="sLootRow"><span class="tally-pile"><canvas class="tally-chest chest-art" aria-hidden="true"></canvas><span data-i18n="lootBox">กล่องสุ่ม</span></span><em id="sLoot">×0</em></div>
 </div>
 <p class="gap" id="overGap"></p>
-<button class="btn" id="chanceBtn">ตอบคำถามความปลอดภัย เพื่อวิ่งต่อ</button>
-<button class="btn alt" id="endBtn">จบเกม ส่งคะแนน · Submit score</button>
+<button class="btn" id="chanceBtn" data-i18n="chanceIdle">ตอบคำถามความปลอดภัย เพื่อวิ่งต่อ</button>
+<button class="btn alt" id="endBtn" data-i18n="endRun">จบเกม ส่งคะแนน</button>
 </div></div>
 
 <div class="ov" id="pauseOv"><div class="card">
-<p class="hit">หยุดชั่วคราว · Paused</p>
-<div class="stats"><div><strong id="pScore">0</strong><span>คะแนน · Score</span></div><div><strong id="pDist">0</strong><span>ระยะทาง (ม.) · Distance</span></div></div>
-<button class="btn" id="pResume" type="button">เล่นต่อ · Resume</button>
-<button class="btn alt" id="pMenu" type="button">เมนูหลัก · Main menu</button>
+<p class="hit" data-i18n="paused">หยุดชั่วคราว</p>
+<div class="stats"><div><strong id="pScore">0</strong><span data-i18n="score">คะแนน</span></div><div><strong id="pDist">0</strong><span data-i18n="distance">ระยะทาง (ม.)</span></div></div>
+<button class="btn" id="pResume" type="button" data-i18n="resume">เล่นต่อ</button>
+<button class="btn alt" id="pMenu" type="button">เมนูหลัก</button>
 <p class="msg" id="pMsg"></p>
 </div></div>
 
@@ -178,28 +178,28 @@
 <button class="btn" id="qNext" style="display:none"></button>
 </div></div>
 <div class="ov" id="avOv"><div class="card">
-<p class="hit" id="avHead">ไอคอนประจำตัวของคุณ</p>
+<p class="hit" id="avHead" data-i18n="avHead">ไอคอนประจำตัวของคุณ</p>
 <div class="youav"><div id="avBig"></div><b id="avName"></b></div>
-<p class="sub" style="text-align:center;margin-bottom:0">ตารางอันดับจะแสดงไอคอนนี้แทนรหัสพนักงาน<br>ไม่มีใครได้ไอคอนซ้ำกับคุณ</p>
-<button class="btn" id="avGo">เริ่มวิ่ง</button>
+<p class="sub" style="text-align:center;margin-bottom:0" data-i18n-html="avNote">ตารางอันดับจะแสดงไอคอนนี้แทนรหัสพนักงาน<br>ไม่มีใครได้ไอคอนซ้ำกับคุณ</p>
+<button class="btn" id="avGo" data-i18n="avGo">เริ่มวิ่ง</button>
 </div></div>
 <div class="ov" id="done"><div class="card scroll">
-<p class="hit" id="doneHead">ส่งคะแนนแล้ว · Score submitted</p>
+<p class="hit" id="doneHead">ส่งคะแนนแล้ว</p>
 <h2 id="doneScore"></h2>
 <p class="sub" id="doneRank"></p>
 <p class="msg" id="doneMsg"></p>
-<button class="btn" id="retryBtn" style="display:none">ส่งคะแนนอีกครั้ง · Retry</button>
+<button class="btn" id="retryBtn" style="display:none" data-i18n="retry">ส่งคะแนนอีกครั้ง</button>
 <button class="btn" id="againBtn" style="display:none"></button>
-<button class="btn alt" id="homeBtn" type="button" style="display:none">เมนูหลัก · Main menu</button>
+<button class="btn alt" id="homeBtn" type="button" style="display:none" data-i18n="mainMenu">เมนูหลัก</button>
 <ol class="board" id="doneBoard"></ol>
-<p class="small">ขอบคุณที่ร่วมกิจกรรม EHS Day 2026 · Thank you for playing safe</p>
+<p class="small" data-i18n="thanks">ขอบคุณที่ร่วมกิจกรรม EHS Day 2026</p>
 </div></div>
 
 <div class="ov" id="boardOv"><div class="card scroll">
-<h2>อันดับ · Leaderboard</h2>
+<h2 data-i18n="board">อันดับ</h2>
 <p class="sub" id="boardTotal"></p>
 <ol class="board" id="boardList"></ol>
-<button class="btn alt" id="boardBack">กลับ · Back</button>
+<button class="btn alt" id="boardBack" data-i18n="back">กลับ</button>
 </div></div>
 </div>
 <script type="module" src="/src/main.ts"></script>

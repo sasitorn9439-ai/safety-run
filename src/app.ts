@@ -1,4 +1,3 @@
-import { avName } from '../shared/avatar.js';
 import { RULES, type Action } from '../shared/sim.js';
 import { api, isFinalFinishError, type BoardResp, type FinishResp, type StartResp } from './lib/api.js';
 import { avImg } from './lib/avatar.js';
@@ -11,6 +10,8 @@ import { Hud } from './ui/hud.js';
 import { Tally } from './ui/tally.js';
 import { mountWardrobe } from './ui/wardrobe.js';
 import { EMPTY_WARDROBE, cosmetic, lookOf, parseWardrobe, type Wardrobe } from './cosmetics/wardrobe.js';
+import { applyDom, getLang, mountLangSwitch, onLang, t } from './i18n/index.js';
+import { avNameL as avName, tr } from './i18n/content.js';
 
 /** this many places on the board win a prize */
 const PRIZE_RANKS = 7;
@@ -19,15 +20,16 @@ const OVERLAYS = ['menu', 'over', 'quiz', 'done', 'boardOv', 'avOv', 'pauseOv'] 
 type OverlayId = (typeof OVERLAYS)[number];
 const show = (id: OverlayId | null) => { for (const o of OVERLAYS) $(o).classList.toggle('on', o === id); };
 
-const ERR: Record<string, string> = {
-  bad_id: 'รหัสพนักงานไม่ถูกต้อง (ตัวเลข 4 หลักเท่านั้น) · Employee ID must be 4 digits',
-  no_name: 'กรุณากรอกชื่อ · Please enter your name',
-  busy: 'มีการเริ่มเล่นรหัสนี้พร้อมกันจากอีกเครื่อง ลองใหม่ · Try again',
-  server: 'ระบบขัดข้อง ลองใหม่อีกครั้ง · Server error, try again',
+/** what an API error code says to the player, in the current language */
+const errText = (code?: string) => {
+  const d = t();
+  return code === 'bad_id' ? d.errBadId : code === 'no_name' ? d.errNoName : code === 'busy' ? d.errBusy : d.errServer;
 };
 
 export async function startApp() {
   const sfx = new Sfx();
+  applyDom();                                           // the page's static text in the saved language
+  mountLangSwitch($('langSwitch'), () => sfx.beep(880, .05, 'triangle'));
   const { renderer, canvas } = await createRenderer($<HTMLCanvasElement>('c'));
   const hud = new Hud();
   const tally = new Tally({
@@ -91,13 +93,14 @@ export async function startApp() {
   }
 
   function onCrash() {
-    const h = game.hazardInfo(), s = game.score;
-    $('hTitle').textContent = h.th; $('hTitleEn').textContent = h.en; $('hTip').textContent = h.tip; $('hTipEn').textContent = h.tipEn;
+    const h = game.hazardInfo(), s = game.score, en = getLang() === 'en';
+    $('hTitle').textContent = en ? h.en : h.th; $('hTip').textContent = en ? h.tipEn : h.tip;
+    $('hTitleEn').hidden = $('hTipEn').hidden = true;
     $('sScore').textContent = '0'; $('sDist').textContent = '0'; tally.stop();
     const best = Math.max(LS.get<number>('srPb') ?? 0, game.dist);
     LS.set('srPb', best);
     void showGap(s);
-    $('chanceBtn').textContent = `ตอบคำถามให้ถูก รักษา ${s} คะแนนไว้ แล้ววิ่งต่อ (ได้ 1 ครั้ง)`;
+    $('chanceBtn').textContent = t().chance(s);
     $('chanceBtn').style.display = game.revives || !game.lastHit ? 'none' : 'block';
     if (game.sess && game.run) LS.set('srPending', { ...game.sess, score: s, ticks: game.run.tick, inputs: game.inputs, rules: RULES } satisfies Pending);
     const run = { score: s, dist: game.dist, coins: game.coins, earned: game.earned, coinSrc: $<HTMLImageElement>('hudCoinImg').src, loot: game.loot };
@@ -130,11 +133,12 @@ export async function startApp() {
       const r = await api<BoardResp>('/api/leaderboard?id=' + encodeURIComponent(id));
       if (!r.top || game.state !== 'over') return;
       const above = r.top.map((e, i) => ({ ...e, rank: i + 1 })).filter(e => e.score > score);
-      const t = above[above.length - 1];
+      const next = above[above.length - 1];
       let html = '';
-      if (!t) html = r.top.length ? 'คะแนนรอบนี้สูงกว่าทุกคนบนอันดับ <b>เป็นที่ 1</b> แล้ว!' : '';
-      else if (t.me) html = `อีก <b>${t.score - score}</b> คะแนน จะทำลายสถิติของคุณเอง (อันดับ ${t.rank})`;
-      else html = `เหลืออีก <b>${t.score - score}</b> คะแนน ถึงอันดับ <b>${t.rank}</b>${t.rank <= PRIZE_RANKS ? ' ซึ่งได้รางวัล' : ''}`;
+      const d = t();
+      if (!next) html = r.top.length ? d.gapTop : '';
+      else if (next.me) html = d.gapSelf(next.score - score, next.rank);
+      else html = d.gapRank(next.score - score, next.rank, next.rank <= PRIZE_RANKS);
       if (html) { el.innerHTML = html; el.classList.add('on'); }
     } catch { /* the board is a nicety, never block the crash screen */ }
   }
@@ -149,7 +153,7 @@ export async function startApp() {
     if (!game.pause()) return;
     leaveAsk = false; swiping = false;
     $('pScore').textContent = String(game.score); $('pDist').textContent = String(game.dist); $('pMsg').textContent = '';
-    $('pMenu').textContent = 'เมนูหลัก · Main menu';
+    $('pMenu').textContent = t().mainMenu;
     show('pauseOv');
   }
   function resumeRun() {
@@ -164,7 +168,7 @@ export async function startApp() {
   function goMenu() { game.toMenu(); $('loginMsg').textContent = ''; show('menu'); }
   function leaveRun() {
     LS.set('srPending', null); game.sess = null; goMenu();
-    $('loginMsg').textContent = 'ออกจากรอบก่อนหน้าแล้ว นับเป็น 1 ครั้ง · Previous run was left and counted';
+    $('loginMsg').textContent = t().leftRun;
   }
   pauseBtn.onclick = pauseRun;
   pauseBtn.addEventListener('pointerdown', e => e.stopPropagation());
@@ -172,8 +176,8 @@ export async function startApp() {
   $('pMenu').onclick = () => {
     if (!leaveAsk) {
       leaveAsk = true;
-      $('pMsg').textContent = 'ออกตอนนี้ คะแนนรอบนี้จะไม่ถูกบันทึก และนับเป็น 1 ครั้ง · This run will not be scored';
-      $('pMenu').textContent = 'ยืนยันออกจากรอบนี้ · Confirm leave';
+      $('pMsg').textContent = t().leaveWarn;
+      $('pMenu').textContent = t().leaveConfirm;
       return;
     }
     leaveRun();
@@ -224,7 +228,7 @@ export async function startApp() {
   function setLock(state: 'open' | 'busy' | 'locked') {
     lockBtn.dataset.state = state;
     lockBtn.setAttribute('aria-pressed', String(state === 'locked'));
-    lockBtn.setAttribute('aria-label', state === 'locked' ? 'ล็อคอินแล้ว แตะเพื่อเปลี่ยนรหัส · Logged in, tap to change' : state === 'busy' ? 'กำลังล็อคอิน · Logging in' : 'ล็อคอิน · Log in');
+    lockBtn.setAttribute('aria-label', state === 'locked' ? t().lockLocked : state === 'busy' ? t().lockBusy : t().lockOpen);
     empIn.readOnly = state !== 'open';
   }
   function clearWardrobe() {
@@ -250,7 +254,7 @@ export async function startApp() {
         return true;
       }
       clearWardrobe(); setLock('open'); shakeLock();
-      if (!quiet) msg.textContent = r ? ERR[r.error ?? ''] ?? ERR.server! : 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ต · No connection';
+      if (!quiet) msg.textContent = r ? errText(r.error) : t().noConn;
       return false;
     })();
     return me.done;
@@ -265,34 +269,34 @@ export async function startApp() {
   lockBtn.onclick = () => {
     if (lockBtn.dataset.state !== 'open') { unlock(); return; }
     const id = typedId();
-    if (!/^[0-9]{1,4}$/.test(id)) { $('loginMsg').textContent = ERR.bad_id!; shakeLock(); empIn.focus(); return; }   // the server decides 4 digits vs an older id
+    if (!/^[0-9]{1,4}$/.test(id)) { $('loginMsg').textContent = errText('bad_id'); shakeLock(); empIn.focus(); return; }   // the server decides 4 digits vs an older id
     void lockIn(id);
   };
   { const lp = LS.get<{ id?: string }>('srPlayer'); if (lp?.id) { empIn.value = lp.id; void lockIn(lp.id, true); } }
 
-  async function startRun(id: string, msg: HTMLElement, btn: HTMLButtonElement, label: string) {
+  async function startRun(id: string, msg: HTMLElement, btn: HTMLButtonElement, label: () => string) {
     sfx.unlock();
-    btn.disabled = true; btn.textContent = 'กำลังตรวจสอบสิทธิ์…'; msg.textContent = '';
+    btn.disabled = true; btn.textContent = t().checking; msg.textContent = '';
     try {
       const r = await api<StartResp>('/api/start', { id });
       if (r.ok && r.token) {
         LS.set('srPlayer', { id, avatar: r.avatar });
         game.sess = { id, token: r.token, run: r.run!, runNo: r.runNo!, avatar: r.avatar!, seed: r.seed!, worn: wardState?.equipped } satisfies Session;
         LS.set('srPending', { ...game.sess, score: 0 });
-        game.runLabel = `รอบที่ ${r.runNo} · GO!`;
+        game.runLabel = t().runLabel(r.runNo!);
         if (r.runNo === 1) {
           $('avBig').innerHTML = avImg(r.avatar, 120, wardState?.equipped); $('avName').textContent = avName(r.avatar); show('avOv');
           $('avGo').onclick = () => begin(!tutorialSeen.has(id) && LS.get<boolean>(tutorialKey(id)) !== true);
         } else begin(false);
-      } else if (r.error === 'used') msg.textContent = `รหัสนี้เล่นครบ ${r.max} ครั้งแล้ว${r.best != null ? ` · คะแนนดีที่สุด ${r.best}` : ''}`;
-      else msg.textContent = ERR[r.error ?? ''] ?? ERR.server!;
-    } catch { msg.textContent = 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ต · No connection'; }
-    btn.disabled = false; btn.textContent = label;
+      } else if (r.error === 'used') msg.textContent = t().used(r.max!, r.best);
+      else msg.textContent = errText(r.error);
+    } catch { msg.textContent = t().noConn; }
+    btn.disabled = false; btn.textContent = label();
   }
   $('login').onsubmit = e => {
     e.preventDefault();
     const id = typedId(), m = $('loginMsg'), btn = $<HTMLButtonElement>('startBtn');
-    if (!/^[0-9]{1,4}$/.test(id)) { m.textContent = ERR.bad_id!; shakeLock(); return; }   // the server decides 4 digits vs an older id
+    if (!/^[0-9]{1,4}$/.test(id)) { m.textContent = errText('bad_id'); shakeLock(); return; }   // the server decides 4 digits vs an older id
     if (btn.disabled) return;
     void (async () => {
       // not logged in yet (or logged in as someone else): lock the typed ID first so the run starts in their look
@@ -302,25 +306,33 @@ export async function startApp() {
         btn.disabled = false;
         if (!ok) return;
       }
-      await startRun(id, m, btn, 'เริ่มวิ่ง · Start');
+      await startRun(id, m, btn, () => t().start);
     })();
   };
 
+  /* ---------- language switch: the static text is redone by applyDom; this redoes what code wrote ---------- */
+  onLang(() => {
+    setLock((lockBtn.dataset.state as 'open' | 'busy' | 'locked') ?? 'open');
+    $('loginMsg').textContent = '';
+    wardrobe.refresh();
+    renderer.rebuild(); hud.refreshArt(); game.invalidate();          // the sign on the low scaffold has words on it
+  });
+
   /* ---------- leaderboard ---------- */
   const boardRow = (e: BoardResp['top'][number], i: number) =>
-    `<li${e.me ? ' style="outline:2px solid #ffd400"' : ''}><span class="n">${i < PRIZE_RANKS ? `<span class="medal m${i + 1}">${i + 1}</span>` : i + 1}</span>${avImg(e.avatar, 36, e.look)}<span class="who">${esc(avName(e.avatar))}${e.me ? ' (คุณ)' : ''}</span><span class="sc">${e.score}</span></li>`;
-  const boardHtml = (list: BoardResp['top']) => list.map(boardRow).join('') || '<li><span></span><span></span><span>ยังไม่มีคะแนน · No scores yet</span><span></span></li>';
+    `<li${e.me ? ' style="outline:2px solid #ffd400"' : ''}><span class="n">${i < PRIZE_RANKS ? `<span class="medal m${i + 1}">${i + 1}</span>` : i + 1}</span>${avImg(e.avatar, 36, e.look)}<span class="who">${esc(avName(e.avatar))}${e.me ? esc(t().you) : ''}</span><span class="sc">${e.score}</span></li>`;
+  const boardHtml = (list: BoardResp['top']) => list.map(boardRow).join('') || `<li><span></span><span></span><span>${esc(t().noScores)}</span><span></span></li>`;
   async function loadBoard(target: string, meId?: string): Promise<Partial<BoardResp>> {
     try {
       const r = await api<BoardResp>('/api/leaderboard' + (meId ? '?id=' + encodeURIComponent(meId) : ''));
       $(target).innerHTML = boardHtml(r.top || []);
       return r;
-    } catch { $(target).innerHTML = '<li><span></span><span>โหลดอันดับไม่ได้</span><span></span></li>'; return {}; }
+    } catch { $(target).innerHTML = `<li><span></span><span>${esc(t().boardFail)}</span><span></span></li>`; return {}; }
   }
   $('boardBtn').onclick = async () => {
-    show('boardOv'); $('boardTotal').textContent = 'กำลังโหลด…';
+    show('boardOv'); $('boardTotal').textContent = t().loading;
     const r = await loadBoard('boardList');
-    $('boardTotal').textContent = r.total != null ? `ผู้เล่นทั้งหมด ${r.total} คน · Top 20` : '';
+    $('boardTotal').textContent = r.total != null ? t().boardTotal(r.total) : '';
   };
   $('boardBack').onclick = () => show('menu');
 
@@ -331,31 +343,31 @@ export async function startApp() {
     show('done');
     const ag = $<HTMLButtonElement>('againBtn');
     ag.style.display = 'none'; $('homeBtn').style.display = 'none';
-    $('doneHead').textContent = 'กำลังส่งคะแนน… · Submitting'; $('doneScore').textContent = p.score + ' คะแนน'; $('doneRank').textContent = avName(p.avatar);
+    $('doneHead').textContent = t().submitting; $('doneScore').textContent = t().pts(p.score); $('doneRank').textContent = avName(p.avatar);
     $('doneMsg').textContent = ''; $('retryBtn').style.display = 'none'; $('doneBoard').innerHTML = '';
     try {
       const r = await api<FinishResp>('/api/finish', { id: p.id, run: p.run, token: p.token, ticks: p.ticks, inputs: p.inputs, rules: p.rules ?? 1 });
       if (r.ok) {
         LS.set('srPending', null); game.sess = null;
         void loadWardrobe(p.id);                        // boxes picked up on this run count now that it verified
-        $('doneHead').textContent = `ส่งคะแนนแล้ว · รอบที่ ${r.used}`; $('doneScore').textContent = `รอบนี้ ${r.score} คะแนน`;
-        $('doneRank').textContent = `${avName(p.avatar)} · คะแนนดีที่สุด ${r.best}`;
-        ag.textContent = 'เล่นอีกครั้ง · Play again'; ag.style.display = 'block';
-        ag.onclick = () => void startRun(p.id, $('doneMsg'), ag, ag.textContent || '');
+        $('doneHead').textContent = t().submittedRun(r.used!); $('doneScore').textContent = t().thisRun(r.score!);
+        $('doneRank').textContent = t().bestOf(avName(p.avatar), r.best!);
+        ag.textContent = t().playAgain; ag.style.display = 'block';
+        ag.onclick = () => void startRun(p.id, $('doneMsg'), ag, () => t().playAgain);
         $('homeBtn').style.display = 'block';
         const b = await loadBoard('doneBoard', p.id);
         if (b.rank) {
-          $('doneRank').textContent = `${avName(p.avatar)} · คะแนนดีที่สุด ${r.best} · อันดับที่ ${b.rank} จาก ${b.total} คน`;
-          if (b.rank <= PRIZE_RANKS) $('doneMsg').innerHTML = `<div class="win">ตอนนี้คุณอยู่อันดับ ${b.rank} รักษาอันดับไว้จนประกาศผล</div>`;
+          $('doneRank').textContent = t().bestRank(avName(p.avatar), r.best!, b.rank, b.total!);
+          if (b.rank <= PRIZE_RANKS) $('doneMsg').innerHTML = `<div class="win">${esc(t().winNote(b.rank))}</div>`;
         }
       } else if (isFinalFinishError(r)) {
         LS.set('srPending', null); game.sess = null;
-        $('doneHead').textContent = 'รอบนี้ส่งคะแนนไม่ได้'; $('doneMsg').textContent = 'ข้อมูลการเล่นไม่ผ่านการตรวจสอบ กรุณาเริ่มรอบใหม่ · Start a new run';
-        ag.textContent = 'กลับหน้าเริ่ม · Back to start'; ag.style.display = 'block'; ag.onclick = goMenu;
+        $('doneHead').textContent = t().rejectedHead; $('doneMsg').textContent = t().rejected;
+        ag.textContent = t().backStart; ag.style.display = 'block'; ag.onclick = goMenu;
       } else throw new Error('server');
     } catch {
-      $('doneHead').textContent = 'ยังส่งคะแนนไม่ได้';
-      $('doneMsg').textContent = 'เชื่อมต่อไม่ได้ คะแนนยังเก็บไว้ในเครื่อง กดส่งอีกครั้ง · Saved on this device, tap retry';
+      $('doneHead').textContent = t().notYetHead;
+      $('doneMsg').textContent = t().notYet;
       $('retryBtn').style.display = 'block';
     }
   }
@@ -366,10 +378,10 @@ export async function startApp() {
   function askQuiz() {
     if (!game.run) return;
     const { prompt, options } = game.run.quiz, ans = game.run.correct;
-    $('qHead').textContent = 'โอกาสรอด ตอบให้ถูกเพื่อวิ่งต่อ (ได้ 1 ครั้ง)';
+    $('qHead').textContent = t().quizHead;
     $('qLv').style.display = 'none';
-    $('qText').textContent = prompt; $('qEn').textContent = ''; $('qNext').style.display = 'none';
-    $('qOpts').innerHTML = options.map((x, i) => `<button class="opt" data-i="${i}">${esc(x)}</button>`).join('');
+    $('qText').textContent = tr(prompt); $('qEn').textContent = ''; $('qNext').style.display = 'none';
+    $('qOpts').innerHTML = options.map((x, i) => `<button class="opt" data-i="${i}">${esc(tr(x))}</button>`).join('');
     $('qOpts').onclick = e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('.opt');
       if (!b || $('qNext').style.display === 'block') return;
@@ -378,7 +390,7 @@ export async function startApp() {
       sfx.beep(ok ? 990 : 140, .2, ok ? 'triangle' : 'sawtooth');
       const n = $('qNext');
       n.style.display = 'block';
-      n.textContent = ok ? 'ถูกต้อง! วิ่งต่อ' : 'ยังไม่ถูก · จบรอบนี้ ส่งคะแนน';
+      n.textContent = ok ? t().quizOk : t().quizNo;
       n.onclick = () => { if (ok) { if (game.answer(i)) show(null); } else void submit(); };
     };
     show('quiz');
@@ -387,10 +399,10 @@ export async function startApp() {
 
   /* ---------- bonus-coin quiz: right or wrong, the run just continues ---------- */
   function askBonusQuiz(quiz: { prompt: string; options: string[]; correct: number; reward: number }) {
-    $('qHead').textContent = `โบนัสพิเศษ! ตอบถูกรับ +${quiz.reward} คะแนน · Bonus question, +${quiz.reward} pts`;
+    $('qHead').textContent = t().bonusHead(quiz.reward);
     $('qLv').style.display = 'none';
-    $('qText').textContent = quiz.prompt; $('qEn').textContent = ''; $('qNext').style.display = 'none';
-    $('qOpts').innerHTML = quiz.options.map((x, i) => `<button class="opt" data-i="${i}">${esc(x)}</button>`).join('');
+    $('qText').textContent = tr(quiz.prompt); $('qEn').textContent = ''; $('qNext').style.display = 'none';
+    $('qOpts').innerHTML = quiz.options.map((x, i) => `<button class="opt" data-i="${i}">${esc(tr(x))}</button>`).join('');
     $('qOpts').onclick = e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('.opt');
       if (!b || $('qNext').style.display === 'block') return;
@@ -400,7 +412,7 @@ export async function startApp() {
       sfx.beep(ok ? 990 : 140, .2, ok ? 'triangle' : 'sawtooth');
       const n = $('qNext');
       n.style.display = 'block';
-      n.textContent = ok ? `ถูกต้อง! +${quiz.reward} คะแนน วิ่งต่อ` : 'ยังไม่ถูก ไม่เป็นไร วิ่งต่อ';
+      n.textContent = ok ? t().bonusOk(quiz.reward) : t().bonusNo;
       n.onclick = () => { show(null); game.continueRun(); };
     };
     show('quiz');
@@ -429,7 +441,7 @@ export async function startApp() {
   if (p && !p.run) LS.set('srPending', null);
   else if (p && p.token) {
     if (p.score > 0) void submit();
-    else { LS.set('srPending', null); $('loginMsg').textContent = 'รอบก่อนหน้าถูกปิดระหว่างเล่น นับเป็น 1 ครั้งแล้ว · Previous run was closed and counted'; }
+    else { LS.set('srPending', null); $('loginMsg').textContent = t().prevClosed; }
   }
 }
 

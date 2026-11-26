@@ -19,6 +19,17 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .shell:has(.ov.on){touch-action:pan-y}
 .menu-hero{display:grid;grid-template-columns:minmax(0,1fr) clamp(64px,23vw,104px);align-items:center;gap:8px;padding-bottom:8px;border-bottom:2px dashed var(--line);margin-bottom:12px}
 .menu-hero img{width:100%;height:clamp(72px,24vw,104px);object-fit:contain;display:block}
+.hero-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:0 0 8px}
+.hero-top .event{margin:0}
+/* language switch: a pill with a yellow thumb that slides to the chosen language */
+.lang-switch{--w:46px;position:relative;display:inline-flex;flex:none;padding:3px;border-radius:999px;background:var(--surface);border:2px solid var(--line);isolation:isolate}
+.lang-switch::before{content:"";position:absolute;z-index:-1;top:3px;bottom:3px;left:3px;width:var(--w);border-radius:999px;background:var(--y);box-shadow:0 2px 0 #b89600;transition:transform .28s cubic-bezier(.34,1.56,.64,1)}
+.lang-switch[data-lang=en]::before{transform:translateX(var(--w))}
+.lang-switch button{width:var(--w);min-height:34px;padding:0;border:0;border-radius:999px;background:none;color:var(--muted);font:600 14px/1 Kanit,system-ui,sans-serif;letter-spacing:.02em;cursor:pointer;transition:color .2s}
+.lang-switch button[aria-checked=true]{color:#111}
+.lang-switch button:not([aria-checked=true]):hover{color:var(--ink)}
+.lang-switch button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.lang-switch::before{transition:none}}
 .event{display:table;margin:0 0 8px;padding:2px 8px;border-radius:6px;background:var(--y);color:#111;font-size:13px;font-weight:800}
 h1{margin:0;font-size:clamp(26px,8.1vw,44px);line-height:1.05;font-weight:800;color:var(--y)}
 h2{margin:0 0 8px;font-size:28px;line-height:1.2;font-weight:600}
@@ -169,6 +180,7 @@ li b{display:grid;place-items:center;height:36px;border-radius:8px;background:#1
 .tut small{display:block;font-weight:600;font-size:13px;color:var(--y)}
 .tut strong{display:block;font-weight:600;font-size:23px;line-height:1.25}
 .tut span{display:block;font-size:14px;color:var(--secondary)}
+.tut span:empty{display:none}
 .tut-ok{position:absolute;left:0;right:0;top:40%;text-align:center;font:600 32px Kanit,sans-serif;color:#3ccf7a;-webkit-text-stroke:5px #111;paint-order:stroke fill;opacity:0;pointer-events:none;z-index:1}
 .tut-arrow{position:absolute;left:50%;top:60%;width:76px;height:76px;margin:-38px 0 0 -38px;display:none;pointer-events:none;z-index:1}
 .tut-arrow.on{display:block;animation:nudge .7s linear infinite}
