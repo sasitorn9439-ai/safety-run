@@ -17,6 +17,15 @@ export interface AdminRun {
   hidden: boolean;
 }
 
+/**
+ * One player for the prize-announcement deck. `best` counts verified runs only (the leaderboard's rule), `bestAt` is when that
+ * best was reached (it breaks ties); `dist` (metres) and `secs` add up every finished run, `dist` skips runs from before it was stored.
+ */
+export interface AnnounceRow {
+  id: string; avatar: number | null; look: Record<string, string>; hidden: boolean;
+  plays: number; best: number | null; bestAt: string | Date | null; dist: number; secs: number;
+}
+
 /** Everything the API needs from storage. Postgres in production, memory for `npm run dev`. */
 export interface Store {
   init(): Promise<void>;
@@ -32,6 +41,13 @@ export interface Store {
   runScore(runId: string): Promise<number | null | undefined>;
   leaderboard(id: string): Promise<{ top: BoardEntry[]; total: number; rank: number }>;
   adminExport(): Promise<AdminRow[]>;
+  /** the narration clips the announcement deck has made, keyed by a hash of voice + text (see announce-voice.ts) */
+  getAudio(hash: string): Promise<Buffer | null>;
+  putAudio(hash: string, data: Buffer): Promise<void>;
+  /** which of these hashes are already stored */
+  hasAudio(hashes: string[]): Promise<string[]>;
+  /** one row per player who finished a run before `before` (runs finished later are ignored), for the prize-announcement deck */
+  adminAnnounce(before: Date): Promise<AnnounceRow[]>;
   /** every run, newest started first */
   adminRuns(): Promise<AdminRun[]>;
   /** one row per player: plays, bests and treasure chests */

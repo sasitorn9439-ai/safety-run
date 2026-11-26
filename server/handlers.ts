@@ -87,10 +87,21 @@ export async function leaderboard(store: Store, rawId: unknown): Promise<Reply> 
   }, id ? 'no-store' : 'public, s-maxage=5, stale-while-revalidate=10');
 }
 
+/**
+ * The prize-announcement deck counts runs finished before this moment: 27 Nov 2026, 08:00 Thailand time (01:00 UTC).
+ * Anything played later is left out of every total and every ranking. The admin request may pass `before` (an ISO time) to rehearse with another cut.
+ */
+export const ANNOUNCE_CUTOFF = new Date('2026-11-27T08:00:00+07:00');
+
 export async function admin(store: Store, b: Json): Promise<Reply> {
   if (!timingSafeKey(b.key)) return reply(401, { error: 'key' });
   await store.init();
   if (b.action === 'export') return reply(200, { rows: await store.adminExport() });
+  if (b.action === 'announce') {
+    const before = b.before == null ? ANNOUNCE_CUTOFF : new Date(String(b.before));
+    if (Number.isNaN(before.getTime())) return reply(400, { error: 'before' });
+    return reply(200, { before: before.toISOString(), players: await store.adminAnnounce(before) });
+  }
   if (b.action === 'runs') return reply(200, { runs: await store.adminRuns() });
   if (b.action === 'players') return reply(200, { players: await store.adminPlayers() });
   if (b.action === 'hide') {

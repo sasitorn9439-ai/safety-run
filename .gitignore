@@ -3,3 +3,5 @@ node_modules
 .env*
 dist
 .dev-data
+tools/announce-voice/last-script.md
+tools/announce-voice/raw/

@@ -30,6 +30,8 @@ export function createMemoryStore(file?: string): Store {
   const avatars = new Map(saved.avatars);
   const hidden = new Set(saved.hidden);
   let nextId = saved.nextId ?? 1;
+  // announcement narration: kept for the life of the dev server only
+  const audio = new Map<string, Buffer>();
 
   // written to a temp file and renamed, so a restart mid-write never leaves half a file
   const save = () => {
@@ -107,6 +109,23 @@ export function createMemoryStore(file?: string): Store {
         };
       });
       return rows.sort((a, b) => (b.best ?? -1) - (a.best ?? -1));
+    },
+    async getAudio(hash) { return audio.get(hash) ?? null; },
+    async putAudio(hash, data) { audio.set(hash, data); },
+    async hasAudio(hashes) { return hashes.filter(h => audio.has(h)); },
+    async adminAnnounce(before) {
+      const counted = runs.filter(r => r.score != null && r.finishedAt != null && r.finishedAt < before.getTime());
+      const ids = [...new Set(counted.map(r => r.empId))];
+      return ids.map(id => {
+        const done = counted.filter(r => r.empId === id);
+        // every run here has a seed, so every finished run is verified
+        const top = done.reduce((a, r) => (r.score! > a.score! || (r.score === a.score && r.finishedAt! < a.finishedAt!) ? r : a));
+        return {
+          id, avatar: avatars.get(id) ?? null, look: worn.get(id) ?? {}, hidden: hidden.has(id), plays: done.length,
+          best: top.score, bestAt: new Date(top.finishedAt!).toISOString(),
+          dist: done.reduce((n, r) => n + (r.dist ?? 0), 0), secs: done.reduce((n, r) => n + (r.secs ?? 0), 0),
+        };
+      });
     },
     async adminRuns() {
       return [...runs].sort((a, b) => b.startedAt - a.startedAt || b.id - a.id).map(r => ({

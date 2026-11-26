@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#7A1F35">
+<title>Safety Run · ประกาศผลรางวัล</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%237A1F35%27/%3E%3Cpath d=%27M7 20a9 9 0 0 1 18 0z%27 fill=%27%23F2D86A%27/%3E%3Crect x=%275%27 y=%2720%27 width=%2722%27 height=%274%27 rx=%272%27 fill=%27%23F2B6C6%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Kanit:wght@400;500;600;700&family=Noto+Serif+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<!-- Everything inside .deck-stage is authored at 1920x1080 and scaled as a whole to the window (see src/announce/deck.ts). -->
+<div class="deck-viewport" id="viewport">
+<main class="deck-stage" id="deckStage">
+
+  <!-- === 1 · COVER ============================================================ -->
+  <section class="slide bg-burgundy" id="s-cover" data-chrome="Safety Run · EHS Day 2026">
+    <div class="lab sec-r reveal" style="--i:1">MCAM · 2026</div>
+    <h1 class="wordmark"><span class="reveal" style="--i:2">SAFETY</span><em class="reveal" style="--i:4">Run</em></h1>
+    <div class="cover-pills">
+      <span class="pill p-butter reveal" style="--i:6">ประกาศผลรางวัล Top 7</span>
+      <span class="pill p-pink reveal" style="--i:7">EHS Day 2026</span>
+      <span class="pill p-line reveal" style="--i:8">MCAM</span>
+    </div>
+    <svg class="cover-track reveal" style="--i:3" viewBox="0 0 700 700" aria-hidden="true">
+      <g fill="none" stroke="#F2B6C6" stroke-width="3">
+        <rect x="40" y="170" width="620" height="360" rx="180" opacity=".35"/>
+        <rect x="90" y="215" width="520" height="270" rx="135" opacity=".5"/>
+        <rect x="140" y="260" width="420" height="180" rx="90" opacity=".75"/>
+        <rect x="190" y="305" width="320" height="90" rx="45"/>
+      </g>
+      <g id="coverDot"><circle r="22" fill="#F2D86A"/><circle r="38" fill="none" stroke="#F2D86A" stroke-width="3" opacity=".5"/></g>
+    </svg>
+  </section>
+
+  <!-- === 2 · DISTANCE ========================================================= -->
+  <section class="slide bg-burgundy" id="s-dist" data-chrome="Fun fact · ระยะวิ่งรวม">
+    <p class="lede reveal" style="--i:1">ผู้เล่นทุกคนวิ่งรวมกันได้ระยะทาง</p>
+    <div class="stat reveal" style="--i:2"><span class="stat-n" id="distN">0</span><em class="stat-u">km</em></div>
+    <p class="note reveal" style="--i:3">จากผู้เล่น <b id="fPlayers">0</b> คน · วิ่งทั้งหมด <b id="fPlays">0</b> ครั้ง · เฉลี่ยคนละ <b id="fAvg">0</b> กม.</p>
+    <div class="track reveal" style="--i:4" id="track" aria-hidden="true"><i class="lane l1"></i><i class="lane l2"></i></div>
+  </section>
+
+  <!-- === 3 · THAILAND ========================================================= -->
+  <section class="slide bg-burgundy" id="s-thai" data-chrome="เบตง → แม่สาย">
+    <div class="panel-r bg-butter"></div>
+    <h2 class="h2 reveal" style="--i:1">วิ่งต่อกันจาก <em>เบตง</em> ไป <em>แม่สาย</em><br>เชียงรายได้</h2>
+    <div class="stat stat-md reveal" style="--i:2"><span class="stat-n" id="thaiN">0</span><em class="stat-u">รอบ</em></div>
+    <p class="note reveal" style="--i:3">ประเทศไทยยาวราว <b id="thaiKm">0</b> กม. จากเบตง (ยะลา) ถึงแม่สาย (เชียงราย) <span style="white-space:nowrap">วัดเป็นเส้นตรง</span><br><span id="thaiSub"></span></p>
+    <svg class="map reveal" style="--i:2" id="thaiMap" viewBox="0 0 620 1000" aria-hidden="true">
+      <path id="thaiShape" fill="#7A1F35"/>
+      <path id="routeBase" fill="none" stroke="#F2B6C6" stroke-width="5" stroke-dasharray="2 14" stroke-linecap="round" opacity=".8"/>
+      <path id="routeTrail" fill="none" stroke="#F2D86A" stroke-width="10" stroke-linecap="round"/>
+      <g id="thaiStops"></g>
+      <g id="thaiRunner"><circle r="30" fill="none" stroke="#F2B6C6" stroke-width="4" opacity=".6"/><circle r="17" fill="#F2D86A" stroke="#7A1F35" stroke-width="5"/></g>
+    </svg>
+  </section>
+
+  <!-- === 4 · GLOBE ============================================================ -->
+  <section class="slide bg-pink" id="s-globe" data-chrome="รอบโลก">
+    <h2 class="h2 reveal" style="--i:1" id="globeHead">วิ่งรอบ <em>โลก</em> ได้</h2>
+    <div class="stat stat-md reveal" style="--i:2"><span class="stat-n" id="earthN">0</span><em class="stat-u" id="earthU">รอบ</em></div>
+    <p class="note reveal" style="--i:3">เส้นรอบวงโลกที่เส้นศูนย์สูตรยาว <b>40,075</b> กม.<br><span id="earthSub"></span></p>
+    <canvas class="globe reveal" style="--i:2" id="globe" width="1600" height="1600"></canvas>
+  </section>
+
+  <!-- === 5 · MOON (kept only when the total reaches it) ======================= -->
+  <section class="slide bg-burgundy" id="s-moon" data-chrome="ไปดวงจันทร์">
+    <h2 class="h2 reveal" style="--i:1">วิ่งไป <em>ดวงจันทร์</em> ได้</h2>
+    <div class="stat stat-md reveal" style="--i:2"><span class="stat-n" id="moonN">0</span><em class="stat-u">เที่ยว</em></div>
+    <p class="note reveal" style="--i:3">โลกถึงดวงจันทร์ <b>384,400</b> กม. (ไปทางเดียว)</p>
+    <svg class="moon-art reveal" style="--i:2" viewBox="0 0 1000 400" aria-hidden="true">
+      <circle cx="140" cy="200" r="110" fill="#F2B6C6"/><circle cx="140" cy="200" r="110" fill="none" stroke="#F2D86A" stroke-width="6"/>
+      <circle cx="900" cy="200" r="46" fill="#F2D86A"/>
+      <path id="moonPath" d="M260 200H850" stroke="#F2B6C6" stroke-width="5" stroke-dasharray="2 14" stroke-linecap="round" fill="none"/>
+      <g id="moonRunner"><circle r="20" fill="#F2D86A" stroke="#7A1F35" stroke-width="5"/></g>
+    </svg>
+  </section>
+
+  <!-- === 6 · TIME ============================================================= -->
+  <section class="slide bg-butter" id="s-time" data-chrome="เวลาเล่นรวม">
+    <p class="lede reveal" style="--i:1">ทุกคนใช้เวลาเล่นรวมกัน</p>
+    <div class="stat reveal" style="--i:2"><span class="stat-n" id="hoursN">0</span><em class="stat-u">ชั่วโมง</em></div>
+    <p class="lede lede-b reveal" style="--i:3">คิดเป็น <em id="daysN">0</em> <span>วัน</span> <small id="daysSub"></small></p>
+    <svg class="clock reveal" style="--i:2" id="clock" viewBox="0 0 800 800" aria-hidden="true"></svg>
+  </section>
+
+  <!-- === 7 · INTERLUDE ======================================================== -->
+  <section class="slide bg-burgundy" id="s-intro" data-chrome="Top 7">
+    <div class="intro-num reveal" style="--i:1"><span>Top</span><em>7</em></div>
+    <h2 class="h2 intro-h reveal" style="--i:2">ประกาศผล <em>รางวัล</em><br>เริ่มจากอันดับ 7 ไล่ขึ้นไป</h2>
+    <p class="note intro-n reveal" style="--i:3">จากผู้เล่น <b id="introPlayers">0</b> คน นับคะแนนสูงสุดของแต่ละคน<br>คลิก 1 ครั้งเพื่อดูของรางวัล คลิกอีกครั้งเพื่อเปิดเผยผู้โชคดี<br><span id="introCut"></span></p>
+    <div class="cover-pills intro-pills">
+      <span class="pill p-butter reveal" style="--i:4">อันดับ 1 · Smartwatch</span>
+      <span class="pill p-pink reveal" style="--i:5">อันดับ 2–5 · บัตรเติมน้ำมัน</span>
+      <span class="pill p-line reveal" style="--i:6">อันดับ 6–7 · ร่มพับอัตโนมัติ</span>
+    </div>
+  </section>
+
+  <!-- === 8–14 · AWARDS (built by src/announce/awards.ts, rank 7 first) ========= -->
+
+  <!-- === 15 · COLOPHON ======================================================== -->
+  <section class="slide bg-butter" id="s-end" data-chrome="Colophon">
+    <h2 class="h2 end-h reveal" style="--i:1">ขอบคุณที่ <em>วิ่งไปด้วยกัน</em><br>ปลอดภัยไว้ก่อนเสมอ</h2>
+    <ol class="recap" id="recap"></ol>
+    <p class="note end-note reveal" style="--i:9">Safety Run · EHS Day 2026 · MCAM</p>
+  </section>
+
+  <canvas id="confetti" width="1920" height="1080" aria-hidden="true"></canvas>
+  <div class="flash" id="flash" aria-hidden="true"></div>
+</main>
+</div>
+
+<!-- UI outside the stage: key gate, hint, mute -->
+<form class="gate" id="gate" autocomplete="off">
+  <div class="gate-card">
+    <div class="lab">§ 00 — Safety Run · EHS Day 2026</div>
+    <h1>ประกาศผล<em>รางวัล</em></h1>
+    <p>ใส่รหัสแอดมินเพื่อดึงคะแนนและระยะวิ่งจริง หรือเปิดด้วยข้อมูลตัวอย่างเพื่อซ้อมก่อนวันงาน</p>
+    <input id="gateKey" type="password" placeholder="รหัสแอดมิน" aria-label="รหัสแอดมิน" autocomplete="off">
+    <div class="gate-row">
+      <button type="submit" class="g-btn">โหลดข้อมูลจริง</button>
+      <button type="button" class="g-btn alt" id="gateDemo">ข้อมูลตัวอย่าง</button>
+    </div>
+    <p class="gate-msg" id="gateMsg" role="status"></p>
+  </div>
+</form>
+<div class="gate" id="voiceGate" hidden>
+  <div class="gate-card">
+    <div class="lab">Safety Run · เสียงบรรยาย</div>
+    <h1 id="vgTitle">ใส่<em>เสียงบรรยาย</em>ไหม</h1>
+    <p id="vgText"></p>
+    <div class="vg-bar" id="vgBar" hidden><i id="vgFill"></i></div>
+    <p class="gate-msg" id="vgMsg" role="status"></p>
+    <div class="gate-row">
+      <button type="button" class="g-btn" id="vgStatic" hidden>เตรียมเฉพาะเสียงที่ไม่ขึ้นกับผล</button>
+      <button type="button" class="g-btn" id="vgGo">สร้างเสียงและดูสไลด์พร้อมเสียง</button>
+      <button type="button" class="g-btn alt" id="vgSkip">ดูเฉพาะสไลด์ (ไม่มีเสียง)</button>
+    </div>
+  </div>
+</div>
+<div class="deck-controls" id="hint" aria-hidden="true">คลิก / Space = ถัดไป · ← = ย้อน · F = เต็มจอ · M = เสียง</div>
+<script type="module" src="/src/announce/main.ts"></script>
+</body>
+</html>
