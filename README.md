@@ -2,7 +2,7 @@
 
 Subway-style safety game: dodge factory hazards, collect PPE, answer a safety quiz for a second chance.
 **Unlimited plays (best score counts)**; each employee ID gets a unique avatar, and the leaderboard shows avatars only (`MAX_PLAYS` env to cap plays).
-Prizes: 1st HUAWEI Band 11 Series (Polym Black), 2nd–5th fuel card, 6th–7th BEZ automatic umbrella.
+Prizes: 1st HUAWEI Band 11 Series (Smartwatch), 2nd–5th fuel card, 6th–7th BEZ automatic umbrella.
 
 ## Develop
 
