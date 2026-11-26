@@ -9,7 +9,9 @@ export function demoPlayers(scale = 1): AdminAnnounce[] {
     const plays = 2 + Math.floor(rnd() * 18);
     const dist = (4000 + rnd() * 18000) * plays * scale;
     rows.push({
-      id: String(1001 + i * 7), avatar: i * 5 + 3, look: {}, hidden: i === 9, plays,
+      id: String(1001 + i * 7), avatar: i * 5 + 3, hidden: i === 9,
+      // some wear an effect (their avatar is a strip of frames), so the slides that show avatars are rehearsed with those too
+      look: i % 4 === 0 ? { effect: 'fx-sparkle' } : i % 6 === 0 ? { effect: 'fx-hearts' } : {}, plays,
       best: Math.round(12000 + rnd() ** 2.2 * 110000), bestAt: new Date(Date.UTC(2026, 11, 1, 9, 0, 0) + i * 60000).toISOString(),
       dist, secs: dist / 27 * (.9 + rnd() * .3),
     });

@@ -5,7 +5,7 @@
  */
 import './announce.css';
 import { api, type AdminAnnounce } from '../lib/api.js';
-import { avatarArt } from '../lib/avatar.js';
+import { avImg } from '../lib/avatar.js';
 import { factsOf, people, wantsMoon, type Facts, n0 } from './calc.js';
 import { buildAward } from './awards.js';
 import { Deck, type Scene } from './deck.js';
@@ -31,7 +31,7 @@ async function start(rows: AdminAnnounce[], before?: string, key = '') {
   [...f.winners].reverse().forEach(w => scenes.push(buildAward(w, faces)));
   const end = $('s-end');
   const list = $('recap');
-  list.innerHTML = f.winners.map((w, i) => `<li class="reveal" style="--i:${i + 2}"><span class="rk">${w.rank}</span><img src="${avatarArt(w.avatar, 200, w.look).url}" alt=""><span class="nm">${w.id}<small>รหัสพนักงาน</small></span><span class="sc">${n0(w.score)}</span></li>`).join('');
+  list.innerHTML = f.winners.map((w, i) => `<li class="reveal" style="--i:${i + 2}"><span class="rk">${w.rank}</span>${avImg(w.avatar, 84, w.look)}<span class="nm">${w.id}<small>รหัสพนักงาน</small></span><span class="sc">${n0(w.score)}</span></li>`).join('');
   scenes.push({ el: end, steps: 0, enter() {}, step() {}, leave() {} });
 
   $('gate').hidden = true;
