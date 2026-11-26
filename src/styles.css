@@ -294,9 +294,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--y);outline-offs
 .ward-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
 .ward-tabs button{min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:500 15px Kanit,sans-serif;cursor:pointer}
 .ward-tabs button[aria-selected="true"]{background:var(--y);color:#111;border-color:var(--y)}
-/* the wardrobe fits the screen: only the item grid scrolls, so Close is always in view */
-#wardOv .card{display:flex;flex-direction:column;overflow:hidden}
+/* the wardrobe fits the screen: normally only the item grid scrolls. On a short screen (or with the special-skin box open)
+   the card itself scrolls too, and Close sticks to the bottom so it is always in view */
+#wardOv .card{display:flex;flex-direction:column;overflow:hidden auto;overscroll-behavior:contain;padding-bottom:0}
 #wardOv .card>*{flex:none}
+#wardOv .ward-foot{position:sticky;bottom:0;z-index:1;margin:0 -20px;padding:0 20px 20px;background:var(--card)}
 .ward-info:empty{display:none}
 .ward-unlock{margin-top:10px;padding:10px 12px;border-radius:10px;border:1px solid #ffd400;background:rgba(255,212,0,.08);font-size:14px;line-height:1.4}
 .ward-unlock h3{margin:0;font:600 15px Kanit,sans-serif;color:#ffd400}
