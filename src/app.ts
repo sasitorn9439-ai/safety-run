@@ -47,11 +47,22 @@ export async function startApp() {
   /* ---------- wardrobe: loot boxes picked up on runs, cosmetics worn by the mascot ----------
      The server holds it all (boxes come from verified replays, the server rolls them), so nothing on the device can add a box or an item. */
   let wardState: Wardrobe | null = null, wardId = '';
+  const applyWardrobe = () => {
+    const look = lookOf(wardState ?? EMPTY_WARDROBE);
+    renderer.setLook(look);
+    game.invalidate();
+    const vector = look.figure?.vector;
+    // An idle menu only redraws when invalidated. Draw again once the lazy art replaces the fallback.
+    if (renderer.mascot === 'flat' && vector && !vector.frames) {
+      void vector.load().then(frames => { if (frames) game.invalidate(); });
+    }
+    wardrobe.refresh();
+  };
   const wardCall = async (body: Record<string, unknown>) => {
     const id = wardId, r = await api<Wardrobe & { items?: { id: string; dupe?: boolean; free?: boolean }[] }>('/api/wardrobe', { id, ...body });
     if (!r.ok || id !== wardId) return null;
     wardState = parseWardrobe(r);
-    renderer.setLook(lookOf(wardState)); game.invalidate(); wardrobe.refresh();
+    applyWardrobe();
     return r;
   };
   const loadWardrobe = (id: string) => { wardId = id; return wardCall({}).catch(() => null); };
@@ -233,7 +244,7 @@ export async function startApp() {
   }
   function clearWardrobe() {
     wardId = ''; wardState = null;
-    renderer.setLook(lookOf(EMPTY_WARDROBE)); game.invalidate(); wardrobe.refresh();
+    applyWardrobe();
   }
   function shakeLock() { lockBtn.classList.remove('shake'); void lockBtn.offsetWidth; lockBtn.classList.add('shake'); }
   /** logs `id` in: fetches its wardrobe and wears it; false (with a message unless quiet) when the server says no */
@@ -249,7 +260,7 @@ export async function startApp() {
       locking = null;
       if (r?.ok) {
         wardState = parseWardrobe(r);
-        renderer.setLook(lookOf(wardState)); game.invalidate(); wardrobe.refresh();
+        applyWardrobe();
         lockedId = id; setLock('locked');
         return true;
       }

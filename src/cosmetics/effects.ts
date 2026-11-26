@@ -485,21 +485,3 @@ export const EFFECTS: readonly Effect[] = [
   fx('flies', 'กลิ่นตุๆ · Stinky flies', 'common', stink()),
   fx('safetyhero', 'ฮีโร่ความปลอดภัย · Safety hero', 'legendary', aura('#00e676', .7, .5), orbit(cross, ['#2e9e47'], 4, .06, .5, .16), rise(star, ['#ffd400', '#ffffff'], 5, .04)),
 ];
-
-/* ---------- "sai mu" lucky-charm effects: two candidate looks to choose from (dev mode only, not in the catalog yet) ---------- */
-
-/** a gold amulet shape for the motions: an arched gold frame round a dark image */
-const amuletShape: Shape = (c, x, y, r, _col, rot) => {
-  c.save(); c.translate(x, y); c.rotate(Math.sin(rot) * .3);
-  c.fillStyle = '#d4a017'; c.beginPath(); c.moveTo(-r * .7, r); c.lineTo(-r * .7, -r * .3); c.quadraticCurveTo(0, -r * 1.4, r * .7, -r * .3); c.lineTo(r * .7, r); c.closePath(); c.fill();
-  c.fillStyle = '#4e342e'; c.beginPath(); c.moveTo(-r * .45, r * .75); c.lineTo(-r * .45, -r * .2); c.quadraticCurveTo(0, -r, r * .45, -r * .2); c.lineTo(r * .45, r * .75); c.closePath(); c.fill();
-  c.fillStyle = '#ffe082'; c.beginPath(); c.arc(0, r * .15, r * .18, 0, TAU); c.fill();
-  c.restore();
-};
-
-/** 4 · Gold overflowing: amulets and gold coins orbit the body in a glittering gold glow */
-/** 5 · Blessed: amulets float up round the mascot under a soft golden halo of light */
-export const BOSS_FX_OPTIONS: readonly Effect[] = [
-  fx('luckycharms', '4 · ทองล้นตัว · Gold overflowing', 'rare', aura('#ffd54f', .62, .4), orbit(amuletShape, ['#d4a017'], 4, .07, .48, .15), orbit(coin, ['#ffd400'], 4, .05, .4, .1, -.25), rise(sparkle, ['#fff59d', '#ffffff'], 5, .04)),
-  fx('luckycharms', '5 · พระคุ้มครอง · Blessed', 'rare', aura('#fff59d', .66, .55), rise(amuletShape, ['#d4a017'], 5, .07, .4), rise(sparkle, ['#ffffff'], 4, .035)),
-];
