@@ -73,6 +73,13 @@ describe('finish', () => {
     expect((again.body as Body).score).toBe(score);
     expect((again.body as Body).used).toBe(1);
   });
+  it('replays by the rules the client played with: none given means rules 1, an unknown one is refused', async () => {
+    const { s, ticks, score } = await play('1001');
+    expect((await finish(store, { id: '1001', run: s.run, token: s.token, ticks, inputs: [], rules: 3 })).status).toBe(400);
+    const r = await finish(store, { id: '1001', run: s.run, token: s.token, ticks, inputs: [], rules: 2 });
+    expect(r.status).toBe(200);
+    expect((r.body as Body).score).toBe(score);
+  });
   it('rejects a wrong token', async () => {
     const { s, ticks } = await play('1001');
     expect((await finish(store, { id: '1001', run: s.run, token: 'nope', ticks, inputs: [] })).status).toBe(403);

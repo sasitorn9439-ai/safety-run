@@ -275,8 +275,8 @@ export const SPECIAL_SKINS: readonly Skin[] = [{
   pal: DEFAULT_PALETTE,
   unlock: {
     runs: SPECIAL_RUNS,
-    how: `วิ่งให้ครบ ${SPECIAL_RUNS} รอบ`,
-    detail: 'สกินพิเศษ ไม่มีในกล่องสุ่ม ได้จากการวิ่งจนจบรอบเท่านั้น',
+    how: `วิ่งให้ครบ ${SPECIAL_RUNS} รอบ · Finish ${SPECIAL_RUNS} runs`,
+    detail: 'สกินพิเศษ ไม่มีในกล่องสุ่ม ได้จากการวิ่งจนจบรอบเท่านั้น · A special skin: not in loot boxes, only won by finishing runs',
   },
   figure: {
     fit: { shoulder: .74, slide: .3, size: 1.25 },

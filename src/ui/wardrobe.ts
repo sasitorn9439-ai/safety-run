@@ -13,9 +13,9 @@ import { drawPuppet } from '../render/flat/puppet.js';
 import { drawLootBox } from '../render/draw.js';
 import { flatBox, loadMascot, type MascotSet } from '../render/pixel-mascot.js';
 import type { PixelAnim } from '../render/pixel-frames.js';
+import { bi, t } from '../i18n/index.js';
 
 export const RARITY_COLOR: Record<Rarity, string> = { common: '#b5b8ae', rare: '#40c4ff', epic: '#b388ff', legendary: '#ffd400' };
-const SLOT_LABEL: Record<Slot, string> = { skin: 'สกิน · Skins', hat: 'หมวก · Hats', effect: 'เอฟเฟกต์ · Effects' };
 
 const idle = animsWith()[0]!;
 const lookWith = (item: Cosmetic): Look =>
@@ -68,7 +68,8 @@ export interface WardrobeDeps {
 const TAPS = 3;
 const OPEN_MAX = 10;
 const RANK: Record<Rarity, number> = { legendary: 0, epic: 1, rare: 2, common: 3 };
-const short = (c: Cosmetic) => c.name.split(' · ')[0]!;
+/** an item's name in the current language (names are written "ไทย · English") */
+const short = (c: Cosmetic) => bi(c.name);
 
 /* small vector icons (drawn, not emoji) */
 const NONE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.2" fill="none"/><path d="M5.6 18.4L18.4 5.6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
@@ -101,7 +102,7 @@ function marquee(root: HTMLElement) {
 }
 
 /** the duplicate meter: DUPES_PER_BOX segments, `n` filled; a full meter is a free box */
-function meter(el: HTMLElement, n: number, label = `ของซ้ำ ${n}/${DUPES_PER_BOX} · ครบ ${DUPES_PER_BOX} ได้กล่องฟรี`) {
+function meter(el: HTMLElement, n: number, label = t().meter(n, DUPES_PER_BOX)) {
   el.innerHTML = `<span class="ward-meter-bar">${Array.from({ length: DUPES_PER_BOX }, (_, i) => `<i${i < n ? ' class="on"' : ''}></i>`).join('')}</span><small>${esc(label)}</small>`;
   el.setAttribute('aria-label', label);
 }
@@ -137,10 +138,10 @@ export function mountWardrobe(d: WardrobeDeps) {
   const boxesLeft = () => d.current()?.boxes ?? 0;
   const canOpen = () => boxesLeft() > 0;
   /** "open N" buttons: one box, or as many as are left up to ten */
-  function setOpenButtons(one: HTMLButtonElement, many: HTMLButtonElement, more: string) {
+  function setOpenButtons(one: HTMLButtonElement, many: HTMLButtonElement, label: (n: number) => string) {
     const n = Math.min(OPEN_MAX, boxesLeft());
-    one.textContent = `${more}1`; one.disabled = !canOpen();
-    many.textContent = `${more}${Math.max(2, n)}`; many.disabled = !canOpen() || n < 2;
+    one.textContent = label(1); one.disabled = !canOpen();
+    many.textContent = label(Math.max(2, n)); many.disabled = !canOpen() || n < 2;
   }
 
   function refresh() {
@@ -150,25 +151,26 @@ export function mountWardrobe(d: WardrobeDeps) {
     for (const s of SLOTS) if (trying[s] && w.owned.includes(trying[s].id)) delete trying[s];   // won it since: it's simply owned now
     look = tryOn(lookOf(w));
     showBoxes(w.boxes);
-    $('wardCount').textContent = note || (known ? `สะสมแล้ว ${w.owned.length}/${CATALOG.length} ชิ้น` : 'ใส่รหัสพนักงานแล้วกดปุ่มกุญแจ · Enter your employee ID and tap the lock');
+    $('wardCount').textContent = note || (known ? t().collected(w.owned.length, CATALOG.length) : t().enterIdLock);
     meter($('wardMeter'), w.dupes);
-    setOpenButtons($<HTMLButtonElement>('wardOpen'), $<HTMLButtonElement>('wardOpenMany'), 'เปิด ');
+    setOpenButtons($<HTMLButtonElement>('wardOpen'), $<HTMLButtonElement>('wardOpenMany'), t().open);
     for (const b of document.querySelectorAll<HTMLButtonElement>('#wardTabs button')) b.setAttribute('aria-selected', String(b.dataset.slot === tab));
     const items = CATALOG.filter(c => c.slot === tab), runs = w.runs ?? 0, worn0 = w.equipped[tab];
     // special items (Cosmetic.unlock): what they are, how to win them, and how many runs the player has done toward it
     // ...shown only while that item is the one being looked at (worn, or tapped to try on)
     $('wardInfo').innerHTML = items.filter(c => c.unlock && (worn0 === c.id || trying[tab]?.id === c.id)).map(c => {
       const u = c.unlock!, done = runs >= u.runs, left = u.runs - runs;
-      return `<div class="ward-unlock${done ? ' done' : ''}"><h3>★ สกินพิเศษ — ${esc(c.name)}</h3><p>${esc(u.detail)}</p>`
+      const d = t();
+      return `<div class="ward-unlock${done ? ' done' : ''}"><h3>★ ${esc(d.specialSkin)} — ${esc(short(c))}</h3><p>${esc(bi(u.detail))}</p>`
         + `<div class="ward-prog" role="progressbar" aria-valuemin="0" aria-valuemax="${u.runs}" aria-valuenow="${Math.min(runs, u.runs)}"><i style="width:${Math.min(100, runs / u.runs * 100)}%"></i></div>`
-        + `<p><b>${Math.min(runs, u.runs)}/${u.runs}</b> รอบ — ${done ? 'ปลดล็อกแล้ว ✓' : `${esc(u.how)} (เหลืออีก ${left} รอบ)`}</p></div>`;
+        + `<p><b>${Math.min(runs, u.runs)}/${u.runs}</b> ${esc(d.runs)} — ${done ? esc(d.unlocked) : `${esc(bi(u.how))} (${esc(d.runsLeft(left))})`}</p></div>`;
     }).join('');
     const worn = w.equipped[tab];
-    grid.innerHTML = `<button class="ward-item${worn ? '' : ' on'}" data-id="" type="button"><span class="ward-none">${NONE_ICON}</span>${nameTag('ไม่ใส่ · None')}</button>` +
+    grid.innerHTML = `<button class="ward-item${worn ? '' : ' on'}" data-id="" type="button"><span class="ward-none">${NONE_ICON}</span>${nameTag(t().none)}</button>` +
       items.map(c => {
         const own = w.owned.includes(c.id);
         const tried = trying[tab]?.id === c.id;
-        return `<button class="ward-item${own ? '' : ' locked'}${worn === c.id ? ' on' : ''}${tried ? ' trying' : ''}" data-id="${c.id}" type="button" style="--r:${RARITY_COLOR[c.rarity]}"${own ? '' : ` aria-pressed="${tried}" aria-label="ลองใส่ ${esc(c.name)} (ยังไม่ได้ปลดล็อก)"`}>`
+        return `<button class="ward-item${own ? '' : ' locked'}${worn === c.id ? ' on' : ''}${tried ? ' trying' : ''}" data-id="${c.id}" type="button" style="--r:${RARITY_COLOR[c.rarity]}"${own ? '' : ` aria-pressed="${tried}" aria-label="${esc(t().tryOn(short(c)))}"`}>`
           + `<canvas></canvas>${nameTag(c.unlock && !own ? `${short(c)} ${Math.min(runs, c.unlock.runs)}/${c.unlock.runs}` : short(c), !own)}</button>`;
       }).join('');
     grid.querySelectorAll<HTMLButtonElement>('.ward-item[data-id]:not([data-id=""])').forEach(b => {
@@ -303,8 +305,8 @@ export function mountWardrobe(d: WardrobeDeps) {
     bigBox.className = 'ward-bigbox idle';
     bigBox.style.removeProperty('--r'); bigBox.style.setProperty('--glow', '0px'); bigBox.style.setProperty('--k', '6');
     $('wardBoxX').textContent = n > 1 ? `×${n}` : '';
-    hint.textContent = 'แตะกล่องเพื่อเขย่า · Tap the box to shake it';
-    bigBox.setAttribute('aria-label', n > 1 ? `กล่องสุ่ม ${n} กล่อง แตะเพื่อเขย่า` : 'กล่องสุ่ม แตะเพื่อเขย่า');
+    hint.textContent = t().tapShake;
+    bigBox.setAttribute('aria-label', t().boxAria(n));
     drawBigBox();
     bigBox.focus({ preventScroll: true });
     roll();                                                              // the server rolls while the player shakes
@@ -321,11 +323,11 @@ export function mountWardrobe(d: WardrobeDeps) {
     sprinkle(8 + taps * 6, 420 + taps * 110, taps >= 2 && best ? [...GOLD, RARITY_COLOR[best.rarity]] : GOLD);
     // from the second tap the box glows in the colour of the best thing inside
     if (taps >= 2 && best) { bigBox.style.setProperty('--r', RARITY_COLOR[best.rarity]); bigBox.style.setProperty('--glow', `${taps * 10}px`); }
-    if (taps < TAPS) { hint.textContent = taps === 1 ? 'อีก 2 ครั้ง · 2 more' : 'อีกครั้งเดียว! · Once more!'; return; }
-    hint.textContent = 'กำลังเปิด… · Opening…';
+    if (taps < TAPS) { hint.textContent = taps === 1 ? t().twoMore : t().onceMore; return; }
+    hint.textContent = t().opening;
     await opening;
     if (!won) {
-      hint.textContent = 'เปิดกล่องไม่สำเร็จ ลองอีกครั้ง · Could not open the box, try again';
+      hint.textContent = t().openFail;
       bigBox.className = 'ward-bigbox idle'; taps = 0;
       roll();
       return;
@@ -356,9 +358,7 @@ export function mountWardrobe(d: WardrobeDeps) {
     const fresh = pulls.filter(p => !p.dupe), dupes = pulls.filter(p => p.dupe), free = pulls.filter(p => p.free).length;
     shown = fresh;
     const won = $('wardWon'), motion = !still.matches && dupes.length > 0;
-    $('wardResultTitle').textContent = !dupes.length ? (fresh.length > 1 ? `ได้ของใหม่ ${fresh.length} ชิ้น! · ${fresh.length} new items` : 'ได้ของใหม่! · New item')
-      : !fresh.length ? `ได้ของซ้ำ ${dupes.length} ชิ้น · ${dupes.length} duplicate${dupes.length > 1 ? 's' : ''}`
-      : `ของใหม่ ${fresh.length} ชิ้น · ของซ้ำ ${dupes.length} ชิ้น`;
+    $('wardResultTitle').textContent = !dupes.length ? t().newItems(fresh.length) : !fresh.length ? t().dupes(dupes.length) : t().mixed(fresh.length, dupes.length);
     // everything that came out is laid out first (new ones first); the duplicates then fly out of the grid into the meter
     const tiles = motion ? [...fresh, ...dupes] : fresh;
     won.hidden = !tiles.length;
@@ -366,7 +366,7 @@ export function mountWardrobe(d: WardrobeDeps) {
     won.classList.toggle('one', tiles.length === 1);
     won.innerHTML = tiles.map((p, i) => p.dupe
       ? `<button type="button" class="dupe" tabindex="-1" aria-hidden="true" style="--r:${RARITY_COLOR[p.item.rarity]}"><canvas></canvas>${nameTag(short(p.item))}</button>`
-      : `<button type="button" data-i="${i}" style="--r:${RARITY_COLOR[p.item.rarity]}" aria-pressed="false" aria-label="${esc(p.item.name)}"><canvas></canvas>${nameTag(short(p.item))}</button>`).join('');
+      : `<button type="button" data-i="${i}" style="--r:${RARITY_COLOR[p.item.rarity]}" aria-pressed="false" aria-label="${esc(short(p.item))}"><canvas></canvas>${nameTag(short(p.item))}</button>`).join('');
     won.querySelectorAll('button').forEach((b, i) => drawThumb(b.querySelector('canvas')!, tiles[i]!.item, false));
     if (fresh.length) pick(0); else picked = null;
     $<HTMLButtonElement>('wardWear').disabled = !fresh.length;
@@ -378,7 +378,7 @@ export function mountWardrobe(d: WardrobeDeps) {
     resultMeter(m, before, bank);
     result.hidden = false; $('wardStageClose').hidden = true;
     requestAnimationFrame(() => marquee(won));
-    setOpenButtons($<HTMLButtonElement>('wardMore1'), $<HTMLButtonElement>('wardMoreMany'), 'เปิดต่อ ');
+    setOpenButtons($<HTMLButtonElement>('wardMore1'), $<HTMLButtonElement>('wardMoreMany'), t().openMore);
     (fresh.length ? $('wardWear') : $('wardKeep')).focus({ preventScroll: true });
     if (dupes.length) void flyIntoMeter(run, dupes, before, bank);
   }
@@ -387,7 +387,7 @@ export function mountWardrobe(d: WardrobeDeps) {
   function resultMeter(m: HTMLElement, filled: number, freeWon: number) {
     meter(m, filled);
     const f = document.createElement('b'); f.className = 'ward-free';
-    f.textContent = `ได้กล่องฟรี ${freeWon} กล่อง · ${freeWon} free box${freeWon > 1 ? 'es' : ''}`; f.hidden = !freeWon;
+    f.textContent = t().freeBoxes(freeWon); f.hidden = !freeWon;
     m.append(f);
   }
 
@@ -408,14 +408,14 @@ export function mountWardrobe(d: WardrobeDeps) {
     await sleep(600);                                                    // a moment to see everything that came out
     for (const [k, p] of dupes.entries()) {
       if (!live()) return;
-      const tile = tiles[k]!, box = result.getBoundingClientRect(), t = tile.getBoundingClientRect();
+      const tile = tiles[k]!, box = result.getBoundingClientRect(), at = tile.getBoundingClientRect();
       const seg = m.querySelectorAll<HTMLElement>('.ward-meter-bar i')[Math.min(filled, DUPES_PER_BOX - 1)]!, to = seg.getBoundingClientRect();
       const fly = document.createElement('div'); fly.className = 'ward-fly'; fly.style.setProperty('--r', RARITY_COLOR[p.item.rarity]);
-      Object.assign(fly.style, { left: `${t.left - box.left}px`, top: `${t.top - box.top}px`, width: `${t.width}px`, height: `${t.height}px` });
+      Object.assign(fly.style, { left: `${at.left - box.left}px`, top: `${at.top - box.top}px`, width: `${at.width}px`, height: `${at.height}px` });
       const cv = tile.querySelector('canvas')!.cloneNode() as HTMLCanvasElement;
       cv.getContext('2d')!.drawImage(tile.querySelector('canvas')!, 0, 0);
       fly.append(cv); result.append(fly); tile.style.visibility = 'hidden';
-      const dx = to.left + to.width / 2 - (t.left + t.width / 2), dy = to.top + to.height / 2 - (t.top + t.height / 2);
+      const dx = to.left + to.width / 2 - (at.left + at.width / 2), dy = to.top + to.height / 2 - (at.top + at.height / 2);
       await fly.animate([{ transform: 'translate(0,0) scale(1)' }, { transform: 'translate(0,-8px) scale(1.08)', offset: .25 }, { transform: `translate(${dx}px,${dy}px) scale(.12)`, opacity: .4 }],
         { duration: 480 * speed, easing: 'cubic-bezier(.5,0,.85,.45)' }).finished;
       fly.remove();
@@ -423,18 +423,18 @@ export function mountWardrobe(d: WardrobeDeps) {
       filled++;
       seg.classList.add('on'); restart(seg, 'pop');
       d.beep(660 + filled * 110, .06, 'triangle');
-      m.querySelector('small')!.textContent = `ของซ้ำ ${filled}/${DUPES_PER_BOX} · ครบ ${DUPES_PER_BOX} ได้กล่องฟรี`;
+      m.querySelector('small')!.textContent = t().meter(filled, DUPES_PER_BOX);
       if (p.free) {                                                      // full: stars, one more free box, and the meter starts over
         stars(m.querySelector('.ward-meter-bar')!);
         d.beep(1568, .18, 'triangle'); setTimeout(() => d.beep(2093, .22, 'triangle'), 120);
         freeWon++;
         const f = m.querySelector<HTMLElement>('.ward-free')!;
-        f.hidden = false; f.textContent = `ได้กล่องฟรี ${freeWon} กล่อง · ${freeWon} free box${freeWon > 1 ? 'es' : ''}`; restart(f, 'pop');
+        f.hidden = false; f.textContent = t().freeBoxes(freeWon); restart(f, 'pop');
         await sleep(420 * speed);
         if (!live()) return;
         filled = 0;
         m.querySelectorAll('.ward-meter-bar i').forEach(i => i.classList.remove('on'));
-        m.querySelector('small')!.textContent = `ของซ้ำ 0/${DUPES_PER_BOX} · ครบ ${DUPES_PER_BOX} ได้กล่องฟรี`;
+        m.querySelector('small')!.textContent = t().meter(0, DUPES_PER_BOX);
       } else await sleep(90 * speed);
     }
     if (live()) gather();
@@ -478,7 +478,7 @@ export function mountWardrobe(d: WardrobeDeps) {
     $('wardWon').querySelectorAll<HTMLButtonElement>('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.i === String(i))));
     const el = $('wardPick');
     el.style.setProperty('--r', RARITY_COLOR[item.rarity]);
-    el.innerHTML = `<small>${esc(RARITY_LABEL[item.rarity])}</small><b>${esc(item.name)}</b><span>${esc(SLOT_LABEL[item.slot])}</span>`;
+    el.innerHTML = `<small>${esc(RARITY_LABEL[item.rarity])}</small><b>${esc(short(item))}</b><span>${esc(t().slot[item.slot])}</span>`;
   }
 
   function closeStage() { fxRun++; held = null; freeBank = 0; stopDust(); stage.classList.remove('on'); refresh(); $<HTMLButtonElement>('wardOpen').focus({ preventScroll: true }); }

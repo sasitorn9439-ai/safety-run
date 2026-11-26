@@ -347,17 +347,20 @@ export class Canvas2DRenderer implements GameRenderer {
     const P = pose(f, this.cam, I, this.fx, now, this.c), u = P.u;
     ctx.globalAlpha = P.shadowAlpha;
     sprites.shadow.draw(ctx, P.x, P.groundY, P.shadowU, dpr);
-    ctx.globalAlpha = P.alpha;
-    if (P.shield) {
-      ctx.fillStyle = 'rgba(90,210,255,.18)'; ctx.strokeStyle = 'rgba(120,225,255,.8)'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.ellipse(P.x, P.feetY + P.bob - u * .52, u * .42 * P.shieldPulse, u * .66 * P.shieldPulse, 0, 0, 7); ctx.fill(); ctx.stroke();
+    const shieldY = P.feetY + P.bob - u * .52;
+    if (P.shield > 0) {
+      ctx.globalAlpha = P.shieldGlow; sprites.shieldGlow.draw(ctx, P.x, shieldY, u, dpr);
+      ctx.globalAlpha = P.shield; sprites.shieldBack[P.shieldFrame]!.draw(ctx, P.x, shieldY, u, dpr);
     }
+    // the shield ring's front half goes over the mascot
+    const shieldFront = () => { if (P.shield > 0) { ctx.globalAlpha = P.shield; sprites.shieldFront[P.shieldFrame]!.draw(ctx, P.x, shieldY, u, dpr); } };
+    ctx.globalAlpha = P.alpha;
     if ((f.s.lift ?? 0) > 0 && P.groundY > P.deckY + 2) {
       // the man-lift: its scissor stack reaches from the floor up to the deck the mascot bounces on
       ctx.save(); ctx.translate(P.x, P.deckY); ctx.scale(1, (P.groundY - P.deckY) / (1.4 * u));
       sprites.lift.draw(ctx, 0, 0, u, dpr); ctx.restore();
     }
-    if (this.pxSprites) { this.drawPixel(f, I, now, P); ctx.globalAlpha = 1; return; }
+    if (this.pxSprites) { this.drawPixel(f, I, now, P); shieldFront(); ctx.globalAlpha = 1; return; }
     const sprite = P.sliding ? sprites.slide[P.frame]! : sprites.run[P.frame]!;
     ctx.save();
     ctx.translate(P.x, P.feetY);
@@ -365,6 +368,7 @@ export class Canvas2DRenderer implements GameRenderer {
     ctx.scale(P.xs, P.ys);
     sprite.draw(ctx, 0, 0, u, dpr);
     ctx.restore();
+    shieldFront();
     ctx.globalAlpha = 1;
   }
 
