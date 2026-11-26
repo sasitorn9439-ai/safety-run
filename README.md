@@ -169,7 +169,7 @@ ElevenLabs into `public/announce-audio/` with a `manifest.json`; the deck uses t
 script, `-- check` lists what is recorded, `--only s-award-1.reveal` redoes one line, `-- voices` lists the ElevenLabs voices. Keys come from the
 environment only. The audio names the winners: record it after the cutoff and do not commit it early.
 
-Reword in `narration.ts`, or per line in `src/announce/narration-overrides.ts`. In the deck: **N** turns the narration on and off, and any click or key press
+Every number the host says (scores, totals, runs, laps, the fuel card's amount) is spelled out in Thai words by `thaiNumber` in `narration.ts` (123456 is said หนึ่งแสนสองหมื่นสามพันสี่ร้อยห้าสิบหก); employee ids are read digit by digit. Reword in `narration.ts`, or per line in `src/announce/narration-overrides.ts`. In the deck: **N** turns the narration on and off, and any click or key press
 moves on and stops the voice.
 
 ## Mascot sets

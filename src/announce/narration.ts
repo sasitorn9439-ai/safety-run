@@ -26,12 +26,44 @@ export interface NarrationOptions {
   cutoff?: Date | string;
 }
 
-/** whole number as digits, no separators: 39684 */
-const int = (n: number) => String(Math.round(n));
-/** one decimal, spoken with "จุด": 33.5 → "33 จุด 5" (a .0 is dropped) */
+const DIGIT = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
+const PLACE = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน'];
+
+/** a number below a million in Thai words, `more`: something larger comes before it, so a last 1 is เอ็ด */
+function below(n: number, more: boolean): string {
+  const ds = String(n).padStart(6, '0').split('').map(Number);
+  let out = '';
+  ds.forEach((d, i) => {
+    const place = 5 - i;
+    if (!d) return;
+    if (place === 1) out += d === 1 ? 'สิบ' : d === 2 ? 'ยี่สิบ' : DIGIT[d] + 'สิบ';
+    else if (place === 0) out += d === 1 && (n > 1 || more) ? 'เอ็ด' : DIGIT[d];
+    else out += DIGIT[d] + PLACE[place];
+  });
+  return out;
+}
+
+/**
+ * A whole number in Thai words, the way it is said: 123456 → หนึ่งแสนสองหมื่นสามพันสี่ร้อยห้าสิบหก, 21 → ยี่สิบเอ็ด, 11 → สิบเอ็ด,
+ * 1,000,000 → หนึ่งล้าน. Past a trillion it falls back to digits (nothing here gets that big).
+ */
+export function thaiNumber(n: number): string {
+  const v = Math.round(n);
+  if (v < 0) return 'ลบ' + thaiNumber(-v);
+  if (v === 0) return DIGIT[0]!;
+  if (v >= 1e12) return String(v);
+  const millions = Math.floor(v / 1e6), rest = v % 1e6;
+  return (millions ? thaiNumber(millions) + 'ล้าน' : '') + (rest ? below(rest, millions > 0) : '');
+}
+
+/** every number the host says is said in words: 39684 → สามหมื่นเก้าพันหกร้อยแปดสิบสี่ */
+const int = (n: number) => thaiNumber(n);
+/** one decimal, the digits after "จุด" one by one: 33.5 → สามสิบสาม จุด ห้า (a .0 is dropped) */
 function dec(n: number): string {
   const r = Math.round(n * 10) / 10;
-  return Number.isInteger(r) ? String(r) : String(r).replace('.', ' จุด ');
+  if (Number.isInteger(r)) return thaiNumber(r);
+  const [whole, frac] = r.toFixed(1).split('.') as [string, string];
+  return `${thaiNumber(+whole)} จุด ${frac.split('').map(c => DIGIT[+c]).join(' ')}`;
 }
 /** an employee id read digit by digit: 1323 → "1 3 2 3" */
 const digits = (id: string) => id.split('').join(' ');
@@ -46,7 +78,7 @@ type P = ReturnType<typeof particles>;
 /** the prize as it is said aloud, by rank */
 export function spokenPrize(rank: number): string {
   if (rank === 1) return `${th.prize1Item.replace('(Smartwatch)', '').trim()} สมาร์ทวอทช์`;
-  if (rank <= 5) return th.prize2Item;
+  if (rank <= 5) return th.prize2Item.replace(/\d[\d,]*/g, m => thaiNumber(+m.replace(/,/g, '')));   // มูลค่า 500 บาท → มูลค่าห้าร้อยบาท
   return 'ร่มพับอัตโนมัติ จาก BEZ';
 }
 
@@ -82,7 +114,7 @@ function fanEnter(rank: number, firstShown: boolean, p: P): string {
 }
 
 function fanReveal(rank: number, who: { avatar: string; id: string; plays: number }, p: P): string {
-  return `[excited] ขอแสดงความยินดี ${p.end}!\nแฟนพันธุ์แท้ คนที่ ${rank} คือ ผู้ใช้อวาตาร์ ${who.avatar}!\nรหัสพนักงาน ${digits(who.id)}\nเล่นไปทั้งหมด ${who.plays} ครั้ง!\n${rank === 1 ? 'ขอเสียงปรบมือให้แฟนพันธุ์แท้ตัวจริง' : 'ขอเสียงปรบมือ'}${p.soft}!`;
+  return `[excited] ขอแสดงความยินดี ${p.end}!\nแฟนพันธุ์แท้ คนที่ ${rank} คือ ผู้ใช้อวาตาร์ ${who.avatar}!\nรหัสพนักงาน ${digits(who.id)}\nเล่นไปทั้งหมด ${int(who.plays)} ครั้ง!\n${rank === 1 ? 'ขอเสียงปรบมือให้แฟนพันธุ์แท้ตัวจริง' : 'ขอเสียงปรบมือ'}${p.soft}!`;
 }
 
 /** what is said once the winner is on screen */
@@ -145,7 +177,7 @@ export function narrationFor(f: Facts, opts: NarrationOptions = {}): Line[] {
   add('s-time', [
     '[curious] แล้วเวลาที่ทุกคนใช้เล่นรวมกันล่ะ...',
     `[excited] ทั้งหมด ${int(f.hours)} ชั่วโมง!`,
-    f.days >= 1 ? `คิดเป็นประมาณ ${dec(f.days)} วัน หรือก็คือ ${d} วัน ${h} ชั่วโมง ${p.end}!` : `ยังไม่ถึงหนึ่งวันเต็ม ${p.end}`,
+    f.days >= 1 ? `คิดเป็นประมาณ ${dec(f.days)} วัน หรือก็คือ ${int(d)} วัน ${int(h)} ชั่วโมง ${p.end}!` : `ยังไม่ถึงหนึ่งวันเต็ม ${p.end}`,
     'ถ้าเปิดเกมวิ่งต่อเนื่อง ไม่หลับไม่นอนเลย ก็ต้องใช้เวลาขนาดนี้เลยทีเดียว',
     `[mischievously] หวังว่าทุกคนเล่นกันตอนพักเที่ยงนะ${p.end} ไม่ใช่ในเวลางาน [laughs]`,
   ].join('\n'));
