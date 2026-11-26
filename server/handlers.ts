@@ -10,6 +10,9 @@ type Json = Record<string, unknown>;
 // 0 / unset = unlimited plays per employee
 export const maxPlays = () => Math.max(0, +(process.env.MAX_PLAYS || 0) || 0);
 
+// LOGIN_CLOSED=1: nobody new can log in or start a run (waiting for the score announcement); runs already started can still finish
+export const loginClosed = () => process.env.LOGIN_CLOSED === '1';
+
 export const sha = (s: unknown) => crypto.createHash('sha256').update(String(s)).digest('hex');
 export const normId = (s: unknown) => String(s || '').trim().toUpperCase().replace(/\s+/g, '');
 const cleanName = (s: unknown) => String(s || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40);
@@ -33,6 +36,7 @@ export const timingSafeKey = (given: unknown) => {
 
 export async function start(store: Store, b: Json, ua: string): Promise<Reply> {
   const id = normId(b.id), name = cleanName(b.name), MAX = maxPlays();
+  if (loginClosed()) return reply(403, { error: 'closed' });
   if (!await idOk(store, id)) return reply(400, { error: 'bad_id' });
   await store.init();
   const avatar = await store.avatarOf(id);
@@ -135,6 +139,7 @@ export const OPEN_MAX = 10;
  */
 export async function wardrobe(store: Store, b: Json): Promise<Reply> {
   const id = normId(b.id);
+  if (loginClosed() && (b.action === undefined || b.action === 'get')) return reply(403, { error: 'closed' });   // this call is the login
   if (!await idOk(store, id)) return reply(400, { error: 'bad_id' });
   await store.init();
   const read = async () => {

@@ -23,7 +23,7 @@ const show = (id: OverlayId | null) => { for (const o of OVERLAYS) $(o).classLis
 /** what an API error code says to the player, in the current language */
 const errText = (code?: string) => {
   const d = t();
-  return code === 'bad_id' ? d.errBadId : code === 'no_name' ? d.errNoName : code === 'busy' ? d.errBusy : d.errServer;
+  return code === 'bad_id' ? d.errBadId : code === 'no_name' ? d.errNoName : code === 'busy' ? d.errBusy : code === 'closed' ? d.errClosed : d.errServer;
 };
 
 export async function startApp() {
