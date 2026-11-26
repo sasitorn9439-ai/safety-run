@@ -1,1 +1,1 @@
-{ "regions": ["iad1"], "cleanUrls": true, "framework": "vite", "functions": { "api/*.ts": { "maxDuration": 15 } }, "installCommand": "npm ci --include=dev", "buildCommand": "npm run build", "outputDirectory": "dist" }
+{ "regions": ["iad1"], "cleanUrls": true, "framework": "vite", "functions": { "api/announce-voice.ts": { "maxDuration": 30 }, "api/*.ts": { "maxDuration": 15 } }, "installCommand": "npm ci --include=dev", "buildCommand": "npm run build", "outputDirectory": "dist" }

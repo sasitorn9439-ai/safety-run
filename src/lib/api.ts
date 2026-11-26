@@ -4,6 +4,12 @@ export interface BoardResp { total: number; rank: number; top: { avatar: number;
 export interface AdminRow { id: string; avatar: number | null; plays: number; best: number | null; scores: string; startedAt: string; flagged: boolean; unfinished: number; hidden: boolean }
 export interface AdminRun { id: string; avatar: number | null; runNo: number; startedAt: string; finishedAt: string | null; secs: number | null; score: number | null; legacy: boolean; hidden: boolean }
 
+/** a player for the prize-announcement deck (/announce): best verified score, and metres and seconds summed over every finished run */
+export interface AdminAnnounce {
+  id: string; avatar: number | null; look: Record<string, string>; hidden: boolean;
+  plays: number; best: number | null; bestAt: string | null; dist: number; secs: number;
+}
+
 /** a player on the admin's Players tab; chests are picked up on runs (loot), handed out by admin (granted) and opened */
 export interface AdminPlayer {
   id: string; avatar: number | null; hidden: boolean; plays: number; best: number | null; maxDist: number | null;

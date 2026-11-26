@@ -123,6 +123,50 @@ Supabase Realtime still works without `VITE_REALTIME`: set the two `VITE_SUPABAS
 Supabase project; there every send is an HTTPS broadcast. Either way the channel only carries what the big screen shows: the scores that
 count are always the server's own replay.
 
+## Prize announcement deck (`/announce`)
+
+A 16:9 slide deck (Editorial Tri-Tone: pink / butter / burgundy) for announcing the winners on the big screen. Open `/announce`, enter the admin key
+(or `/announce?demo` to rehearse with made-up players; `?demo=6` runs them six times as far). It reads `POST /api/admin {action: "announce"}`.
+Employee id `000` (the developer) is left out of every total and every prize. Only runs finished before `ANNOUNCE_CUTOFF` in `server/handlers.ts`
+(27 Nov 2026, 08:00 Thailand time) count; the admin request can pass `before` (ISO time) to rehearse with another cut.
+
+Slides: cover, total distance, "Betong → Mae Sai laps of Thailand", laps of the Earth (a spinning globe; a Moon slide appears only if the total reaches it),
+total play time in hours and days, then one slide per place, 7th to 1st. On an award slide the first click shows the prize and the second runs a drum roll and
+reveals the winner (a click during the roll skips to the reveal). Keys: Space / click / → next, ← back, F full screen, M mute. `?slide=N&step=K` jumps.
+Winners follow the leaderboard rules (best verified score, earlier wins ties, hidden players excluded). Logic is in `src/announce/calc.ts`.
+
+### Narration
+
+The deck can speak. `src/announce/narration.ts` holds the script (one line per slide, plus a second line after each winner is revealed) with the real
+numbers filled in, written as a lively host with a few light jokes and delivery tags (`[excited]`, `[whispers]`…) that Eleven v3 acts out.
+
+**From the server (the way to use on the day).** `POST /api/announce-voice` (admin key) makes each line with ElevenLabs and caches it in Postgres
+(`safety_run_announce_audio`), so the ElevenLabs key never reaches a browser and every device shares one cache. Set these in the environment:
+
+| Variable | |
+|---|---|
+| `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` | required; without them the server makes no voice (cached clips are still served) |
+| `ELEVENLABS_MODEL` | default `eleven_v3` (the one that speaks Thai) |
+| `ELEVENLABS_STABILITY` | default `0` (Creative, the most excited); `0.5` Natural, `1` Robust |
+| `ELEVENLABS_VOICE_GENDER` | `male` (default) or `female`: ครับ or ค่ะ in the script |
+| `ANNOUNCE_VOICE_RATE` | playback speed, default `1.15` (the browser speeds it up, pitch kept) |
+
+When `/announce` opens it checks what is cached for the script of the current data. All cached: it just loads the clips with a progress bar. Some missing: it
+asks first, *make the voice* (says how many lines and characters it will send to ElevenLabs) or *slides only*. A clip is cached under a hash of voice, model,
+stability and text, so a winner or total that changes is simply a new line to make, and a stale recording can never be played. The first visit after the data
+is final (27 Nov 08:00 Thailand) fills the cache; everyone after that loads for free. The loading screen has a skip button. Opened before the cutoff, the page warns that the standings are not final and adds a third choice: make only
+the 9 lines that never depend on the results (cover, the seven prize announcements, closing; about 1,600 characters) and keep them for the day.
+The cache lives in the database, not the browser, so it is shared by every device that opens the same deployment with the same admin key. `?demo&cutoff=<iso>`
+shows the page as it is before a cutoff.
+
+**From recorded files (offline or rehearsal).** `npm run announce:voice` writes the script and records it with `say` (free macOS Thai voice), Azure, Google or
+ElevenLabs into `public/announce-audio/` with a `manifest.json`; the deck uses those files when the server is not set up. `-- script --demo=6` shows the
+script, `-- check` lists what is recorded, `--only s-award-1.reveal` redoes one line, `-- voices` lists the ElevenLabs voices. Keys come from the
+environment only. The audio names the winners: record it after the cutoff and do not commit it early.
+
+Reword in `narration.ts`, or per line in `src/announce/narration-overrides.ts`. In the deck: **N** turns the narration on and off, and any click or key press
+moves on and stops the voice.
+
 ## Mascot sets
 
 The official design is in `assets/mascot-reference/` (seen from behind, the red crystal rises from the crown like a wedge).

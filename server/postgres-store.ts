@@ -21,6 +21,7 @@ export function createPostgresStore(url: string): Store {
        and exists (select 1 from pg_attribute where attrelid = to_regclass('safety_run_players') and attname = 'equipped' and not attisdropped)
        and to_regclass('safety_run_cosmetics') is not null
        and to_regclass('safety_run_box_grants') is not null
+       and to_regclass('safety_run_announce_audio') is not null
        and exists (select 1 from pg_attribute where attrelid = to_regclass('safety_run_runs') and attname = 'dist' and not attisdropped)
        and exists (select 1 from pg_attribute where attrelid = to_regclass('safety_run_cosmetics') and attname = 'dupe' and not attisdropped) as ok`
     .then(([r]) => !!r?.ok);
@@ -85,6 +86,12 @@ export function createPostgresStore(url: string): Store {
             granted_at timestamptz not null default now())`;
           await tx`create index if not exists safety_run_box_grants_emp on safety_run_box_grants (emp_id)`;
           await tx`alter table safety_run_box_grants enable row level security`;
+          // narration clips for /announce (mp3 bytes), keyed by a hash of voice + text
+          await tx`create table if not exists safety_run_announce_audio (
+            hash text primary key,
+            data bytea not null,
+            created_at timestamptz not null default now())`;
+          await tx`alter table safety_run_announce_audio enable row level security`;
           // block the public anon/publishable keys; server connects as table owner
           await tx`alter table safety_run_runs enable row level security`;
           await tx`alter table safety_run_players enable row level security`;
@@ -158,6 +165,34 @@ export function createPostgresStore(url: string): Store {
           count(*) filter (where score is null)::int as unfinished
         from safety_run_runs r left join safety_run_players p using (emp_id) group by r.emp_id
         order by max(score) filter (where game_seed is not null) desc nulls last, min(started_at) asc`;
+      return rows as never;
+    },
+
+    async getAudio(hash) {
+      const [r] = await sql`select data from safety_run_announce_audio where hash = ${hash}`;
+      return r ? Buffer.from(r.data) : null;
+    },
+
+    async putAudio(hash, data) {
+      await sql`insert into safety_run_announce_audio (hash, data) values (${hash}, ${data}) on conflict (hash) do nothing`;
+    },
+
+    async hasAudio(hashes) {
+      if (!hashes.length) return [];
+      const rows = await sql`select hash from safety_run_announce_audio where hash = any(${hashes}::text[])`;
+      return rows.map(r => r.hash as string);
+    },
+
+    async adminAnnounce(before) {
+      const rows = await sql`select r.emp_id as id, p.avatar, coalesce(p.equipped, '{}'::jsonb) as look, coalesce(p.hidden, false) as hidden,
+          count(*) filter (where r.score is not null)::int as plays,
+          max(r.score) filter (where r.game_seed is not null) as best,
+          (array_agg(r.finished_at order by r.score desc, r.finished_at asc) filter (where r.score is not null and r.game_seed is not null))[1] as "bestAt",
+          coalesce(sum(r.dist) filter (where r.score is not null), 0)::float8 as dist,
+          coalesce(sum(r.secs) filter (where r.score is not null), 0)::float8 as secs
+        from safety_run_runs r left join safety_run_players p using (emp_id)
+        where r.score is not null and r.finished_at < ${before}
+        group by r.emp_id, p.avatar, p.equipped, p.hidden`;
       return rows as never;
     },
 

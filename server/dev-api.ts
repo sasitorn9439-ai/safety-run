@@ -1,4 +1,5 @@
 import type { Plugin } from 'vite';
+import { announceVoice } from './announce-voice.js';
 import { admin, finish, leaderboard, normId, start, wardrobe, type Reply } from './handlers.js';
 import type { ServerResponse } from 'node:http';
 import path from 'node:path';
@@ -23,6 +24,7 @@ export function devApi(): Plugin {
       const relay = new Map<string, Set<ServerResponse>>();
       server.middlewares.use(async (req, res, next) => {
         const url = new URL(req.url || '/', 'http://localhost');
+        if (url.pathname === '/announce') { req.url = '/announce.html' + url.search; return next(); }
         if (url.pathname === '/tournament') { req.url = '/tournament.html' + url.search; return next(); }
         if (url.pathname === '/api/relay' && req.method === 'GET') {
           const room = url.searchParams.get('room') || '';
@@ -53,6 +55,7 @@ export function devApi(): Plugin {
           if (route === 'start' && post) return send(await start(store, body, ua));
           if (route === 'finish' && post) return send(await finish(store, body));
           if (route === 'admin' && post) return send(await admin(store, body));
+          if (route === 'announce-voice' && post) return send(await announceVoice(store, body));
           if (route === 'wardrobe' && post) return send(await wardrobe(store, body));
           // local only: this route exists in the vite dev server, there is no api/ function for it, so production can't hand out boxes
           if (route === 'dev-boxes' && post) {

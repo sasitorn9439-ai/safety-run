@@ -17,7 +17,8 @@
     "mascot:2d": "vite --config tools/mascot-2d/vite.config.ts --open",
     "mascot:pixel": "python3 tools/mascot-pixel/build.py",
     "mascot:vector": "python3 tools/mascot-pixel/build.py && python3 tools/mascot-vector/build.py",
-    "ppe:svg": "vite --config tools/ppe-svg/vite.config.ts --open"
+    "ppe:svg": "vite --config tools/ppe-svg/vite.config.ts --open",
+    "announce:voice": "node tools/announce-voice/voice.mjs"
   },
   "dependencies": {
     "@ably/pubsub-device": "3.1.0",
