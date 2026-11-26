@@ -6,6 +6,8 @@ import { avatarArt, setAvatarImg } from '../lib/avatar.js';
 import { drawCoin, ppeIcon } from '../render/draw.js';
 import { drawPowerIcon } from '../render/power-icons.js';
 import { STEPS, type Tutorial } from '../game/tutorial.js';
+import { getLang, t } from '../i18n/index.js';
+import { tr } from '../i18n/content.js';
 
 export interface HudData {
   score: number; coins: number; dbl: number; got: ReadonlySet<PpeType>; shield: number; toast: string; toastT: number; sur: Surprise | null;
@@ -41,7 +43,6 @@ function coinURL() {
   return cv.toDataURL();
 }
 
-const TUT_HEAD = { move: 'ฝึกหลบอันตราย', ppe: 'ฝึกเก็บ PPE', shield: 'ฝึกใช้เกราะ' } as const;
 const BANNER_COLOR = { rain: '#5ad1ff', star: '#ffd400', double: '#ff7a1a', toolbox: '#3ccf7a' } as const;
 
 /** In-game overlay built from DOM elements: crisp Thai text, CSS animation, and no per-frame text drawing on the canvas. */
@@ -65,7 +66,7 @@ export class Hud {
       this.el.ppe.appendChild(s);
       this.slots.set(t, s);
     }
-    $('ofPts').textContent = `+${OFFICER_SCORE} คำชม`;   // from the sim, so the bubble always says what the praise pays
+    $('ofPts').textContent = t().officerPts(OFFICER_SCORE);   // from the sim, so the bubble always says what the praise pays
     this.addChip('mult', '#ffd400', null, 'NEAR');
     this.addChip('lift', '#ffd400', 'lift', '');
     this.addChip('estop', '#ff5a4a', 'estop', '');
@@ -107,6 +108,7 @@ export class Hud {
   show(on: boolean) { this.el.hud.classList.toggle('on', on); }
 
   reset() {
+    $('ofPts').textContent = t().officerPts(OFFICER_SCORE);   // the language may have changed on the menu
     const l = this.last;
     l.score = l.coins = l.dbl = l.shield = l.toastOp = -1; l.toast = ''; l.ppe = ''; l.sur = null; l.closing = false;
     for (const slot of this.slots.values()) slot.classList.remove('has');   // the cached key above is '' again, so update() would not clear them
@@ -132,7 +134,8 @@ export class Hud {
     e.tint.style.background = info.tint;
     e.tint.classList.toggle('pulse', info.id === 'evac');
     e.zone.style.setProperty('--c', info.accent);
-    e.zoneNo.textContent = info.en; e.zoneTh.textContent = info.th; e.zoneTip.textContent = info.tip;
+    const en = getLang() === 'en';
+    e.zoneNo.textContent = t().zoneEnter; e.zoneTh.textContent = en ? info.en : info.th; e.zoneTip.textContent = en ? info.tipEn : info.tip;
     e.zone.classList.add('on');
     clearTimeout(this.zoneTimer);
     this.zoneTimer = window.setTimeout(() => e.zone.classList.remove('on'), 4200);
@@ -145,7 +148,7 @@ export class Hud {
     const beat = dist > pb, key = beat ? 'beat' : String(pb);
     if (key !== l.pb) {
       l.pb = key; e.pb.classList.add('on'); e.pb.classList.toggle('beat', beat);
-      e.pbText.textContent = beat ? 'ทำลายสถิติแล้ว!' : `สถิติ ${pb.toLocaleString('en-US')} ม.`;
+      e.pbText.textContent = beat ? t().pbBeat : t().pb(pb.toLocaleString('en-US'));
     }
     e.pbBar.style.transform = `scaleX(${beat ? 1 : Math.min(1, Math.max(0, dist / pb)).toFixed(3)})`;
   }
@@ -175,7 +178,7 @@ export class Hud {
 
     if (d.toastT > 0) {
       if (d.toast !== l.toast) {
-        l.toast = d.toast; e.toast.textContent = d.toast;
+        l.toast = d.toast; e.toast.textContent = tr(d.toast);
         e.toast.classList.remove('on'); void e.toast.offsetWidth; e.toast.classList.add('on');
       }
       const op = Math.round(Math.min(1, d.toastT * 2) * 20) / 20;
@@ -191,9 +194,9 @@ export class Hud {
       l.sur = sur; l.closing = false;
       e.officer.classList.remove('on'); e.banner.classList.remove('on');
       if (!sur) return;
-      if (sur.k === 'officer') { e.ofMsg.textContent = sur.msg; e.officer.classList.add('on'); }
+      if (sur.k === 'officer') { e.ofMsg.textContent = tr(sur.msg); e.officer.classList.add('on'); }
       else {
-        e.bnMsg.textContent = sur.msg; e.bnSub.textContent = sur.sub ?? '';
+        e.bnMsg.textContent = tr(sur.msg); e.bnSub.textContent = tr(sur.sub ?? '');
         e.banner.style.setProperty('--c', BANNER_COLOR[sur.k]);
         e.banner.classList.add('on');
       }
@@ -217,21 +220,22 @@ export class Hud {
   }
 
   /** Practice instructions. Pass null outside the tutorial. */
-  tutor(t: Tutorial | null) {
+  tutor(tu: Tutorial | null) {
     const e = this.el, l = this.last;
-    if (!t) { e.tut.classList.remove('on'); e.tutOk.classList.remove('on'); e.tutArrow.className = 'tut-arrow'; l.tutKey = ''; l.arrow = ''; l.ok = -1; return; }
-    const key = t.done ? 'done' : String(t.step);
+    if (!tu) { e.tut.classList.remove('on'); e.tutOk.classList.remove('on'); e.tutArrow.className = 'tut-arrow'; l.tutKey = ''; l.arrow = ''; l.ok = -1; return; }
+    const key = (tu.done ? 'done' : String(tu.step)) + getLang();
     if (key !== l.tutKey) {
       l.tutKey = key;
-      const st = t.current;
+      const st = tu.current;
       e.tut.classList.add('on');
-      e.tutHead.textContent = t.done ? 'ฝึกเสร็จแล้ว · Tutorial done' : `${TUT_HEAD[st.kind]} ${t.step + 1}/${STEPS.length} · Practice`;
-      e.tutTh.textContent = t.done ? 'พร้อมแล้ว! เริ่มนับคะแนน' : st.th;
-      e.tutEn.textContent = t.done ? 'เก็บ PPE ครบ 5 ชนิด = โล่กันชน' : st.en;
+      const d = t(), en = getLang() === 'en';
+      e.tutHead.textContent = tu.done ? d.tutDone : d.tutStep(d.tutHead[st.kind], tu.step + 1, STEPS.length);
+      e.tutTh.textContent = tu.done ? d.tutReady : en ? st.en : st.th;
+      e.tutEn.textContent = tu.done ? d.tutReadySub : '';
     }
-    const arrow = !t.done && t.frozen ? 'tut-arrow on ' + t.current.g : 'tut-arrow';
+    const arrow = !tu.done && tu.frozen ? 'tut-arrow on ' + tu.current.g : 'tut-arrow';
     if (arrow !== l.arrow) { l.arrow = arrow; e.tutArrow.className = arrow; }
-    const ok = t.okT > 0 ? Math.round(Math.min(1, t.okT * 2) * 20) / 20 : 0;
+    const ok = tu.okT > 0 ? Math.round(Math.min(1, tu.okT * 2) * 20) / 20 : 0;
     if (ok !== l.ok) { l.ok = ok; e.tutOk.classList.toggle('on', ok > 0); e.tutOk.style.opacity = String(ok); }
   }
 }

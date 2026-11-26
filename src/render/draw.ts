@@ -7,6 +7,7 @@ import type { PowerType } from '../../shared/sim.js';
 import { PPE_ICON_OF, drawPpeIcon } from './ppe-icons.js';
 import { drawPowerIcon } from './power-icons.js';
 import { DEFAULT_PALETTE } from '../cosmetics/skins.js';
+import { t } from '../i18n/index.js';
 import type { Palette } from '../cosmetics/types.js';
 
 export type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
@@ -212,7 +213,7 @@ export function drawHazard(c: Ctx, k: HazardKind, u: number, blink = false) {
     }
     // the warning plate on the boards
     rr(c, x - u * .24, yy(1.0), u * .48, u * .13, u * .03, '#fff');
-    c.fillStyle = '#c62828'; c.font = `600 ${u * .09}px Kanit`; c.textAlign = 'center'; c.fillText('ระวังศีรษะ', x, yy(1.0) + u * .105);
+    c.fillStyle = '#c62828'; c.font = `600 ${u * .09}px Kanit`; c.textAlign = 'center'; c.fillText(t().signHead, x, yy(1.0) + u * .105, u * .44);
   }
   if (k === 'fumes') {
     // a toxic cloud: lumpy green puffs, lighter on top, with a hazard diamond inside
