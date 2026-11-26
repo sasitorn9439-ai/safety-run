@@ -55,7 +55,7 @@ export const th = {
   /* ---------- prizes ---------- */
   prizeTitle: 'ของรางวัล',
   prize1: 'อันดับ 1',
-  prize1Item: 'HUAWEI Band 11 Series (Polym Black)',
+  prize1Item: 'HUAWEI Band 11 Series (Smartwatch)',
   prize2: 'อันดับ 2 ถึง 5',
   prize2Item: 'บัตรเติมน้ำมัน มูลค่า 500 บาท',
   prize3: 'อันดับ 6 และ 7',

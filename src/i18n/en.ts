@@ -53,7 +53,7 @@ export const en: Dict = {
   /* ---------- prizes ---------- */
   prizeTitle: 'Prizes',
   prize1: '1st prize',
-  prize1Item: 'HUAWEI Band 11 Series (Polym Black)',
+  prize1Item: 'HUAWEI Band 11 Series (Smartwatch)',
   prize2: '2nd to 5th prize',
   prize2Item: 'Fuel card worth 500 THB',
   prize3: '6th & 7th prize',
