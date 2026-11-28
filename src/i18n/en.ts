@@ -147,7 +147,6 @@ export const en: Dict = {
   errBadId: 'Employee ID must be 4 digits',
   errNoName: 'Please enter your name',
   errBusy: 'This ID was just started on another device, try again',
-  errClosed: 'The game is closed while we wait for the score announcement',
   errServer: 'Server error, try again',
   noConn: 'No connection, check your internet',
   checking: 'Checking…',
