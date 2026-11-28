@@ -33,7 +33,7 @@ export const en: Dict = {
   boardBtn: 'Leaderboard',
   howBtn: 'How to play',
   menuSmall: 'Play in moderation and rest your eyes.<br>Pause any time and come back later ❤️',
-  newsBtn: "Version 0.0.2 · What's new",
+  newsBtn: "Version 0.0.3 · What's new",
 
   /* ---------- how to play ---------- */
   howTitle: 'How to play',
@@ -63,8 +63,10 @@ export const en: Dict = {
 
   /* ---------- what's new ---------- */
   newsTitle: "What's new",
+  ver003: 'Version 0.0.3',
   ver002: 'Version 0.0.2',
   ver001: 'Version 0.0.1',
+  newsSeasons: 'Weekly seasons reset Mondays at midnight, Thailand time. The top three earn 50, 25, and 10 chests at the end of each season.',
   news1: 'Treasure chests! Find them in the coin trails and open them for skins, hats and effects. <mark class="news-hi">Returning players get 10 free chests.</mark>',
   news2: 'Dress up your mascot in the Wardrobe, and try things on before you unlock them.',
   news3: 'Prizes now go to the top 7: 2nd to 5th win a 500 THB fuel card, 6th and 7th an automatic umbrella.',
