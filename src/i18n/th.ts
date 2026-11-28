@@ -25,7 +25,7 @@ export const th = {
 
   /* ---------- menu ---------- */
   menuSub: 'หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><strong>เล่นได้หลายรอบ นับคะแนนสูงสุด</strong><br>กรอกรหัสพนักงานเพื่อรับไอคอนบนตารางอันดับ',
-  prizeBtn: '🏆 ดูของรางวัล Top 7',
+  prizeBtn: '🏆 ของรางวัล EHS Day 2026',
   wardBtn: 'กล่องสุ่ม & ตู้เสื้อผ้า',
   empId: 'รหัสพนักงาน',
   lockOpen: 'ล็อคอิน',
@@ -53,7 +53,7 @@ export const th = {
   gotIt: 'เข้าใจแล้ว',
 
   /* ---------- prizes ---------- */
-  prizeTitle: 'ของรางวัล',
+  prizeTitle: 'ของรางวัล EHS Day 2026',
   prize1: 'อันดับ 1',
   prize1Item: 'HUAWEI Band 11 Series (Smartwatch)',
   prize2: 'อันดับ 2 ถึง 5',
@@ -162,8 +162,8 @@ export const th = {
   submittedRun: (n: number) => `ส่งคะแนนแล้ว · รอบที่ ${n}`,
   thisRun: (n: number) => `รอบนี้ ${n} คะแนน`,
   bestOf: (name: string, best: number) => `${name} · คะแนนดีที่สุด ${best}`,
-  bestRank: (name: string, best: number, rank: number, total: number) => `${name} · คะแนนดีที่สุด ${best} · อันดับที่ ${rank} จาก ${total} คน`,
-  winNote: (rank: number) => `ตอนนี้คุณอยู่อันดับ ${rank} รักษาอันดับไว้จนประกาศผล`,
+  bestRank: (name: string, best: number, rank: number, total: number, seasonal: boolean) => `${name} · คะแนนดีที่สุด${seasonal ? 'ในซีซันนี้' : ''} ${best} · อันดับที่ ${rank} จาก ${total} คน`,
+  winNote: (rank: number, boxes: number) => `ตอนนี้คุณอยู่อันดับ ${rank} ถ้ารักษาอันดับไว้จนจบซีซันจะได้ ${boxes} กล่อง`,
   playAgain: 'เล่นอีกครั้ง',
   rejectedHead: 'รอบนี้ส่งคะแนนไม่ได้',
   rejected: 'ข้อมูลการเล่นไม่ผ่านการตรวจสอบ กรุณาเริ่มรอบใหม่',
@@ -181,6 +181,9 @@ export const th = {
   boardFail: 'โหลดอันดับไม่ได้',
   loading: 'กำลังโหลด…',
   boardTotal: (n: number) => `ผู้เล่นทั้งหมด ${n} คน · Top 20`,
+  seasonUpcoming: (date: string) => `ซีซัน 1 เริ่ม ${date} เวลา 00:00 น. (เวลาไทย)`,
+  seasonDates: (number: number, dates: string) => `ซีซัน ${number} · ${dates}`,
+  seasonPrizes: (boxes: string) => `อันดับ 1–3 รับ ${boxes} กล่องตามลำดับ · ตัดรอบทุกวันจันทร์ เวลา 00:00 น. (เวลาไทย)`,
 
   /* ---------- in-game sign art ---------- */
   signHead: 'ระวังศีรษะ',

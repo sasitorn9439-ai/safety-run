@@ -207,6 +207,12 @@ One data file, `src/render/ppe-icons.ts`, draws them in the game (floating picku
 * **HUD is DOM**, not canvas text. If the device can't hold ~25 fps the render resolution steps down automatically.
 * Pixi's own tickers are stopped: the game loop calls `render()` itself, once per `requestAnimationFrame`.
 
+## Weekly seasons
+
+Season 1 starts at 00:00 on 30 November 2026 in Thailand. The public leaderboard starts a new season every Monday at 00:00 Thailand time. Each player ranks by their best verified score in the week the server accepts the score. Ties go to the player who reached the score first.
+
+The top three players receive 50, 25, and 10 chests in their wardrobes. The Vercel cron job requests `/api/leaderboard` once a day at 17:00 UTC. Leaderboard and wardrobe requests also close any outstanding seasons. PostgreSQL records each closed season and its grants in one transaction, so retries cannot issue duplicate prizes. The admin dashboard and EHS Day announcement retain their historical scores.
+
 ## Environment variables (Vercel)
 
 | Key | Purpose |

@@ -45,7 +45,7 @@
 <img src="/assets/mascot-2d/menu-runner.png" alt="" width="112" height="112">
 </header>
 <p class="sub" data-i18n-html="menuSub">หลบอันตรายในโรงงาน เก็บ PPE ให้ครบชุด<br><strong>เล่นได้หลายรอบ นับคะแนนสูงสุด</strong><br>กรอกรหัสพนักงานเพื่อรับไอคอนบนตารางอันดับ</p>
-<button class="btn alt prize-btn" id="prizeBtn" type="button" aria-haspopup="dialog" data-i18n="prizeBtn">🏆 ดูของรางวัล Top 7</button>
+<button class="btn alt prize-btn" id="prizeBtn" type="button" aria-haspopup="dialog" data-i18n="prizeBtn">🏆 ของรางวัล EHS Day 2026</button>
 <button class="btn alt ward-btn" id="wardBtn" type="button" aria-haspopup="dialog"><canvas class="ward-ico chest-art" aria-hidden="true"></canvas><span data-i18n="wardBtn">กล่องสุ่ม &amp; ตู้เสื้อผ้า</span> <span class="ward-badge" id="wardBadge" hidden></span></button>
 <form id="login" autocomplete="off">
 <div class="field"><label for="empId" data-i18n="empId">รหัสพนักงาน</label>
@@ -197,6 +197,8 @@
 
 <div class="ov" id="boardOv"><div class="card scroll">
 <h2 data-i18n="board">อันดับ</h2>
+<p class="sub" id="boardSeason"></p>
+<p class="small" id="boardPrizes"></p>
 <p class="sub" id="boardTotal"></p>
 <ol class="board" id="boardList"></ol>
 <button class="btn alt" id="boardBack" data-i18n="back">กลับ</button>

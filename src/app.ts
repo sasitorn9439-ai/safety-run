@@ -1,4 +1,5 @@
 import { RULES, type Action } from '../shared/sim.js';
+import { SEASON_PRIZES } from '../shared/seasons.js';
 import { api, isFinalFinishError, type BoardResp, type FinishResp, type StartResp } from './lib/api.js';
 import { avImg } from './lib/avatar.js';
 import { Sfx } from './lib/audio.js';
@@ -13,8 +14,6 @@ import { EMPTY_WARDROBE, cosmetic, lookOf, parseWardrobe, type Wardrobe } from '
 import { applyDom, getLang, mountLangSwitch, onLang, t } from './i18n/index.js';
 import { avNameL as avName, tr } from './i18n/content.js';
 
-/** this many places on the board win a prize */
-const PRIZE_RANKS = 7;
 const OVERLAYS = ['menu', 'over', 'quiz', 'done', 'boardOv', 'avOv', 'pauseOv'] as const;
 /** cosmetics are kept on this device */
 type OverlayId = (typeof OVERLAYS)[number];
@@ -149,7 +148,7 @@ export async function startApp() {
       const d = t();
       if (!next) html = r.top.length ? d.gapTop : '';
       else if (next.me) html = d.gapSelf(next.score - score, next.rank);
-      else html = d.gapRank(next.score - score, next.rank, next.rank <= PRIZE_RANKS);
+      else html = d.gapRank(next.score - score, next.rank, r.season?.kind === 'active' && next.rank <= SEASON_PRIZES.length);
       if (html) { el.innerHTML = html; el.classList.add('on'); }
     } catch { /* the board is a nicety, never block the crash screen */ }
   }
@@ -330,20 +329,30 @@ export async function startApp() {
   });
 
   /* ---------- leaderboard ---------- */
-  const boardRow = (e: BoardResp['top'][number], i: number) =>
-    `<li${e.me ? ' style="outline:2px solid #ffd400"' : ''}><span class="n">${i < PRIZE_RANKS ? `<span class="medal m${i + 1}">${i + 1}</span>` : i + 1}</span>${avImg(e.avatar, 36, e.look)}<span class="who">${esc(avName(e.avatar))}${e.me ? esc(t().you) : ''}</span><span class="sc">${e.score}</span></li>`;
-  const boardHtml = (list: BoardResp['top']) => list.map(boardRow).join('') || `<li><span></span><span></span><span>${esc(t().noScores)}</span><span></span></li>`;
+  const boardRow = (e: BoardResp['top'][number], i: number, seasonal: boolean) =>
+    `<li${e.me ? ' style="outline:2px solid #ffd400"' : ''}><span class="n">${seasonal && i < SEASON_PRIZES.length ? `<span class="medal m${i + 1}">${i + 1}</span>` : i + 1}</span>${avImg(e.avatar, 36, e.look)}<span class="who">${esc(avName(e.avatar))}${e.me ? esc(t().you) : ''}</span><span class="sc">${e.score}</span></li>`;
+  const boardHtml = (list: BoardResp['top'], seasonal: boolean) => list.map((entry, index) => boardRow(entry, index, seasonal)).join('')
+    || `<li><span></span><span></span><span>${esc(t().noScores)}</span><span></span></li>`;
   async function loadBoard(target: string, meId?: string): Promise<Partial<BoardResp>> {
     try {
       const r = await api<BoardResp>('/api/leaderboard' + (meId ? '?id=' + encodeURIComponent(meId) : ''));
-      $(target).innerHTML = boardHtml(r.top || []);
+      $(target).innerHTML = boardHtml(r.top || [], r.season?.kind === 'active');
       return r;
     } catch { $(target).innerHTML = `<li><span></span><span>${esc(t().boardFail)}</span><span></span></li>`; return {}; }
   }
   $('boardBtn').onclick = async () => {
     show('boardOv'); $('boardTotal').textContent = t().loading;
+    $('boardSeason').textContent = ''; $('boardPrizes').textContent = '';
+    $('boardList').innerHTML = '';
     const r = await loadBoard('boardList');
     $('boardTotal').textContent = r.total != null ? t().boardTotal(r.total) : '';
+    if (!r.season) return;
+    const dates = new Intl.DateTimeFormat(getLang(), { dateStyle: 'medium', timeZone: 'Asia/Bangkok' });
+    const start = new Date(r.season.startsAt);
+    $('boardSeason').textContent = r.season.kind === 'upcoming'
+      ? t().seasonUpcoming(dates.format(start))
+      : t().seasonDates(r.season.number, dates.formatRange(start, new Date(Date.parse(r.season.endsAt) - 1)));
+    $('boardPrizes').textContent = t().seasonPrizes(SEASON_PRIZES.join(' / '));
   };
   $('boardBack').onclick = () => show('menu');
 
@@ -367,9 +376,11 @@ export async function startApp() {
         ag.onclick = () => void startRun(p.id, $('doneMsg'), ag, () => t().playAgain);
         $('homeBtn').style.display = 'block';
         const b = await loadBoard('doneBoard', p.id);
-        if (b.rank) {
-          $('doneRank').textContent = t().bestRank(avName(p.avatar), r.best!, b.rank, b.total!);
-          if (b.rank <= PRIZE_RANKS) $('doneMsg').innerHTML = `<div class="win">${esc(t().winNote(b.rank))}</div>`;
+        if (b.rank && b.best != null && b.total != null) {
+          const seasonal = b.season?.kind === 'active';
+          $('doneRank').textContent = t().bestRank(avName(p.avatar), b.best, b.rank, b.total, seasonal);
+          const prize = SEASON_PRIZES[b.rank - 1];
+          if (seasonal && prize) $('doneMsg').innerHTML = `<div class="win">${esc(t().winNote(b.rank, prize))}</div>`;
         }
       } else if (isFinalFinishError(r)) {
         LS.set('srPending', null); game.sess = null;

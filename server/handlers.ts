@@ -1,8 +1,10 @@
 import crypto from 'node:crypto';
+import { FIRST_SEASON_START, seasonAt, type SeasonStatus } from '../shared/seasons.js';
 import { replayRun, rulesOf, STEP } from '../shared/sim.js';
 import { equip, openBox, wardrobeFrom, type Pull } from '../src/cosmetics/wardrobe.js';
 import { SLOTS, type Slot } from '../src/cosmetics/types.js';
 import type { Store } from './store.js';
+import { settlePastSeasons } from './seasons.js';
 
 export interface Reply { status: number; body: unknown; cache?: string }
 type Json = Record<string, unknown>;
@@ -79,12 +81,19 @@ export async function finish(store: Store, b: Json): Promise<Reply> {
 export async function leaderboard(store: Store, rawId: unknown): Promise<Reply> {
   await store.init();
   const id = normId(rawId);
-  const { top, total, rank } = await store.leaderboard(id);
+  const current = seasonAt(Date.now());
+  await settlePastSeasons(store, current);
+  const { top, total, rank, best } = await store.leaderboard(id, current);
+  const season: SeasonStatus = current
+    ? { kind: 'active', number: current.number, startsAt: current.start.toISOString(), endsAt: current.end.toISOString() }
+    : { kind: 'upcoming', startsAt: new Date(FIRST_SEASON_START).toISOString() };
+  const secondsLeft = Math.floor(((current ? +current.end : FIRST_SEASON_START) - Date.now()) / 1000);
+  const cache = id || secondsLeft < 1 ? 'no-store' : `public, s-maxage=${Math.min(5, secondsLeft)}`;
   return reply(200, {
-    total, rank,
+    total, rank, best, season,
     // employee IDs never leave the server: the board shows avatars only
     top: top.map(r => ({ avatar: r.avatar ?? -1, score: r.score, me: !!id && r.empId === id, ...Object.keys(r.look).length && { look: r.look } })),
-  }, id ? 'no-store' : 'public, s-maxage=5, stale-while-revalidate=10');
+  }, cache);
 }
 
 /**
@@ -137,6 +146,7 @@ export async function wardrobe(store: Store, b: Json): Promise<Reply> {
   const id = normId(b.id);
   if (!await idOk(store, id)) return reply(400, { error: 'bad_id' });
   await store.init();
+  await settlePastSeasons(store, seasonAt(Date.now()));
   const read = async () => {
     const s = await store.wardrobe(id);
     return { opened: s.opened.length, w: wardrobeFrom(s.earned, s.opened, s.equipped, s.runs) };

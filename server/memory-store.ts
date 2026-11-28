@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DUPES_PER_BOX } from '../src/cosmetics/wardrobe.js';
+import { SEASON_PRIZES, type SeasonWindow } from '../shared/seasons.js';
 import type { AdminRow, Store } from './store.js';
 
 interface Run {
@@ -10,7 +11,7 @@ interface Run {
 
 interface Saved {
   runs: Run[]; opened: [string, { item: string; dupe: boolean }[]][]; worn: [string, Record<string, string>][];
-  granted: [string, number][]; avatars: [string, number][]; hidden: string[]; nextId: number;
+  granted: [string, number][]; avatars: [string, number][]; hidden: string[]; nextId: number; lastSettledSeason: number | null;
 }
 
 /**
@@ -26,30 +27,36 @@ export function createMemoryStore(file?: string): Store {
     }
   }
   const runs: Run[] = saved.runs ?? [];
-  const opened = new Map(saved.opened), worn = new Map(saved.worn), granted = new Map(saved.granted);
+  const opened = new Map(saved.opened), worn = new Map(saved.worn);
+  let granted = new Map(saved.granted);
   const avatars = new Map(saved.avatars);
   const hidden = new Set(saved.hidden);
+  let lastSettledSeason = saved.lastSettledSeason ?? null;
   let nextId = saved.nextId ?? 1;
   // announcement narration: kept for the life of the dev server only
   const audio = new Map<string, Buffer>();
 
   // written to a temp file and renamed, so a restart mid-write never leaves half a file
-  const save = () => {
+  const save = (boxGrants = granted, settled = lastSettledSeason) => {
     if (!file) return;
-    const data: Saved = { runs, opened: [...opened], worn: [...worn], granted: [...granted], avatars: [...avatars], hidden: [...hidden], nextId };
+    const data: Saved = { runs, opened: [...opened], worn: [...worn], granted: [...boxGrants], avatars: [...avatars], hidden: [...hidden], nextId, lastSettledSeason: settled };
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file + '.tmp', JSON.stringify(data));
     fs.renameSync(file + '.tmp', file);
   };
 
-  const bests = () => {
-    const by = new Map<string, Run>();
+  type ScoredRun = Run & { score: number; finishedAt: number };
+  const compare = (a: ScoredRun, b: ScoredRun) => b.score - a.score || a.finishedAt - b.finishedAt || a.id - b.id;
+  const bests = (season: SeasonWindow | null) => {
+    const by = new Map<string, ScoredRun>();
     for (const r of runs) {
-      if (r.score == null || hidden.has(r.empId)) continue;
+      if (r.score == null || r.seed == null || r.finishedAt == null || hidden.has(r.empId)) continue;
+      if (season && (r.finishedAt < +season.start || r.finishedAt >= +season.end)) continue;
+      const scored = { ...r, score: r.score, finishedAt: r.finishedAt };
       const cur = by.get(r.empId);
-      if (!cur || r.score > cur.score! || (r.score === cur.score && r.finishedAt! < cur.finishedAt!)) by.set(r.empId, r);
+      if (!cur || compare(scored, cur) < 0) by.set(r.empId, scored);
     }
-    return [...by.values()].sort((a, b) => b.score! - a.score! || a.finishedAt! - b.finishedAt!);
+    return [...by.values()].sort(compare);
   };
 
   return {
@@ -86,14 +93,25 @@ export function createMemoryStore(file?: string): Store {
       const r = runs.find(x => String(x.id) === runId);
       return r ? r.score : undefined;
     },
-    async leaderboard(id) {
-      const b = bests();
+    async leaderboard(id, season) {
+      const b = bests(season);
       const idx = id ? b.findIndex(r => r.empId === id) : -1;
       return {
-        top: b.slice(0, 20).map(r => ({ empId: r.empId, avatar: avatars.get(r.empId) ?? null, score: r.score!, look: { ...worn.get(r.empId) } })),
+        top: b.slice(0, 20).map(r => ({ empId: r.empId, avatar: avatars.get(r.empId) ?? null, score: r.score, look: { ...worn.get(r.empId) } })),
         total: b.length,
-        rank: idx >= 0 ? idx + 1 : 0,
+        rank: idx + 1,
+        best: b[idx]?.score ?? null,
       };
+    },
+    async lastSettledSeason() { return lastSettledSeason == null ? null : new Date(lastSettledSeason); },
+    async settleSeason(season) {
+      if (lastSettledSeason != null && +season.start <= lastSettledSeason) return;
+      const boxGrants = new Map(granted);
+      const winners = bests(season).slice(0, SEASON_PRIZES.length);
+      winners.forEach((r, i) => boxGrants.set(r.empId, (boxGrants.get(r.empId) ?? 0) + SEASON_PRIZES[i]));
+      save(boxGrants, +season.start);
+      granted = boxGrants;
+      lastSettledSeason = +season.start;
     },
     async adminExport() {
       const ids = [...new Set(runs.map(r => r.empId))];

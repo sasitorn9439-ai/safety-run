@@ -1,3 +1,5 @@
+import type { SeasonWindow } from '../shared/seasons.js';
+
 export interface RunRow { tokenHash: string; score: number | null; seed: number | null; secs: number }
 export interface Usage { used: number; best: number | null }
 /** `look`: what the player wears (cosmetic slot → item id), which dresses their avatar */
@@ -39,7 +41,10 @@ export interface Store {
   /** stores the verified result once (score, play time, metres run, loot boxes picked up); null if the run was already finished */
   finishRun(runId: string, r: FinishedRun): Promise<number | null>;
   runScore(runId: string): Promise<number | null | undefined>;
-  leaderboard(id: string): Promise<{ top: BoardEntry[]; total: number; rank: number }>;
+  leaderboard(id: string, season: SeasonWindow | null): Promise<{ top: BoardEntry[]; total: number; rank: number; best: number | null }>;
+  lastSettledSeason(): Promise<Date | null>;
+  /** Records the closed season and grants its prizes atomically, including when the season had no players. */
+  settleSeason(season: SeasonWindow): Promise<void>;
   adminExport(): Promise<AdminRow[]>;
   /** the narration clips the announcement deck has made, keyed by a hash of voice + text (see announce-voice.ts) */
   getAudio(hash: string): Promise<Buffer | null>;

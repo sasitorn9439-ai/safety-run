@@ -23,7 +23,7 @@ export const en: Dict = {
 
   /* ---------- menu ---------- */
   menuSub: 'Dodge the hazards in the plant and collect a full PPE set.<br><strong>Play as often as you like, your best score counts.</strong><br>Enter your employee ID to get your icon on the leaderboard.',
-  prizeBtn: '🏆 Top 7 prizes',
+  prizeBtn: '🏆 EHS Day 2026 prizes',
   wardBtn: 'Loot boxes & Wardrobe',
   empId: 'Employee ID',
   lockOpen: 'Log in',
@@ -51,7 +51,7 @@ export const en: Dict = {
   gotIt: 'Got it',
 
   /* ---------- prizes ---------- */
-  prizeTitle: 'Prizes',
+  prizeTitle: 'EHS Day 2026 prizes',
   prize1: '1st prize',
   prize1Item: 'HUAWEI Band 11 Series (Smartwatch)',
   prize2: '2nd to 5th prize',
@@ -160,8 +160,8 @@ export const en: Dict = {
   submittedRun: n => `Score submitted · run ${n}`,
   thisRun: n => `This run: ${n} pts`,
   bestOf: (name, best) => `${name} · best ${best}`,
-  bestRank: (name, best, rank, total) => `${name} · best ${best} · rank ${rank} of ${total}`,
-  winNote: rank => `You are in place ${rank} right now. Hold it until the results are announced`,
+  bestRank: (name, best, rank, total, seasonal) => `${name} · ${seasonal ? 'season best' : 'best'} ${best} · rank ${rank} of ${total}`,
+  winNote: (rank, boxes) => `You’re currently rank ${rank}. Hold your place to earn ${boxes} chests at the end of the season.`,
   playAgain: 'Play again',
   rejectedHead: 'This run could not be scored',
   rejected: 'The run did not pass verification. Please start a new run',
@@ -179,6 +179,9 @@ export const en: Dict = {
   boardFail: 'Could not load the leaderboard',
   loading: 'Loading…',
   boardTotal: n => `${n} players · Top 20`,
+  seasonUpcoming: date => `Season 1 starts ${date} at midnight (Thailand time)`,
+  seasonDates: (number, dates) => `Season ${number} · ${dates}`,
+  seasonPrizes: boxes => `Ranks 1–3 earn ${boxes} chests respectively · Resets Mondays at midnight (Thailand time)`,
 
   /* ---------- in-game sign art ---------- */
   signHead: 'MIND YOUR HEAD',

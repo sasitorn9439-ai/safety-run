@@ -1,15 +1,20 @@
 import postgres from 'postgres';
-import type { Store } from './store.js';
+import { SEASON_PRIZES, type SeasonWindow } from '../shared/seasons.js';
+import type { BoardEntry, Store } from './store.js';
 
 export function createPostgresStore(url: string): Store {
   const sql = postgres(url, { ssl: 'require', prepare: false, max: 1, idle_timeout: 5, connect_timeout: 10 });
 
   // best run per employee, hidden players excluded; ties go to whoever reached that score first
-  const best = () => sql`
-    select distinct on (emp_id) emp_id, name, score, finished_at
+  const ranked = (season: SeasonWindow | null) => sql`
+    select b.*, row_number() over (order by b.score desc, b.finished_at, b.id)::int as rank
+    from (
+    select distinct on (emp_id) emp_id, score, finished_at, id
     from safety_run_runs r where score is not null and game_seed is not null
+      ${season ? sql`and finished_at >= ${season.start} and finished_at < ${season.end}` : sql``}
       and not exists (select 1 from safety_run_players p where p.emp_id = r.emp_id and p.hidden)
-    order by emp_id, score desc, finished_at asc`;
+    order by emp_id, score desc, finished_at, id
+    ) b`;
 
   // Every `alter table` takes an ACCESS EXCLUSIVE lock, even when it ends up skipping. Run on every cold start,
   // that lock queues behind any in-flight query and every request after it queues behind the lock.
@@ -21,6 +26,7 @@ export function createPostgresStore(url: string): Store {
        and exists (select 1 from pg_attribute where attrelid = to_regclass('safety_run_players') and attname = 'equipped' and not attisdropped)
        and to_regclass('safety_run_cosmetics') is not null
        and to_regclass('safety_run_box_grants') is not null
+       and to_regclass('safety_run_settled_seasons') is not null
        and to_regclass('safety_run_announce_audio') is not null
        and exists (select 1 from pg_attribute where attrelid = to_regclass('safety_run_runs') and attname = 'dist' and not attisdropped)
        and exists (select 1 from pg_attribute where attrelid = to_regclass('safety_run_cosmetics') and attname = 'dupe' and not attisdropped) as ok`
@@ -86,6 +92,10 @@ export function createPostgresStore(url: string): Store {
             granted_at timestamptz not null default now())`;
           await tx`create index if not exists safety_run_box_grants_emp on safety_run_box_grants (emp_id)`;
           await tx`alter table safety_run_box_grants enable row level security`;
+          await tx`create table if not exists safety_run_settled_seasons (starts_at timestamptz primary key)`;
+          await tx`alter table safety_run_settled_seasons enable row level security`;
+          await tx`alter table safety_run_box_grants add column if not exists season_start timestamptz references safety_run_settled_seasons (starts_at)`;
+          await tx`create index if not exists safety_run_runs_scored_at on safety_run_runs (finished_at) where score is not null and game_seed is not null`;
           // narration clips for /announce (mp3 bytes), keyed by a hash of voice + text
           await tx`create table if not exists safety_run_announce_audio (
             hash text primary key,
@@ -134,7 +144,7 @@ export function createPostgresStore(url: string): Store {
     },
 
     async finishRun(runId, f) {
-      const [saved] = await sql`update safety_run_runs set score = ${f.score}, secs = ${f.secs}, loot = ${f.loot}, dist = ${f.dist}, finished_at = now()
+      const [saved] = await sql`update safety_run_runs set score = ${f.score}, secs = ${f.secs}, loot = ${f.loot}, dist = ${f.dist}, finished_at = clock_timestamp()
         where id = ${runId} and score is null returning score`;
       return saved ? saved.score : null;
     },
@@ -144,18 +154,37 @@ export function createPostgresStore(url: string): Store {
       return existing ? existing.score : undefined;
     },
 
-    async leaderboard(id) {
-      // sequential on purpose: one pooled connection, no pipelining
-      const top = await sql`select b.emp_id, b.score, p.avatar, p.equipped from (${best()}) b left join safety_run_players p using (emp_id) order by b.score desc, b.finished_at asc limit 20`;
-      const cnt = await sql`select count(*)::int as total from (${best()}) b`;
-      let rank = 0;
-      if (id) {
-        const r = await sql`with b as (${best()})
-          select 1 + (select count(*)::int from b o where o.score > m.score or (o.score = m.score and o.finished_at < m.finished_at)) as rank
-          from b m where m.emp_id = ${id}`;
-        rank = r[0]?.rank || 0;
-      }
-      return { top: top.map(r => ({ empId: r.emp_id, avatar: r.avatar ?? null, score: r.score, look: r.equipped ?? {} })), total: cnt[0]?.total || 0, rank };
+    async leaderboard(id, season) {
+      const [board] = await sql<{ top: BoardEntry[]; total: number; rank: number; best: number | null }[]>`
+        with ranked as (${ranked(season)})
+        select count(*)::int as total,
+          coalesce(max(r.rank) filter (where r.emp_id = ${id}), 0) as rank,
+          max(r.score) filter (where r.emp_id = ${id}) as best,
+          coalesce((select jsonb_agg(jsonb_build_object(
+            'empId', b.emp_id, 'score', b.score, 'avatar', p.avatar, 'look', coalesce(p.equipped, '{}'::jsonb)
+          ) order by b.rank) from ranked b left join safety_run_players p using (emp_id) where b.rank <= 20), '[]'::jsonb) as top
+        from ranked r`;
+      return board!;
+    },
+
+    async lastSettledSeason() {
+      const [row] = await sql<{ last: Date | null }[]>`select max(starts_at) as last from safety_run_settled_seasons`;
+      return row.last;
+    },
+
+    async settleSeason(season) {
+      await sql.begin(async tx => {
+        await tx`set local lock_timeout = '5s'`;
+        // Wait for in-flight finishes before taking the ranking snapshot. Finishes waiting behind this lock get a fresh timestamp.
+        await tx`lock table safety_run_runs in share mode`;
+        await tx`with claimed as (
+          insert into safety_run_settled_seasons (starts_at) values (${season.start})
+          on conflict do nothing returning starts_at
+        ), winners as (${ranked(season)})
+        insert into safety_run_box_grants (emp_id, n, season_start)
+        select w.emp_id, (${[...SEASON_PRIZES]}::smallint[])[w.rank], c.starts_at
+        from claimed c cross join winners w where w.rank <= ${SEASON_PRIZES.length}`;
+      });
     },
 
     async adminExport() {
